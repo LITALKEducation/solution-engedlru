@@ -92,7 +92,9 @@ function doPost(e) {
     if (pictureUrl) updatePayload.picture = pictureUrl;
     
     if (Object.keys(updatePayload).length > 0) {
-      const updateUrl = `https://${CONFIG.AUTH0_DOMAIN}/api/v2/users/${userId}`;
+      // userId มีอักขระ | (เช่น auth0|xxxx) ต้อง encode ก่อน
+      // ไม่งั้น UrlFetchApp จะ throw "อาร์กิวเมนต์ไม่ถูกต้อง" (Invalid argument)
+      const updateUrl = `https://${CONFIG.AUTH0_DOMAIN}/api/v2/users/${encodeURIComponent(userId)}`;
       const updateRes = UrlFetchApp.fetch(updateUrl, {
         method: "patch",
         headers: { "Authorization": `Bearer ${managementToken}` },
