@@ -34,12 +34,6 @@
             transition: background-color 0.3s ease;
         }
 
-        @media (prefers-color-scheme: dark) {
-            #loadScreen {
-                background: #000000;
-            }
-        }
-
         .ls-logo {
             width: 64px;
             height: 64px;
@@ -48,12 +42,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .ls-logo {
-                border-color: rgba(255, 255, 255, 0.15);
-            }
         }
 
         .ls-wordmark {
@@ -68,23 +56,11 @@
             text-transform: uppercase;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .ls-title {
-                color: rgba(255, 255, 255, 0.9);
-            }
-        }
-
         .ls-sub {
             font-size: 11px;
             color: #52525b;
             margin-top: 4px;
             letter-spacing: .05em;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .ls-sub {
-                color: rgba(255, 255, 255, 0.35);
-            }
         }
 
         .ls-status {
@@ -99,25 +75,12 @@
             justify-content: center;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .ls-status {
-                background: rgba(255, 255, 255, 0.06);
-                border-color: rgba(255, 255, 255, 0.1);
-            }
-        }
-
         .ls-status-dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background: rgba(0, 0, 0, 0.4);
             flex-shrink: 0;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .ls-status-dot {
-                background: rgba(255, 255, 255, 0.4);
-            }
         }
 
         .ls-status-dot.spin {
@@ -136,12 +99,6 @@
             border-radius: 50px;
             box-shadow: 0 0 0 3px inset #000;
             animation: l3 0.75s infinite alternate;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .ls-status-dot.spin:before {
-                box-shadow: 0 0 0 3px inset #fff;
-            }
         }
 
         @keyframes l3 {
@@ -164,12 +121,6 @@
             color: rgba(0, 0, 0, 0.5);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .ls-status-text {
-                color: rgba(255, 255, 255, 0.55);
-            }
-        }
-
         .ls-progress-wrap {
             width: 200px;
         }
@@ -181,24 +132,12 @@
             overflow: hidden;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .ls-bar {
-                background: rgba(255, 255, 255, 0.08);
-            }
-        }
-
         .ls-bar-fill {
             height: 100%;
             background: rgba(0, 0, 0, 0.4);
             border-radius: 2px;
             width: 0;
             transition: width .4s ease;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .ls-bar-fill {
-                background: rgba(255, 255, 255, 0.5);
-            }
         }
 
         #loadScreen.fade-out {
