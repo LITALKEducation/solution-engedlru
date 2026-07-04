@@ -921,6 +921,51 @@
             border-color: var(--ink-30);
         }
 
+/* Force light theme for login/auth elements even when user prefers dark mode */
+@media (prefers-color-scheme: dark) {
+    #loginPage,
+    .login-wrapper,
+    .login-form-side,
+    .login-form-container,
+    .login-card {
+        background: var(--white) !important;
+        color: var(--ink) !important;
+        border-color: var(--ink-15) !important;
+        box-shadow: var(--card-shadow) !important;
+    }
+
+    .login-brand-side {
+        background: radial-gradient(circle at top right, #1e293b, #0f172a, var(--ink));
+        color: #fff !important;
+    }
+
+    .auth-btn,
+    .auth-btn.danger,
+    .auth-btn.secondary {
+        background: var(--ink) !important;
+        color: var(--white) !important;
+        border-color: var(--ink-15) !important;
+        box-shadow: 0 4px 18px rgba(13, 17, 23, .22) !important;
+    }
+
+    .auth-btn.secondary {
+        background: transparent !important;
+        color: var(--ink-70) !important;
+    }
+
+    .auth-btn.danger {
+        background: var(--white) !important;
+        color: var(--error) !important;
+        border-color: var(--error-bd) !important;
+        box-shadow: none !important;
+    }
+
+    .auth-hint,
+    .login-support {
+        color: var(--ink-50) !important;
+    }
+}
+
         .schedule-head {
             padding: 16px 20px;
             border-bottom: 1px solid var(--ink-15);
