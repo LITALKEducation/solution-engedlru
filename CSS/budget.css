@@ -40,7 +40,7 @@
         }
 
         .login-brand-side {
-            background: radial-gradient(circle at top right, #1e293b, #0f172a, var(--ink));
+            background: radial-gradient(circle at top right, #1e293b, #0f172a, #000000);
             position: relative;
             display: flex;
             align-items: center;
@@ -1518,16 +1518,16 @@
         }
 
         .dd-item.logout {
-            color: #dc2626;
+            color: var(--error);
         }
 
         .dd-item.logout:hover {
-            background: #fef2f2;
-            color: #b91c1c;
+            background: var(--error-bg);
+            color: var(--error);
         }
 
         .dd-item.logout i {
-            color: #ef4444;
+            color: var(--error);
         }
 
         /* ════ HAMBURGER ════ */
@@ -1686,14 +1686,14 @@
 
         .drawer-auth-btn.logout {
             background: none;
-            border: 1px solid #fecaca;
-            color: #dc2626;
+            border: 1px solid var(--error-bd);
+            color: var(--error);
             margin-top: 8px;
         }
 
         .drawer-auth-btn.logout:hover {
-            background: #fef2f2;
-            border-color: #fca5a5;
+            background: var(--error-bg);
+            border-color: var(--error-bd);
         }
 
         .drawer-divider {
