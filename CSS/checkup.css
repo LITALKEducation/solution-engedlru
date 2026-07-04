@@ -537,7 +537,7 @@
             background: var(--error);
             padding: 32px 24px;
             text-align: center;
-            color: #fff;
+            color: var(--error-fg);
         }
 
         .invalid-top-icon {
@@ -549,7 +549,7 @@
             align-items: center;
             justify-content: center;
             font-size: 22px;
-            color: #fff;
+            color: var(--error-fg);
             margin: 0 auto 16px;
         }
 
@@ -562,6 +562,18 @@
         .invalid-top-sub {
             font-size: 13px;
             color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Dark mode: --error is a light red, so the banner text flips to
+           black (--error-fg); flip the white-alpha details to black-alpha */
+        @media (prefers-color-scheme: dark) {
+            .invalid-top-icon {
+                border-color: rgba(0, 0, 0, .3);
+            }
+
+            .invalid-top-sub {
+                color: rgba(0, 0, 0, .65);
+            }
         }
 
         .invalid-body {
@@ -1534,7 +1546,7 @@
             background: var(--ink);
             padding: 44px 28px;
             text-align: center;
-            color: #fff;
+            color: var(--white);
         }
 
         .alt-top.error-bg {
@@ -1570,6 +1582,19 @@
         .alt-body {
             padding: 24px;
             background: var(--ink-07);
+        }
+
+        /* Dark mode: .alt-top inverts to a light banner (--ink becomes
+           white), so the white-alpha details must flip to black-alpha */
+        @media (prefers-color-scheme: dark) {
+            .alt-top-icon {
+                border-color: rgba(0, 0, 0, .2);
+                color: rgba(0, 0, 0, .75);
+            }
+
+            .alt-top-sub {
+                color: rgba(0, 0, 0, .6);
+            }
         }
 
         /* ══════════════════════════════════════
@@ -1646,6 +1671,18 @@
             font-weight: 800;
             color: var(--white);
             margin-top: 2px;
+        }
+
+        /* Dark mode: .process-head inverts to a light banner, flip the
+           white-alpha icon border and eyebrow text to black-alpha */
+        @media (prefers-color-scheme: dark) {
+            .ph-icon {
+                border-color: rgba(0, 0, 0, .25);
+            }
+
+            .ph-eyebrow {
+                color: rgba(0, 0, 0, .45);
+            }
         }
 
         .process-body {
