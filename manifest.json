@@ -1,0 +1,23 @@
+{
+  "name": "English Education, LRU App",
+  "short_name": "EngEd App",
+  "start_url": "https://solution.litalkeducation.com/engedlru",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d32f2f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://solution.litalkeducation.com/engedlru/img/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://solution.litalkeducation.com/engedlru/img/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}

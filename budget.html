@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.auth0.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.auth0.com https://script.google.com https://script.googleusercontent.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ระบบบันทึกงบประมาณโครงการ - sorasukt</title>
+    <link rel="icon" href="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico">
+
+    <!-- Noto Sans Thai -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha384-/o6I2CkkWC//PSjvWC/eYN7l3xM3tJm8ZzVkCOfp//W05QcE3mlGskpoHB6XqI+B" crossorigin="anonymous" />
+    <!-- Auth0 SPA SDK -->
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" integrity="sha384-zVM3YoOThNVWy1csEJq5Hbk+eeS0XrkL2lCADHb8HnFew6raF21cbOCcMgedS7HO" crossorigin="anonymous" defer></script>
+
+    <link rel="stylesheet" href="CSS/budget.css">
+    <link rel="stylesheet" href="CSS/brandmenu.css">
+
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+</head>
+
+<body>
+
+    <!-- ════ MOBILE MENU DRAWER ════ -->
+    <div id="mobileMenuDrawer" class="mobile-menu-drawer" onclick="if(event.target===this)toggleMobileMenu()">
+        <div class="drawer-content">
+            <div class="drawer-header">
+                <div class="drawer-title">เมนูระบบ</div>
+                <button class="drawer-close-btn" onclick="toggleMobileMenu()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="drawerAuthArea" class="drawer-auth-area">
+                <!-- Will be dynamically populated -->
+            </div>
+            <div class="drawer-divider"></div>
+            <nav class="drawer-nav">
+                <a href="https://solution.litalkeducation.com/engedlru" class="drawer-nav-link"><i class="fa-solid fa-house"></i>หน้าหลัก</a>
+                <a href="https://solution.litalkeducation.com/engedlru/checkup" class="drawer-nav-link"><i class="fa-solid fa-user-check"></i>บันทึกกิจกรรม</a>
+                <a href="https://solution.litalkeducation.com/engedlru/sys" class="drawer-nav-link"><i class="fa-solid fa-key"></i>ค้นหา Token Key</a>
+                <a href="https://solution.litalkeducation.com/engedlru/budget" class="drawer-nav-link active"><i
+                        class="fa-solid fa-wallet"></i>บริหารงบประมาณ</a>
+                <a href="https://solution.litalkeducation.com/engedlru/vote" class="drawer-nav-link"><i
+                        class="fa-solid fa-check-to-slot"></i>ลงคะแนนเลือกตั้ง</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- ════ PROFILE MODAL ════ -->
+    <div id="profileModal" class="profile-modal" onclick="if(event.target===this)closeProfileModal()">
+        <div class="profile-modal-card">
+            <div class="profile-modal-header">
+                <div class="profile-modal-title">แก้ไขข้อมูลส่วนตัว</div>
+                <div class="profile-modal-email" id="profileModalEmail"></div>
+            </div>
+            <div class="profile-modal-content-grid">
+                <div class="profile-modal-avatar-section">
+                    <div class="profile-modal-avatar-wrap-new">
+                        <img id="profileModalAvatar" class="avatar-preview-img" src="" alt="Profile Picture">
+                        <button class="avatar-remove-btn" onclick="removeProfileImage()" title="ลบรูปโปรไฟล์">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="avatar-section-title">รูปประจำตัว</div>
+                    <div class="avatar-section-sub">ขนาดแนะนำ 1:1, ไม่เกิน 2MB</div>
+                    <label for="profileUploadInput" class="avatar-upload-btn-label">
+                        <i class="fa-solid fa-upload" style="margin-right: 4px;"></i> อัปโหลดรูปภาพ
+                    </label>
+                    <input type="file" id="profileUploadInput" accept="image/*" style="display: none;"
+                        onchange="previewProfileImage(event)">
+                    <div class="avatar-error-msg" id="profileModalAvatarError" style="display: none;"></div>
+                </div>
+                <div class="profile-modal-fields-section">
+                    <div>
+                        <div class="profile-field">
+                            <label class="profile-label">ชื่อ–นามสกุล<span class="required-star">*</span></label>
+                            <input type="text" id="profileInputName" placeholder="กรอกชื่อจริง-นามสกุล">
+                        </div>
+                        <div class="profile-field">
+                            <label class="profile-label">รหัสนักศึกษา</label>
+                            <input type="text" id="profileInputId" readonly
+                                style="background: var(--ink-07); cursor: not-allowed;">
+                            <div class="profile-field-hint">รหัสนักศึกษาดึงอัตโนมัติจากอีเมลและแก้ไขไม่ได้</div>
+                        </div>
+                    </div>
+                    <div class="profile-modal-actions">
+                        <button class="profile-btn cancel" onclick="closeProfileModal()">ยกเลิก</button>
+                        <button class="profile-btn save" onclick="saveProfileData()">บันทึกข้อมูล</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="copy-toast" id="copyToast">
+        <i class="fa-solid fa-check"></i>
+        <span id="copyToastText">คัดลอกแล้ว</span>
+    </div>
+
+    <div id="loginPage" class="show">
+        <div class="login-wrapper">
+            <div class="login-brand-side">
+                <div class="grid-overlay"></div>
+                <div class="brand-content">
+                    <div class="brand-logo-wrap">
+                        <img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico"
+                            alt="ENGED Logo" style="height:52px;width:auto;border-radius:8px;">
+                        <div class="brand-logo-text">
+                            <div class="brand-logo-name">English Education</div>
+                            <div class="brand-logo-faculty">คณะครุศาสตร์ มหาวิทยาลัยราชภัฏเลย</div>
+                        </div>
+                    </div>
+                    <div class="brand-tagline">
+                        <h2>ระบบบริหาร<br>งบประมาณโครงการ</h2>
+                        <p>สำหรับจัดเก็บข้อมูลค่าใช้จ่ายโครงการ เอกสารแนบ
+                            และหลักฐานประกอบงบประมาณอย่างเป็นระบบและปลอดภัย</p>
+                    </div>
+                    <ul class="brand-features">
+                        <li>
+                            <div class="brand-feat-icon"><i class="fa-solid fa-lock"></i></div>
+                            <div>
+                                <div class="brand-feat-label">สิทธิ์การเข้าใช้งานพิเศษ</div>
+                                <div class="brand-feat-sub">เฉพาะผู้รับผิดชอบที่ได้รับการอนุญาตเท่านั้น</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="brand-feat-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <div>
+                                <div class="brand-feat-label">จัดเก็บข้อมูลเรียลไทม์</div>
+                                <div class="brand-feat-sub">รองรับการอัปโหลดไฟล์หลักฐาน PDF หรือรูปภาพ</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="login-form-side">
+                <div class="login-form-container">
+                    <div class="mobile-brand">
+                        <img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico"
+                            alt="ENGED Logo" style="height:40px;width:auto;border-radius:6px;">
+                        <div>
+                            <div class="mobile-brand-name">English Education</div>
+                            <div class="mobile-brand-sub">คณะครุศาสตร์ มหาวิทยาลัยราชภัฏเลย</div>
+                        </div>
+                    </div>
+
+                    <div id="loadingScreen" style="padding: 48px 0; text-align: center;">
+                        <div class="loader-mini" style="margin: 0 auto 16px;"></div>
+                        <p style="color: var(--ink-50); font-weight: 700; font-size: 14.5px;">กำลังตรวจสอบสิทธิ์...</p>
+                    </div>
+
+                    <div id="authScreen" style="display: none;">
+                        <div class="login-eyebrow">Budget Management</div>
+                        <h1 class="login-title">เข้าสู่ระบบ</h1>
+                        <p class="login-subtitle">
+                            กรุณาลงชื่อเข้าใช้งานด้วยบัญชีอีเมลมหาวิทยาลัยเพื่อบันทึกข้อมูลและใช้จ่ายงบประมาณโครงการ</p>
+                        <div class="login-card">
+                            <div class="login-card-header">
+                                <div class="login-card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                                <div>
+                                    <div class="login-card-label">เฉพาะผู้ดูแลระบบงบประมาณ</div>
+                                    <div class="login-card-sub">Authorized Personnel Only</div>
+                                </div>
+                            </div>
+                            <button class="auth-btn" onclick="loginUser()">
+                                <i class="fa-solid fa-arrow-right-to-bracket"></i> ลงชื่อเข้าใช้งานด้วย LRU Mail
+                            </button>
+                            <div class="login-disclaimer">
+                                การเข้าสู่ระบบด้วย LRU Mail ถือเป็นการยอมรับ <a href="https://solution.litalkeducation.com/engedlru/terms.html" target="_blank">ข้อกำหนดการใช้งาน</a> และ <a href="https://solution.litalkeducation.com/engedlru/privacy.html" target="_blank">นโยบายความเป็นส่วนตัว</a>
+                            </div>
+                            <div class="auth-hint">
+                                บัญชีผู้ดูแลจะต้องได้รับสิทธิ์การเข้าใช้งานพิเศษ<br>
+                                อีเมลที่ได้รับอนุญาต: <strong>sb6740102220@lru.ac.th</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="deniedScreen" style="display: none;">
+                        <div class="login-eyebrow">Security Alert</div>
+                        <h1 class="login-title">ไม่มีสิทธิ์เข้าใช้งาน</h1>
+                        <p class="login-subtitle">บัญชีของคุณไม่ได้รับอนุญาตให้เข้าใช้งานระบบบริหารงบประมาณนี้</p>
+                        <div class="invalid-card">
+                            <div class="invalid-top">
+                                <div class="invalid-top-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                <div class="invalid-top-title">อีเมลไม่ตรงกับสิทธิ์ที่กำหนด</div>
+                                <div class="invalid-top-sub">เฉพาะเจ้าหน้าที่ผู้รับผิดชอบโครงการ</div>
+                            </div>
+                            <div class="invalid-body">
+                                <div class="invalid-email-box">
+                                    <div class="invalid-email-label">อีเมลปัจจุบันของคุณ</div>
+                                    <div class="invalid-email-value" id="currentEmail">—</div>
+                                </div>
+                                <button class="auth-btn danger" onclick="logoutUser()">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i> ออกจากระบบและเปลี่ยนบัญชี
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainApp">
+        <header class="site-header">
+            <div class="header-inner">
+                <a class="header-brand" href="https://solution.litalkeducation.com/engedlru">
+                    <div class="header-logo">
+                        <img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico"
+                            alt="Logo">
+                    </div>
+                    <div class="header-brand-text">
+                        <div class="header-brand-name">English Education</div>
+                        <div class="header-brand-faculty">คณะครุศาสตร์ มหาวิทยาลัยราชภัฏเลย</div>
+                    </div>
+                </a>
+
+                <!-- Desktop Navigation Menu -->
+                <nav class="header-nav">
+                    <a href="https://solution.litalkeducation.com/engedlru" class="nav-link">หน้าหลัก</a>
+                    <a href="https://solution.litalkeducation.com/engedlru/checkup" class="nav-link">บันทึกกิจกรรม</a>
+                    <a href="https://solution.litalkeducation.com/engedlru/sys" class="nav-link">ค้นหา Token Key</a>
+                    <a href="https://solution.litalkeducation.com/engedlru/budget" class="nav-link active">บริหารงบประมาณ</a>
+                    <a href="https://solution.litalkeducation.com/engedlru/vote" class="nav-link">ลงคะแนนเลือกตั้ง</a>
+                </nav>
+
+                <div class="header-right">
+                    <div id="authHeaderArea" style="display: flex; align-items: center; gap: 12px;">
+                        <div class="header-spinner">
+                            <div class="loader-mini"></div> กำลังตรวจสอบสิทธิ์...
+                        </div>
+                    </div>
+                    <!-- Hamburger Button -->
+                    <button class="hamburger-btn" onclick="toggleMobileMenu(event)" aria-label="Menu">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="page-layout">
+            <aside class="info-panel">
+                <div class="info-eyebrow">Budget Control</div>
+                <h1 class="info-heading">ระบบบริหาร<br>งบประมาณโครงการ</h1>
+                <p class="info-desc">สำหรับบันทึกรายงานการใช้จ่ายงบประมาณ แนบหลักฐานการจ่าย
+                    และจัดประเภทโครงการเพื่อความโปร่งใสและตรวจสอบได้</p>
+                <div class="steps-overview">
+                    <div class="steps-overview-title"><i class="fa-solid fa-list-check"></i>ขั้นตอนการส่งบันทึก</div>
+                    <div class="ov-step">
+                        <div class="ov-num">1</div>
+                        <div>
+                            <div class="ov-label">ยืนยันรหัสเข้าใช้งาน</div>
+                            <div class="ov-sub">ล็อกอินผ่าน LRU Mail ที่ได้รับสิทธิ์บริหารงบประมาณ</div>
+                        </div>
+                    </div>
+                    <div class="ov-step">
+                        <div class="ov-num">2</div>
+                        <div>
+                            <div class="ov-label">ระบุรายละเอียดค่าใช้จ่าย</div>
+                            <div class="ov-sub">เลือกหมวดหมู่ วันที่ และระบุรายการการใช้จ่ายจริง</div>
+                        </div>
+                    </div>
+                    <div class="ov-step">
+                        <div class="ov-num">3</div>
+                        <div>
+                            <div class="ov-label">คำนวณและแนบหลักฐาน</div>
+                            <div class="ov-sub">ใส่จำนวนหน่วย/ราคาต่อหน่วย และอัปโหลดไฟล์ใบเสร็จ (Image/PDF)</div>
+                        </div>
+                    </div>
+                    <div class="ov-step">
+                        <div class="ov-num">4</div>
+                        <div>
+                            <div class="ov-label">บันทึกส่งรายงาน</div>
+                            <div class="ov-sub">กดยืนยัน ข้อมูลจะเข้าระบบส่วนกลางของสาขาวิชาทันที</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="notice-card">
+                    <div class="notice-inner">
+                        <div class="notice-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                        <div>
+                            <div class="notice-title">ข้อแนะนำการแนบไฟล์</div>
+                            <div class="notice-text">ภาพถ่ายหรือ PDF ใบเสร็จรับเงินจะต้องมีรายละเอียดผู้รับเงิน
+                                รายการชัดเจน และขนาดไฟล์ไม่เกิน 10MB</div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="form-panel" id="appScreen">
+                <div class="form-card">
+                    <div class="card-bar">
+                        <div class="card-bar-left">
+                            <div class="card-bar-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                            <div class="card-bar-text">
+                                <div class="card-bar-label">New Budget Entry</div>
+                                <div class="card-bar-title">บันทึกรายการใช้จ่ายใหม่</div>
+                            </div>
+                        </div>
+                        <div class="step-pills">
+                            <div class="step-pill active"></div>
+                            <div class="step-pill"></div>
+                            <div class="step-pill"></div>
+                        </div>
+                    </div>
+                    <div class="form-body">
+                        <form id="budgetForm">
+                            <div class="section-label">
+                                <span class="section-label-text"><i class="fa-solid fa-circle-info"
+                                        style="margin-right:5px"></i>ข้อมูลทั่วไป</span>
+                                <div class="section-label-line"></div>
+                            </div>
+                            <div class="field">
+                                <div class="field-label">
+                                    <i class="fa-regular fa-calendar"></i> วันที่ทำรายการ <span class="req">*</span>
+                                </div>
+                                <input type="date" id="date" required />
+                            </div>
+                            <div class="field">
+                                <div class="field-label">
+                                    <i class="fa-solid fa-layer-group"></i> หมวดเงิน <span class="req">*</span>
+                                </div>
+                                <div class="custom-select-wrap" id="selectWrap">
+                                    <div class="custom-select-trigger" id="selectTrigger" tabindex="0" role="combobox"
+                                        aria-haspopup="listbox" aria-expanded="false">
+                                        <span class="trigger-text" id="triggerText">กรุณาเลือกหมวดเงิน</span>
+                                        <i class="fa-solid fa-chevron-down trigger-icon"></i>
+                                    </div>
+                                    <div class="custom-dropdown" id="customDropdown" role="listbox">
+                                        <div class="dropdown-option" data-value="- ค่าจ้างชั่วคราว"><i
+                                                class="fa-solid fa-check option-check"></i> <span>ค่าจ้างชั่วคราว</span>
+                                            <span class="option-tag">บุคลากร</span>
+                                        </div>
+                                        <div class="dropdown-option" data-value="- ค่าตอบแทน"><i
+                                                class="fa-solid fa-check option-check"></i> <span>ค่าตอบแทน</span> <span
+                                                class="option-tag">ดำเนินงาน</span></div>
+                                        <div class="dropdown-option" data-value="- ค่าใช้สอย"><i
+                                                class="fa-solid fa-check option-check"></i> <span>ค่าใช้สอย</span> <span
+                                                class="option-tag">ดำเนินงาน</span></div>
+                                        <div class="dropdown-option" data-value="- ค่าวัสดุ"><i
+                                                class="fa-solid fa-check option-check"></i> <span>ค่าวัสดุ</span> <span
+                                                class="option-tag">ดำเนินงาน</span></div>
+                                        <div class="dropdown-option" data-value="- ค่าสาธารณูปโภค"><i
+                                                class="fa-solid fa-check option-check"></i> <span>ค่าสาธารณูปโภค</span>
+                                            <span class="option-tag">ดำเนินงาน</span>
+                                        </div>
+                                        <div class="dropdown-option" data-value="- ค่าครุภัณฑ์"><i
+                                                class="fa-solid fa-check option-check"></i> <span>ค่าครุภัณฑ์</span>
+                                            <span class="option-tag">ลงทุน</span>
+                                        </div>
+                                        <div class="dropdown-option" data-value="- ที่ดิน , สิ่งก่อสร้าง"><i
+                                                class="fa-solid fa-check option-check"></i> <span>ที่ดิน /
+                                                สิ่งก่อสร้าง</span> <span class="option-tag">ลงทุน</span></div>
+                                        <div class="dropdown-option" data-value="งบเงินอุดหนุน"><i
+                                                class="fa-solid fa-check option-check"></i> <span>งบเงินอุดหนุน</span>
+                                            <span class="option-tag">อุดหนุน</span>
+                                        </div>
+                                        <div class="dropdown-option" data-value="งบรายจ่ายอื่นๆ"><i
+                                                class="fa-solid fa-check option-check"></i> <span>งบรายจ่ายอื่นๆ</span>
+                                            <span class="option-tag">อื่นๆ</span>
+                                        </div>
+                                    </div>
+                                    <select id="category" class="real-select" required>
+                                        <option value="" disabled selected></option>
+                                        <option value="- ค่าจ้างชั่วคราว">- ค่าจ้างชั่วคราว</option>
+                                        <option value="- ค่าตอบแทน">- ค่าตอบแทน</option>
+                                        <option value="- ค่าใช้สอย">- ค่าใช้สอย</option>
+                                        <option value="- ค่าวัสดุ">- ค่าวัสดุ</option>
+                                        <option value="- ค่าสาธารณูปโภค">- ค่าสาธารณูปโภค</option>
+                                        <option value="- ค่าครุภัณฑ์">- ค่าครุภัณฑ์</option>
+                                        <option value="- ที่ดิน , สิ่งก่อสร้าง">- ที่ดิน , สิ่งก่อสร้าง</option>
+                                        <option value="งบเงินอุดหนุน">งบเงินอุดหนุน</option>
+                                        <option value="งบรายจ่ายอื่นๆ">งบรายจ่ายอื่นๆ</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="field-label">
+                                    <i class="fa-regular fa-pen-to-square"></i> รายการ / รายละเอียด <span
+                                        class="req">*</span>
+                                </div>
+                                <input type="text" id="details" required placeholder="เช่น ค่าอุปกรณ์ประกอบกิจกรรม" />
+                            </div>
+                            <div class="section-label">
+                                <span class="section-label-text"><i class="fa-solid fa-calculator"
+                                        style="margin-right:5px"></i>คำนวณยอดเงิน</span>
+                                <div class="section-label-line"></div>
+                            </div>
+                            <div class="row-2">
+                                <div class="field" style="margin-bottom:0">
+                                    <div class="field-label">
+                                        <i class="fa-solid fa-hashtag"></i> จำนวนหน่วย <span class="req">*</span>
+                                    </div>
+                                    <input type="number" id="qty" min="1" required placeholder="0"
+                                        oninput="calculateTotal()" />
+                                </div>
+                                <div class="field" style="margin-bottom:0">
+                                    <div class="field-label">
+                                        <i class="fa-solid fa-coins"></i> ราคาต่อหน่วย (บาท) <span class="req">*</span>
+                                    </div>
+                                    <input type="number" id="price" step="0.01" required placeholder="0.00"
+                                        oninput="calculateTotal()" />
+                                </div>
+                            </div>
+                            <div class="field" style="margin-top:16px">
+                                <div class="field-label"><i class="fa-solid fa-money-bill-wave"></i> จำนวนเงินรวม</div>
+                                <div class="total-wrap">
+                                    <input type="text" id="total" class="total-input" readonly placeholder="0.00" />
+                                    <span class="total-suffix">บาท</span>
+                                </div>
+                            </div>
+                            <div class="section-label">
+                                <span class="section-label-text"><i class="fa-solid fa-paperclip"
+                                        style="margin-right:5px"></i>ข้อมูลเพิ่มเติม</span>
+                                <div class="section-label-line"></div>
+                            </div>
+                            <div class="field">
+                                <div class="field-label"><i class="fa-regular fa-comment-dots"></i> หมายเหตุ</div>
+                                <textarea id="note" rows="3" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+                            </div>
+                            <div class="field">
+                                <div class="field-label"><i class="fa-solid fa-file-arrow-up"></i> แนบไฟล์หลักฐาน</div>
+                                <div class="file-zone" id="fileZone">
+                                    <div class="file-zone-icon"><i class="fa-regular fa-file-image"></i></div>
+                                    <div class="file-zone-text-wrap">
+                                        ลากไฟล์มาวาง หรือ 
+                                        <label class="file-zone-link">
+                                            เลือกไฟล์
+                                            <input type="file" id="file" accept="image/*,.pdf" onchange="onFileChange(this)" />
+                                        </label>
+                                        เพื่ออัปโหลด
+                                    </div>
+                                </div>
+                                <div class="file-zone-footer">
+                                    <span>รองรับไฟล์: รูปภาพ และ PDF</span>
+                                    <span>ขนาดไฟล์สูงสุด: 10MB</span>
+                                </div>
+
+                                <div class="file-selected-card" id="fileSelectedCard">
+                                    <button type="button" class="file-card-remove" onclick="removeFile()" aria-label="Remove">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                    <div class="file-card-icon-wrap" id="fileCardIcon">
+                                        <i class="fa-regular fa-file-image"></i>
+                                    </div>
+                                    <div class="file-card-info">
+                                        <div class="file-card-name" id="fileCardName">filename.jpg</div>
+                                        <div class="file-card-size" id="fileCardSize">2.5 MB</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" id="submitBtn" class="submit-btn" style="margin-top: 10px;">
+                                <i class="fa-solid fa-floppy-disk"></i> <span id="submitText">บันทึกข้อมูล</span>
+                            </button>
+                            <div id="statusMessage" class="status-msg"></div>
+                        </form>
+                    </div>
+                    <footer class="site-footer">
+                        <div class="footer-logo"><em>/</em>sorasukt</div>
+                        <div>
+                            © 2026 
+                            <span data-en>All Rights Reserved.</span>
+                            <span data-th>สงวนลิขสิทธิ์ทุกประการ</span>
+                        </div>
+                        <div class="footer-links">
+                            <a href="https://solution.litalkeducation.com/engedlru/terms.html">ข้อกำหนดการใช้งาน</a>
+                            <span class="sep">•</span>
+                            <a href="https://solution.litalkeducation.com/engedlru/privacy.html">นโยบายความเป็นส่วนตัว</a>
+                        </div>
+                    </footer>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="JavaScript/auth.js" defer></script>
+    <script src="JavaScript/budget.js" defer></script>
+</body>
+
+</html>
+
