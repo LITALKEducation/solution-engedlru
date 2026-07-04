@@ -241,7 +241,7 @@
 
         /* Brand Left Side */
         .login-brand-side {
-            background: radial-gradient(circle at top right, #1e293b, #0f172a, var(--ink));
+            background: radial-gradient(circle at top right, #1e293b, #0f172a, #000000);
             position: relative;
             display: flex;
             align-items: center;
@@ -935,7 +935,7 @@
     }
 
     .login-brand-side {
-        background: radial-gradient(circle at top right, #1e293b, #0f172a, var(--ink));
+        background: radial-gradient(circle at top right, #1e293b, #0f172a, #000000);
         color: #fff !important;
     }
 
@@ -1076,8 +1076,8 @@
         }
 
         .schedule-row.active-slot .schedule-row-dot {
-            background: #16a34a;
-            box-shadow: 0 0 0 4px rgba(22, 163, 74, .15);
+            background: var(--success);
+            box-shadow: 0 0 0 4px var(--success-bg);
             animation: blink 1.8s ease infinite;
         }
 
@@ -1125,7 +1125,7 @@
         }
 
         .badge-upcoming {
-            background: #f1f5f9;
+            background: var(--ink-07);
             color: var(--ink-70);
             border: 1.5px solid var(--ink-15);
         }
@@ -2301,16 +2301,16 @@
         }
 
         .dropdown-item.logout {
-            color: #dc2626;
+            color: var(--error);
         }
 
         .dropdown-item.logout:hover {
-            background: #fef2f2;
-            color: #b91c1c;
+            background: var(--error-bg);
+            color: var(--error);
         }
 
         .dropdown-item.logout i {
-            color: #ef4444;
+            color: var(--error);
         }
 
         /* ════ PROFILE MODAL ════ */
@@ -2715,14 +2715,14 @@
 
         .drawer-auth-btn.logout {
             background: none;
-            border: 1px solid #fecaca;
-            color: #dc2626;
+            border: 1px solid var(--error-bd);
+            color: var(--error);
             margin-top: 8px;
         }
 
         .drawer-auth-btn.logout:hover {
-            background: #fef2f2;
-            border-color: #fca5a5;
+            background: var(--error-bg);
+            border-color: var(--error-bd);
         }
 
         .drawer-divider {
