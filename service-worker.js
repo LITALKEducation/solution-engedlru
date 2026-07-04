@@ -1,4 +1,6 @@
-const CACHE_NAME = 'sorasukt-pwa-v2';
+// เพิ่มเลขเวอร์ชันทุกครั้งที่ต้องการบังคับล้าง cache เก่าของผู้ใช้
+const CACHE_NAME = 'sorasukt-pwa-v3';
+
 const ASSETS_TO_CACHE = [
     'https://solution.litalkeducation.com/',
     'https://solution.litalkeducation.com/index.html',
@@ -13,7 +15,11 @@ const ASSETS_TO_CACHE = [
     'https://solution.litalkeducation.com/CSS/checkup.css',
     'https://solution.litalkeducation.com/CSS/sys.css',
     'https://solution.litalkeducation.com/CSS/404.css',
+    'https://solution.litalkeducation.com/CSS/brandmenu.css',
+    'https://solution.litalkeducation.com/CSS/theme.css',
     'https://solution.litalkeducation.com/JavaScript/pwa.js',
+    'https://solution.litalkeducation.com/JavaScript/auth.js',
+    'https://solution.litalkeducation.com/JavaScript/index.js',
     'https://solution.litalkeducation.com/JavaScript/system.js',
     'https://solution.litalkeducation.com/JavaScript/maintenance.js',
     'https://solution.litalkeducation.com/JavaScript/budget.js',
@@ -32,49 +38,52 @@ const ASSETS_TO_CACHE = [
     'https://solution.litalkeducation.com/vote/JavaScript/info.js',
     'https://solution.litalkeducation.com/vote/JavaScript/ivote.js',
     'https://solution.litalkeducation.com/vote/JavaScript/results.js',
-    'https://solution.litalkeducation.com/imghttps://solution.litalkeducation.com-192.png',
-    'https://solution.litalkeducation.com/imghttps://solution.litalkeducation.com-512.png',
-    'https://solution.litalkeducation.com/imghttps://solution.litalkeducation.com.png',
     'https://solution.litalkeducation.com/img/icon-192.png',
     'https://solution.litalkeducation.com/img/icon-512.png',
-    'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js'
+    'https://solution.litalkeducation.com/img/ENGEDLOGO.PNG'
 ];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            console.log('Opened cache');
-            return cache.addAll(ASSETS_TO_CACHE);
-        })
-    );
-});
-
-self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((response) => {
-            // Cache hit - return response
-            if (response) {
-                return response;
-            }
-            return fetch(event.request);
-        })
+        caches.open(CACHE_NAME)
+            // cache ทีละไฟล์ (ไม่ใช้ addAll) เพื่อไม่ให้ไฟล์เดียวที่พังทำให้ install ล้มทั้งหมด
+            .then((cache) => Promise.allSettled(ASSETS_TO_CACHE.map((url) => cache.add(url))))
+            // ใช้ SW เวอร์ชันใหม่ทันที ไม่ต้องรอปิดแท็บเก่า
+            .then(() => self.skipWaiting())
     );
 });
 
 self.addEventListener('activate', (event) => {
-    const cacheWhitelist = [CACHE_NAME];
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheWhitelist.indexOf(cacheName) === -1) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
+        caches.keys()
+            .then((cacheNames) => Promise.all(
+                cacheNames
+                    .filter((name) => name !== CACHE_NAME)
+                    .map((name) => caches.delete(name))
+            ))
+            .then(() => self.clients.claim())
+    );
+});
+
+self.addEventListener('fetch', (event) => {
+    const request = event.request;
+    if (request.method !== 'GET') return;
+
+    // ไม่แตะ request ข้ามโดเมน (เช่น cdn.auth0.com, fonts) ให้เบราว์เซอร์จัดการเอง
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin) return;
+
+    // Network-first: ผู้ใช้ได้ไฟล์เวอร์ชันล่าสุดเสมอเมื่อออนไลน์
+    // และ fallback เป็น cache เมื่อออฟไลน์ — แก้ปัญหาหน้าเว็บค้างเวอร์ชันเก่าตลอดไป
+    event.respondWith(
+        fetch(request)
+            .then((response) => {
+                if (response && response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+                }
+                return response;
+            })
+            .catch(() => caches.match(request))
     );
 });
