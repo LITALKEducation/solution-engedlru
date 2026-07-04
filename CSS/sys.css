@@ -1494,6 +1494,37 @@
             color: rgba(255, 255, 255, .4);
         }
 
+        /* Dark mode: surfaces using var(--ink) invert to white
+           (.result-header, .token-pill, .process-card-top), so their
+           white-alpha details must flip to black-alpha to stay visible */
+        @media (prefers-color-scheme: dark) {
+            .rh-avatar {
+                border-color: rgba(0, 0, 0, .15);
+                color: rgba(0, 0, 0, .6);
+            }
+
+            .rh-eyebrow {
+                color: rgba(0, 0, 0, .45);
+            }
+
+            .rh-meta {
+                color: rgba(0, 0, 0, .5);
+            }
+
+            .token-pill i {
+                color: rgba(0, 0, 0, .4);
+            }
+
+            .pct-icon {
+                border-color: rgba(0, 0, 0, .18);
+                color: rgba(0, 0, 0, .8);
+            }
+
+            .pct-sub {
+                color: rgba(0, 0, 0, .5);
+            }
+        }
+
         /* copy toast */
         .copy-toast {
             position: fixed;
