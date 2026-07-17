@@ -55,6 +55,7 @@ function switchTab(tab) {
     document.querySelectorAll('.admin-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
     if (tab === 'checkin') loadCheckinTab();
     if (tab === 'schedule') loadScheduleTab();
+    if (tab === 'tokens') loadTokensTab();
     if (tab === 'admins') loadAdminsTab();
     if (tab === 'qr') stopQrScan();
 }
@@ -93,6 +94,17 @@ async function refreshCheckinLogs() {
 
 document.getElementById('checkinScheduleFilter').addEventListener('change', refreshCheckinLogs);
 
+document.getElementById('exportCheckinCsvBtn').addEventListener('click', async () => {
+    const id = document.getElementById('checkinScheduleFilter').value;
+    const res = await adminFetch(`/admin/checkup/logs/export.csv${id ? '?scheduleId=' + encodeURIComponent(id) : ''}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'checkin-log.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+});
+
 /* ════ SCHEDULE + COORDINATES ════ */
 async function loadScheduleTab() {
     const res = await adminFetch('/admin/checkup/schedule');
@@ -118,8 +130,8 @@ function editSchedule(id) {
     if (!row) return;
     scheduleEditingId = id;
     document.getElementById('schName').value = row.name;
-    document.getElementById('schOpen').value = row.open_at;
-    document.getElementById('schClose').value = row.close_at;
+    document.getElementById('schOpen').value = row.open_at.replace(' ', 'T');
+    document.getElementById('schClose').value = row.close_at.replace(' ', 'T');
     document.getElementById('schLat').value = row.lat ?? '';
     document.getElementById('schLng').value = row.lng ?? '';
     document.getElementById('schRadius').value = row.radius_m;
@@ -154,8 +166,8 @@ document.getElementById('scheduleForm').addEventListener('submit', async e => {
     e.preventDefault();
     const body = {
         name: document.getElementById('schName').value.trim(),
-        open_at: document.getElementById('schOpen').value.trim(),
-        close_at: document.getElementById('schClose').value.trim(),
+        open_at: document.getElementById('schOpen').value.trim().replace('T', ' '),
+        close_at: document.getElementById('schClose').value.trim().replace('T', ' '),
         lat: document.getElementById('schLat').value || null,
         lng: document.getElementById('schLng').value || null,
         radius_m: document.getElementById('schRadius').value || 100
@@ -218,6 +230,92 @@ document.getElementById('importCsvBtn').addEventListener('click', async () => {
         fileInput.value = '';
     }
 });
+
+/* ════ TOKEN MANUAL ENTRY + BROWSE/DELETE ════ */
+const MAX_TOKEN_PAIRS = 5;
+
+async function loadTokensTab() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/tokens?action=getActivities`);
+        const activities = await res.json();
+        document.getElementById('activityDatalist').innerHTML =
+            activities.map(a => `<option value="${escHtmlAdmin(a)}">`).join('');
+    } catch (e) { /* ไม่ critical ถ้าโหลด datalist ไม่สำเร็จ */ }
+
+    if (!document.getElementById('trPairsWrap').children.length) {
+        document.getElementById('trPairsWrap').innerHTML = Array.from({ length: MAX_TOKEN_PAIRS }, (_, i) => `
+            <div class="admin-row">
+                <span style="width:60px;color:var(--ink-50);font-size:var(--font-size-sm)">คู่ที่ ${i + 1}</span>
+                <input class="admin-input" id="trCode${i + 1}" placeholder="รหัสกิจกรรม">
+                <input class="admin-input" id="trToken${i + 1}" placeholder="Token Key">
+            </div>`).join('');
+    }
+}
+
+document.getElementById('tokenRecordForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = document.getElementById('tokenRecordMsg');
+    msg.className = 'admin-msg';
+
+    const activityName = document.getElementById('trActivity').value.trim();
+    const studentId = document.getElementById('trStudentId').value.trim();
+    const studentName = document.getElementById('trStudentName').value.trim();
+    const studentGroup = document.getElementById('trStudentGroup').value.trim();
+    const pairs = [];
+    for (let i = 1; i <= MAX_TOKEN_PAIRS; i++) {
+        const code = document.getElementById(`trCode${i}`).value.trim();
+        const token = document.getElementById(`trToken${i}`).value.trim();
+        if (code || token) pairs.push({ code, token });
+    }
+
+    if (!activityName || !studentId) { alert('กรุณากรอกชื่อกิจกรรมและรหัสนักศึกษา'); return; }
+    if (!pairs.length) { alert('กรุณากรอกรหัสหรือ Token อย่างน้อย 1 คู่'); return; }
+
+    try {
+        const res = await adminFetch('/admin/tokens/records', {
+            method: 'POST',
+            body: JSON.stringify({ activityName, studentId, studentName, studentGroup, pairs })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            msg.className = 'admin-msg success show';
+            msg.textContent = `เพิ่มข้อมูลสำเร็จ ${data.inserted} รายการ`;
+            document.getElementById('tokenRecordForm').reset();
+            loadTokensTab();
+        } else {
+            msg.className = 'admin-msg error show';
+            msg.textContent = data.error || 'เกิดข้อผิดพลาด';
+        }
+    } catch (e) {
+        msg.className = 'admin-msg error show';
+        msg.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+    }
+});
+
+async function searchTokenRecords() {
+    const activity = document.getElementById('trSearchActivity').value.trim();
+    const tbody = document.getElementById('trRecordsBody');
+    if (!activity) { tbody.innerHTML = ''; return; }
+
+    const res = await adminFetch(`/admin/tokens/records?activity=${encodeURIComponent(activity)}`);
+    const rows = await res.json();
+    tbody.innerHTML = rows.map(r => `<tr>
+        <td>${escHtmlAdmin(r.student_id)}</td>
+        <td>${escHtmlAdmin(r.student_name || '-')}</td>
+        <td>${escHtmlAdmin(r.student_group || '-')}</td>
+        <td>${escHtmlAdmin(r.code || '-')}</td>
+        <td>${escHtmlAdmin(r.token || '-')}</td>
+        <td><button class="admin-btn danger" onclick="deleteTokenRecordRow(${r.id})">ลบ</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-30)">ไม่พบข้อมูล</td></tr>';
+}
+
+async function deleteTokenRecordRow(id) {
+    if (!confirm('ยืนยันการลบรายการนี้?')) return;
+    await adminFetch(`/admin/tokens/records/${id}`, { method: 'DELETE' });
+    searchTokenRecords();
+}
+
+document.getElementById('trSearchBtn').addEventListener('click', searchTokenRecords);
 
 /* ════ QR SCAN ════ */
 async function startQrScan() {
