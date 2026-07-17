@@ -1,5 +1,5 @@
 
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbynESsU9hxZ-MfZo2hSodAb7KsYvoWhhfLJnUcR_X5Qpmkxx5VQlmKUg1dNQbrAmtcN/exec';
+        const WEB_APP_URL = `${API_BASE_URL}/budget`;
 
         /* ─── Custom Dropdown ─── */
         const trigger = document.getElementById('selectTrigger');
@@ -102,9 +102,10 @@
                     reader.readAsDataURL(file);
                 });
             }
-            const payload = { date: document.getElementById('date').value, category: document.getElementById('category').value, details: document.getElementById('details').value, qty: document.getElementById('qty').value, price: document.getElementById('price').value, note: document.getElementById('note').value, fileName, fileMimeType, fileBase64 };
+            const accessToken = await auth0Client.getTokenSilently();
+            const payload = { access_token: accessToken, date: document.getElementById('date').value, category: document.getElementById('category').value, details: document.getElementById('details').value, qty: document.getElementById('qty').value, price: document.getElementById('price').value, note: document.getElementById('note').value, fileName, fileMimeType, fileBase64 };
             try {
-                const res = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+                const res = await fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const result = await res.json();
                 if (result.status === 'success') {
                     status.innerHTML = '<i class="fa-solid fa-circle-check"></i> บันทึกข้อมูลและอัปโหลดไฟล์สำเร็จ';

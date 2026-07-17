@@ -1,0 +1,28 @@
+name = "engedlru-api"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# อนุญาต origin ที่เรียก API ได้ (คั่นด้วยจุลภาค) ปรับตาม production/dev
+[vars]
+ALLOWED_ORIGINS = "https://solution.litalkeducation.com,http://localhost:5500,http://127.0.0.1:5500"
+AUTH0_DOMAIN = "litalkeducation.us.auth0.com"
+# อีเมลที่มีสิทธิ์บันทึกงบประมาณ (คั่นด้วยจุลภาค)
+BUDGET_ALLOWED_EMAILS = "sb6740102220@lru.ac.th"
+
+# ── D1 Database ──
+# สร้างด้วย: wrangler d1 create engedlru-db
+# แล้วนำ database_id ที่ได้มาแทนค่าด้านล่าง
+[[d1_databases]]
+binding = "DB"
+database_name = "engedlru-db"
+database_id = "84500795-65d7-4333-aa3b-fc38e2466daf"
+
+# ── R2 Bucket (ไฟล์แนบ: ใบเสร็จงบประมาณ, รูปโปรไฟล์) ──
+# สร้างด้วย: wrangler r2 bucket create engedlru-files
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "engedlru-files"
+
+# Secrets ที่ต้องตั้งด้วย `wrangler secret put <ชื่อ>` (ห้ามใส่ในไฟล์นี้):
+#   AUTH0_M2M_CLIENT_ID
+#   AUTH0_M2M_CLIENT_SECRET

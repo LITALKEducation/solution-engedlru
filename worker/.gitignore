@@ -1,0 +1,5 @@
+node_modules/
+.wrangler/
+.dev.vars
+# มีข้อมูลส่วนตัวจริงของนักศึกษา (ชื่อ, รหัสนักศึกษา, GPS log) — ไม่ควร commit ขึ้น git
+migration/

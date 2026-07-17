@@ -1,6 +1,6 @@
 
         /* ════ CONFIG ════ */
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxNif4pv3SL70z-xSRNHoU1fwvAEOwp7QmgqQZbH7yITzeWycZPKcbb0cSCu7g2TJiWog/exec";
+        const GAS_URL = `${API_BASE_URL}/tokens`;
 
 
 

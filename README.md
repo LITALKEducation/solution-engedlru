@@ -52,7 +52,7 @@
 *   **Styling & Frameworks:** Vanilla CSS (ไม่มีการใช้ Tailwind ในหน้าหลักเพื่อประสิทธิภาพสูงสุดในการโหลด), Bootstrap 5 (ในบางส่วน เช่น Modal แจ้งเตือน)
 *   **Authentication:** Auth0 SPA SDK สำหรับเชื่อมต่อระบบยืนยันตัวตนด้วย Google Workspace ของมหาวิทยาลัย
 *   **PWA Support:** Progressive Web App ในตัว มีไฟล์ `manifest.json` และ `service-worker.js` ช่วยให้ผู้ใช้สามารถติดตั้งแอปพลิเคชันลงบนหน้าจอหลักของโทรศัพท์มือถือหรือคอมพิวเตอร์ได้เหมือน App ปกติ
-*   **Backend Integration:** ไฟล์ Google Apps Script (`api/auth0_m2m.gs`) สำหรับประมวลผลหลังบ้านร่วมกับ Google Sheets หรือบริการภายนอกอื่นๆ
+*   **Backend Integration:** API หลังบ้านคือ **Cloudflare Worker** (`worker/`) เชื่อมต่อฐานข้อมูล **Cloudflare D1** และไฟล์แนบ (ใบเสร็จ/รูปโปรไฟล์) เก็บบน **Cloudflare R2** (เดิมใช้ Google Apps Script + Google Sheets + Google Drive ดูรายละเอียดการ deploy ที่ `worker/README.md`)
 
 ### แอปพลิเคชัน React (`blocks-app/`)
 *   โฟลเดอร์สำหรับระบบ/โปรโตไทป์ย่อยที่ขับเคลื่อนด้วย React
@@ -67,7 +67,11 @@
 ```text
 enged/
 ├── api/
-│   └── auth0_m2m.gs        # Google Apps Script สำหรับจัดการหลังบ้าน
+│   └── auth0_m2m.gs        # (Legacy) Google Apps Script เดิม ก่อนย้ายไป Cloudflare Worker
+├── worker/                 # Cloudflare Worker API + D1 schema (แทน Google Apps Script)
+│   ├── src/                # Worker source (router, handlers, D1/R2 helpers)
+│   ├── schema.sql          # D1 database schema
+│   └── wrangler.toml       # ค่าตั้งค่า Worker/D1/R2
 ├── aum/                    # โฟลเดอร์สำรอง/เวอร์ชันเก่าของระบบงบประมาณและบันทึกกิจกรรม
 ├── blocks-app/             # แอปพลิเคชันย่อย React + TS + Vite + Tailwind
 │   ├── src/                # ซอร์สโค้ดของ React
@@ -79,10 +83,12 @@ enged/
 │   ├── sys.css             # สไตล์ระบบ Token Key
 │   └── budget.css          # สไตล์ระบบงบประมาณ
 ├── JavaScript/             # โฟลเดอร์เก็บโค้ดตรรกะเบื้องหลัง
+│   ├── apiConfig.js        # URL กลางของ Cloudflare Worker API
 │   ├── index.js
 │   ├── checkup.js
 │   ├── sys.js
 │   ├── budget.js
+│   ├── admin.js            # ตรรกะของ Admin Dashboard
 │   └── pwa.js              # ระบบควบคุมการทำงานของ Progressive Web App
 ├── img/                    # แหล่งเก็บภาพ ไอคอน และทรัพยากรภาพของระบบ
 ├── vote/                   # โฟลเดอร์ระบบเลือกตั้งผู้แทนสาขาวิชา
@@ -93,9 +99,10 @@ enged/
 │   ├── ivote.html          # คูหาลงคะแนนเสียง
 │   └── results.html        # หน้าผลการเลือกตั้งแบบเรียลไทม์
 ├── index.html              # หน้าหลักสารสนเทศ (Home Dashboard)
-├── checkup.html            # หน้าเช็คชื่อร่วมกิจกรรม
+├── checkup.html            # หน้าเช็คชื่อร่วมกิจกรรม (GPS + QR Code)
 ├── sys.html                # หน้าสืบค้น Token Key
 ├── budget.html             # หน้าบันทึกงบประมาณโครงการ
+├── admin.html              # Admin Dashboard (เฉพาะอีเมลที่มีสิทธิ์แอดมิน)
 ├── manifest.json           # การตั้งค่าแอป PWA
 ├── service-worker.js       # เซอร์วิสเวิร์กเกอร์สำหรับ PWA (แคชและออฟไลน์)
 └── README.md               # เอกสารชี้แจงและแนะนำโปรเจกต์ (ไฟล์นี้)

@@ -5,7 +5,8 @@
         const TARGET_LAT = 17.5393285;
         const TARGET_LNG = 101.7193514;
         const MAX_DISTANCE_METERS = 100;
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyUeKvVrU6Ut0S8hEFuWzCtBi4epI_PPrK-HW3QOWwe2OyhBkWQ8qUJGwpCDL8UKVRS/exec";
+        const GAS_URL = `${API_BASE_URL}/checkup/schedule`;
+        const CHECKIN_URL = `${API_BASE_URL}/checkup/checkin`;
 
         // isAuthenticated และ extractedStudentId ประกาศใน auth.js แล้ว (global scope ร่วมกัน)
         let SCHEDULE = [];
@@ -409,19 +410,23 @@
             setStep(3, 'active');
 
             setTimeout(() => {
-                const dist = haversine(lat, lng, TARGET_LAT, TARGET_LNG);
-                if (dist > MAX_DISTANCE_METERS) {
+                const active = SCHEDULE.find(s => slotStatus(s) === 'active');
+                const targetLat = active?.lat ?? TARGET_LAT;
+                const targetLng = active?.lng ?? TARGET_LNG;
+                const maxDist = active?.radiusM ?? MAX_DISTANCE_METERS;
+                const dist = haversine(lat, lng, targetLat, targetLng);
+                if (dist > maxDist) {
                     setStep(3, 'error', `ระยะห่าง ${Math.round(dist)} ม. — เกินรัศมีที่กำหนด`);
-                    showResult(`ตำแหน่งอยู่ห่างจากสถานที่ ${Math.round(dist)} ม. (อนุญาตไม่เกิน ${MAX_DISTANCE_METERS} ม.)`, 'error');
+                    showResult(`ตำแหน่งอยู่ห่างจากสถานที่ ${Math.round(dist)} ม. (อนุญาตไม่เกิน ${maxDist} ม.)`, 'error');
                     return;
                 }
 
                 setStep(3, 'done', `ระยะห่าง ${Math.round(dist)} ม. — อยู่ในพื้นที่กิจกรรม`);
                 setStep(4, 'active');
 
-                fetch(GAS_URL, {
+                fetch(CHECKIN_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ studentId, name, lat, lng, distance: Math.round(dist) })
                 }).then(r => r.json()).then(result => {
                     if (result.status === 'success') {
@@ -445,6 +450,67 @@
             const dLat = rad(lat2 - lat1), dLon = rad(lon2 - lon1);
             const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        /* ────────────────────────────────────────
+           QR CHECK-IN (ให้แอดมินสแกน — ทางเลือกกรณี GPS ใช้ไม่ได้)
+        ──────────────────────────────────────── */
+        let qrCountdownTimer = null;
+        let qrExpiresAt = null;
+
+        function toggleQrPanel() {
+            const panel = document.getElementById('qrPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function generateCheckinQr() {
+            const isGuest = (extractedStudentId === 'GUEST');
+            const studentId = isGuest ? document.getElementById('studentId').value.trim() : extractedStudentId;
+            const name = document.getElementById('name').value.trim();
+
+            if (!studentId) { toast('กรุณากรอกรหัสนักศึกษา'); return; }
+            if (!name) { toast('กรุณากรอกชื่อ–นามสกุล'); return; }
+
+            document.getElementById('qrPanelIdle').style.display = 'none';
+            document.getElementById('qrPanelActive').style.display = 'block';
+            document.getElementById('qrCanvasDisplay').style.display = 'none';
+            document.getElementById('qrCodeText').textContent = 'กำลังสร้างรหัส...';
+            document.getElementById('qrCountdown').textContent = '';
+            clearInterval(qrCountdownTimer);
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/checkup/qr`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ studentId, name })
+                });
+                const data = await res.json();
+                if (data.status !== 'success') {
+                    document.getElementById('qrCodeText').textContent = data.message || 'ไม่สามารถสร้างรหัสได้';
+                    return;
+                }
+                const canvas = document.getElementById('qrCanvasDisplay');
+                canvas.style.display = 'block';
+                await QRCode.toCanvas(canvas, data.code, { width: 220, margin: 1 });
+                document.getElementById('qrCodeText').textContent = `รหัส: ${data.code}`;
+                qrExpiresAt = new Date(data.expiresAt).getTime();
+                startQrCountdown();
+            } catch (e) {
+                document.getElementById('qrCodeText').textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+            }
+        }
+
+        function startQrCountdown() {
+            clearInterval(qrCountdownTimer);
+            qrCountdownTimer = setInterval(() => {
+                const remain = Math.max(0, Math.round((qrExpiresAt - Date.now()) / 1000));
+                const m = Math.floor(remain / 60), s = remain % 60;
+                document.getElementById('qrCountdown').textContent = `หมดอายุใน ${m}:${String(s).padStart(2, '0')}`;
+                if (remain <= 0) {
+                    clearInterval(qrCountdownTimer);
+                    document.getElementById('qrCountdown').textContent = 'รหัสหมดอายุแล้ว กรุณาสร้างรหัสใหม่';
+                }
+            }, 1000);
         }
 
         /* ────────────────────────────────────────
