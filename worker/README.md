@@ -52,7 +52,10 @@ npx wrangler d1 create engedlru-db
 ```bash
 npm run db:migrate:remote
 npx wrangler d1 execute engedlru-db --remote --file=./schema-admin.sql
+npx wrangler d1 execute engedlru-db --remote --file=./schema-admin2.sql
 ```
+
+(`schema-admin2.sql` แก้ให้ `checkup_logs.lat/lng` เป็น NULL ได้ — จำเป็นสำหรับการเช็คชื่อผ่าน QR ที่ไม่มีพิกัด GPS)
 
 ### 3. สร้าง R2 bucket
 
