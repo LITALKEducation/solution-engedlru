@@ -489,9 +489,12 @@
                     document.getElementById('qrCodeText').textContent = data.message || 'ไม่สามารถสร้างรหัสได้';
                     return;
                 }
-                const canvas = document.getElementById('qrCanvasDisplay');
-                canvas.style.display = 'block';
-                await QRCode.toCanvas(canvas, data.code, { width: 220, margin: 1 });
+                const qr = qrcode(0, 'M');
+                qr.addData(data.code);
+                qr.make();
+                const img = document.getElementById('qrCanvasDisplay');
+                img.src = qr.createDataURL(8, 4);
+                img.style.display = 'block';
                 document.getElementById('qrCodeText').textContent = `รหัส: ${data.code}`;
                 qrExpiresAt = new Date(data.expiresAt).getTime();
                 startQrCountdown();
