@@ -58,6 +58,48 @@ export async function deleteSchedule(request, env, id) {
   return json(request, env, { status: "success" });
 }
 
+// POST /admin/checkup/schedule/:id/duplicate — คัดลอกกิจกรรม (ชื่อ+พิกัด) สำหรับตั้งวันใหม่ได้เร็ว
+export async function duplicateSchedule(request, env, id) {
+  const row = await env.DB.prepare(
+    "SELECT name, open_at, close_at, lat, lng, radius_m FROM checkup_schedule WHERE id = ?"
+  ).bind(id).first();
+  if (!row) return json(request, env, { error: "ไม่พบกิจกรรม" }, 404);
+
+  const res = await env.DB.prepare(
+    "INSERT INTO checkup_schedule (name, open_at, close_at, lat, lng, radius_m) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(`${row.name} (สำเนา)`, row.open_at, row.close_at, row.lat, row.lng, row.radius_m).run();
+
+  return json(request, env, { status: "success", id: res.meta.last_row_id });
+}
+
+// GET /admin/checkup/students
+export async function listStudents(request, env) {
+  const { results } = await env.DB.prepare(
+    "SELECT student_id, name FROM checkup_students ORDER BY student_id"
+  ).all();
+  return json(request, env, results);
+}
+
+// POST /admin/checkup/students { studentId, name }
+export async function addStudent(request, env) {
+  const body = await request.json().catch(() => null);
+  const studentId = body?.studentId?.trim();
+  const name = body?.name?.trim();
+  if (!studentId || !name) return json(request, env, { error: "ต้องระบุรหัสนักศึกษาและชื่อ-สกุล" }, 400);
+
+  await env.DB.prepare(
+    "INSERT INTO checkup_students (student_id, name) VALUES (?, ?) ON CONFLICT(student_id) DO UPDATE SET name = excluded.name"
+  ).bind(studentId, name).run();
+
+  return json(request, env, { status: "success" });
+}
+
+// DELETE /admin/checkup/students/:studentId
+export async function deleteStudent(request, env, studentId) {
+  await env.DB.prepare("DELETE FROM checkup_students WHERE student_id = ?").bind(decodeURIComponent(studentId)).run();
+  return json(request, env, { status: "success" });
+}
+
 // GET /admin/checkup/logs?scheduleId=
 export async function listLogs(request, env, url) {
   const scheduleId = url.searchParams.get("scheduleId");
