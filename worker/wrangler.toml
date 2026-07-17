@@ -15,7 +15,7 @@ BUDGET_ALLOWED_EMAILS = "sb6740102220@lru.ac.th"
 [[d1_databases]]
 binding = "DB"
 database_name = "engedlru-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "84500795-65d7-4333-aa3b-fc38e2466daf"
 
 # ── R2 Bucket (ไฟล์แนบ: ใบเสร็จงบประมาณ, รูปโปรไฟล์) ──
 # สร้างด้วย: wrangler r2 bucket create engedlru-files
