@@ -1,6 +1,6 @@
 // --- ⚙️ Config ---
 // 🚨 นำ URL ที่ได้จากการ Deploy แบบ Web App (Anyone) มาวางที่นี่
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxNif4pv3SL70z-xSRNHoU1fwvAEOwp7QmgqQZbH7yITzeWycZPKcbb0cSCu7g2TJiWog/exec";
+const GAS_API_URL = `${API_BASE_URL}/tokens`;
 
 // ************************************************
 

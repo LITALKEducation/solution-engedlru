@@ -5,7 +5,8 @@
         const TARGET_LAT = 17.5393285;
         const TARGET_LNG = 101.7193514;
         const MAX_DISTANCE_METERS = 100;
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyUeKvVrU6Ut0S8hEFuWzCtBi4epI_PPrK-HW3QOWwe2OyhBkWQ8qUJGwpCDL8UKVRS/exec";
+        const GAS_URL = `${API_BASE_URL}/checkup/schedule`;
+        const CHECKIN_URL = `${API_BASE_URL}/checkup/checkin`;
 
         // isAuthenticated และ extractedStudentId ประกาศใน auth.js แล้ว (global scope ร่วมกัน)
         let SCHEDULE = [];
@@ -419,9 +420,9 @@
                 setStep(3, 'done', `ระยะห่าง ${Math.round(dist)} ม. — อยู่ในพื้นที่กิจกรรม`);
                 setStep(4, 'active');
 
-                fetch(GAS_URL, {
+                fetch(CHECKIN_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ studentId, name, lat, lng, distance: Math.round(dist) })
                 }).then(r => r.json()).then(result => {
                     if (result.status === 'success') {

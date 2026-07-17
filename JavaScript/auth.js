@@ -3,7 +3,7 @@
 ════════════════════════════════════════ */
 const AUTH0_DOMAIN = "litalkeducation.us.auth0.com";
 const AUTH0_CLIENT_ID = "PGqozL94LzOwstm4pD39W5kvalYRiK7w";
-const GAS_PROFILE_UPDATE_URL = "https://script.google.com/macros/s/AKfycbxz6ZQpBN-JcfA3eY0yaIQobiSTFiXRMl-SDWXLTaQMI5mvBUw81KlU0uC7NwPDkgqD/exec";
+const GAS_PROFILE_UPDATE_URL = `${API_BASE_URL}/profile`;
 
 let auth0Client = null;
 let isAuthenticated = false;
