@@ -1,4 +1,5 @@
-import { json } from "../../lib/cors.js";
+import { json, corsHeaders } from "../../lib/cors.js";
+import { toCsv } from "../../lib/csv.js";
 
 // GET /admin/checkup/schedule
 export async function listSchedule(request, env) {
@@ -71,4 +72,25 @@ export async function listLogs(request, env, url) {
 
   const { results } = await env.DB.prepare(query).bind(...binds).all();
   return json(request, env, results);
+}
+
+// GET /admin/checkup/logs/export.csv?scheduleId=
+export async function exportLogsCsv(request, env, url) {
+  const res = await listLogs(request, env, url);
+  const rows = await res.json();
+
+  const header = ["เวลา", "รหัสนักศึกษา", "ชื่อ-สกุล", "กิจกรรม", "วิธีเช็คชื่อ", "ระยะทาง (ม.)", "ลิงก์แผนที่"];
+  const body = rows.map(r => [
+    r.created_at, r.student_id, r.name, r.schedule_name || "",
+    r.method === "qr" ? "QR" : "GPS", r.distance ?? "", r.map_link || ""
+  ]);
+  const csv = toCsv([header, ...body]);
+
+  return new Response(csv, {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="checkin-log.csv"',
+      ...corsHeaders(request, env)
+    }
+  });
 }

@@ -8,9 +8,11 @@ import { getFile } from "./handlers/files.js";
 import { generateQr, scanQr } from "./handlers/qr.js";
 import { me, listAdmins, addAdmin, removeAdmin } from "./handlers/admin/admins.js";
 import {
-  listSchedule, createSchedule, updateSchedule, deleteSchedule, listLogs
+  listSchedule, createSchedule, updateSchedule, deleteSchedule, listLogs, exportLogsCsv
 } from "./handlers/admin/checkupAdmin.js";
-import { getTemplateCsv, importCsv } from "./handlers/admin/tokensAdmin.js";
+import {
+  getTemplateCsv, importCsv, addTokenRecord, listTokenRecords, deleteTokenRecord
+} from "./handlers/admin/tokensAdmin.js";
 
 export default {
   async fetch(request, env) {
@@ -72,11 +74,16 @@ export default {
         if (scheduleMatch && request.method === "DELETE") return await deleteSchedule(request, env, scheduleMatch[1]);
 
         if (pathname === "/admin/checkup/logs" && request.method === "GET") return await listLogs(request, env, url);
+        if (pathname === "/admin/checkup/logs/export.csv" && request.method === "GET") return await exportLogsCsv(request, env, url);
 
         if (pathname === "/admin/checkup/qr/scan" && request.method === "POST") return await scanQr(request, env, admin.email);
 
         if (pathname === "/admin/tokens/template.csv" && request.method === "GET") return await getTemplateCsv(request, env);
         if (pathname === "/admin/tokens/import" && request.method === "POST") return await importCsv(request, env);
+        if (pathname === "/admin/tokens/records" && request.method === "GET") return await listTokenRecords(request, env, url);
+        if (pathname === "/admin/tokens/records" && request.method === "POST") return await addTokenRecord(request, env);
+        const tokenRecordMatch = pathname.match(/^\/admin\/tokens\/records\/(\d+)$/);
+        if (tokenRecordMatch && request.method === "DELETE") return await deleteTokenRecord(request, env, tokenRecordMatch[1]);
 
         return json(request, env, { error: "Not Found" }, 404);
       }

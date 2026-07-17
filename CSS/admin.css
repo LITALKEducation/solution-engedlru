@@ -144,6 +144,15 @@ body {
 
 .admin-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 
+.admin-field-label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--ink-50);
+}
+
 .admin-input, .admin-select {
     padding: 10px 12px;
     border: 1px solid var(--ink-15);

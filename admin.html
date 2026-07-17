@@ -178,6 +178,7 @@
                     <div class="admin-row">
                         <select id="checkinScheduleFilter" class="admin-select"></select>
                         <span style="color:var(--ink-50);font-size:var(--font-size-sm)">พบ <strong id="checkinCount">0</strong> รายการ</span>
+                        <button class="admin-btn" id="exportCheckinCsvBtn"><i class="fa-solid fa-download"></i> ดาวน์โหลด CSV</button>
                     </div>
                     <div class="admin-table-wrap">
                         <table class="admin-table">
@@ -210,8 +211,8 @@
                             <input class="admin-input" id="schName" placeholder="ชื่อกิจกรรม" style="flex:1;min-width:220px" required>
                         </div>
                         <div class="admin-row">
-                            <input class="admin-input" id="schOpen" placeholder="เปิด เช่น 2026-05-26 08:00" required>
-                            <input class="admin-input" id="schClose" placeholder="ปิด เช่น 2026-05-26 18:00" required>
+                            <label class="admin-field-label">เปิดรับ<input class="admin-input" id="schOpen" type="datetime-local" required></label>
+                            <label class="admin-field-label">ปิดรับ<input class="admin-input" id="schClose" type="datetime-local" required></label>
                         </div>
                         <div class="admin-row">
                             <input class="admin-input" id="schLat" placeholder="Latitude" type="number" step="any">
@@ -274,6 +275,43 @@
                         <button class="admin-btn primary" id="importCsvBtn">นำเข้าข้อมูล</button>
                     </div>
                     <div class="admin-msg" id="importResultMsg"></div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="admin-card-title">เพิ่มข้อมูลด้วยตนเอง</div>
+                    <p style="color:var(--ink-50);font-size:var(--font-size-sm);margin-bottom:16px">
+                        เพิ่มได้สูงสุด <strong>5 คู่รหัส/Token</strong> ต่อนักศึกษา 1 คนใน 1 กิจกรรม (กรอกคู่ที่ 1 อย่างน้อย 1 คู่)
+                    </p>
+                    <form id="tokenRecordForm">
+                        <div class="admin-row">
+                            <input class="admin-input" id="trActivity" list="activityDatalist" placeholder="ชื่อกิจกรรม" style="flex:1;min-width:220px" required>
+                            <datalist id="activityDatalist"></datalist>
+                        </div>
+                        <div class="admin-row">
+                            <input class="admin-input" id="trStudentId" placeholder="รหัสนักศึกษา" required>
+                            <input class="admin-input" id="trStudentName" placeholder="ชื่อ-สกุล" style="flex:1;min-width:200px">
+                            <input class="admin-input" id="trStudentGroup" placeholder="หมู่เรียน">
+                        </div>
+                        <div id="trPairsWrap"></div>
+                        <div class="admin-row">
+                            <button type="submit" class="admin-btn primary">เพิ่มข้อมูล</button>
+                        </div>
+                    </form>
+                    <div class="admin-msg" id="tokenRecordMsg"></div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="admin-card-title">ค้นหา / แก้ไขข้อมูลที่มีอยู่</div>
+                    <div class="admin-row">
+                        <input class="admin-input" id="trSearchActivity" list="activityDatalist" placeholder="พิมพ์ชื่อกิจกรรมที่ต้องการดู" style="flex:1;min-width:220px">
+                        <button type="button" class="admin-btn" id="trSearchBtn">ค้นหา</button>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead><tr><th>รหัสนักศึกษา</th><th>ชื่อ-สกุล</th><th>กลุ่ม</th><th>รหัสกิจกรรม</th><th>Token Key</th><th></th></tr></thead>
+                            <tbody id="trRecordsBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
