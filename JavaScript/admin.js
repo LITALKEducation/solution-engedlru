@@ -50,14 +50,17 @@ document.addEventListener('authStateChanged', (e) => {
 });
 
 /* ════ TABS ════ */
+let currentAdminTab = 'checkin';
 function switchTab(tab) {
+    if (currentAdminTab === 'qr' && tab !== 'qr') stopQrScan();
+    currentAdminTab = tab;
+
     document.querySelectorAll('.admin-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.admin-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
     if (tab === 'checkin') loadCheckinTab();
     if (tab === 'schedule') loadScheduleTab();
     if (tab === 'tokens') loadTokensTab();
     if (tab === 'admins') loadAdminsTab();
-    if (tab === 'qr') stopQrScan();
 }
 
 document.querySelectorAll('.admin-tab').forEach(btn => {
@@ -317,7 +320,11 @@ async function deleteTokenRecordRow(id) {
 
 document.getElementById('trSearchBtn').addEventListener('click', searchTokenRecords);
 
-/* ════ QR SCAN ════ */
+/* ════ QR SCAN (ต่อเนื่อง) ════ */
+let qrProcessing = false;
+let qrSessionCount = 0;
+let qrHistory = [];
+
 async function startQrScan() {
     const video = document.getElementById('qrVideo');
     try {
@@ -331,34 +338,41 @@ async function startQrScan() {
     qrScanning = true;
     document.getElementById('startScanBtn').style.display = 'none';
     document.getElementById('stopScanBtn').style.display = 'inline-block';
+    document.getElementById('qrLiveBadge').style.display = 'flex';
     requestAnimationFrame(scanQrFrame);
 }
 
 function stopQrScan() {
     qrScanning = false;
+    qrProcessing = false;
     if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
     document.getElementById('startScanBtn').style.display = 'inline-block';
     document.getElementById('stopScanBtn').style.display = 'none';
+    document.getElementById('qrLiveBadge').style.display = 'none';
 }
 
 function scanQrFrame() {
     if (!qrScanning) return;
-    const video = document.getElementById('qrVideo');
-    const canvas = document.getElementById('qrCanvas');
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-        if (code && code.data) {
-            stopQrScan();
-            submitQrCode(code.data.trim());
-            return;
+    if (!qrProcessing) {
+        const video = document.getElementById('qrVideo');
+        const canvas = document.getElementById('qrCanvas');
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code && code.data) {
+                qrProcessing = true;
+                submitQrCode(code.data.trim()).finally(() => {
+                    // หน่วงเล็กน้อยก่อนสแกนรอบต่อไป กันดึงรหัสเดิมซ้ำระหว่างขยับมือถือออก
+                    setTimeout(() => { qrProcessing = false; }, 1500);
+                });
+            }
         }
     }
-    if (qrScanning) requestAnimationFrame(scanQrFrame);
+    requestAnimationFrame(scanQrFrame);
 }
 
 document.getElementById('startScanBtn').addEventListener('click', startQrScan);
@@ -372,28 +386,64 @@ document.getElementById('qrManualForm').addEventListener('submit', e => {
     input.value = '';
 });
 
+function flashVideoWrap(ok) {
+    const wrap = document.getElementById('qrVideoWrap');
+    wrap.classList.remove('flash-success', 'flash-error');
+    wrap.classList.add(ok ? 'flash-success' : 'flash-error');
+    setTimeout(() => wrap.classList.remove('flash-success', 'flash-error'), 700);
+}
+
+function renderQrHistory() {
+    const list = document.getElementById('qrHistoryList');
+    if (!qrHistory.length) {
+        list.innerHTML = '<div class="qr-history-empty">ยังไม่มีการสแกนในรอบนี้</div>';
+        return;
+    }
+    list.innerHTML = qrHistory.slice(0, 20).map(h => `
+        <div class="qr-history-item ${h.ok ? 'success' : 'error'}">
+            <i class="fa-solid ${h.ok ? 'fa-circle-check' : 'fa-circle-xmark'} qr-history-icon"></i>
+            <div class="qr-history-main">
+                <div class="qr-history-name">${escHtmlAdmin(h.title)}</div>
+                <div class="qr-history-sub">${escHtmlAdmin(h.sub)}</div>
+            </div>
+            <div class="qr-history-time">${h.time}</div>
+        </div>`).join('');
+}
+
 async function submitQrCode(code) {
     const resultBox = document.getElementById('qrResultBox');
     resultBox.innerHTML = '<div class="qr-result-card"><div class="loader-mini"></div> กำลังตรวจสอบ...</div>';
+    const time = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
     try {
         const res = await adminFetch('/admin/checkup/qr/scan', { method: 'POST', body: JSON.stringify({ code }) });
         const data = await res.json();
         if (data.status === 'success') {
-            resultBox.innerHTML = `<div class="qr-result-card">
+            flashVideoWrap(true);
+            qrSessionCount++;
+            document.getElementById('qrSessionCount').textContent = qrSessionCount;
+            resultBox.innerHTML = `<div class="qr-result-card success">
                 <i class="fa-solid fa-circle-check" style="color:var(--success);font-size:32px"></i>
                 <div class="qr-result-code">${escHtmlAdmin(data.code)}</div>
                 <div>${escHtmlAdmin(data.name)} (${escHtmlAdmin(data.studentId)})</div>
                 <div style="color:var(--success);font-weight:700;margin-top:6px">เช็คชื่อสำเร็จ</div>
             </div>`;
+            qrHistory.unshift({ ok: true, title: data.name, sub: `${data.studentId} · รหัส ${data.code}`, time });
         } else {
-            resultBox.innerHTML = `<div class="qr-result-card">
+            flashVideoWrap(false);
+            const message = data.message || data.error || 'ไม่สามารถยืนยันได้';
+            resultBox.innerHTML = `<div class="qr-result-card error">
                 <i class="fa-solid fa-circle-xmark" style="color:var(--error);font-size:32px"></i>
-                <div style="margin-top:8px">${escHtmlAdmin(data.message || data.error || 'ไม่สามารถยืนยันได้')}</div>
+                <div style="margin-top:8px">${escHtmlAdmin(message)}</div>
             </div>`;
+            qrHistory.unshift({ ok: false, title: 'ไม่สำเร็จ', sub: `${message} · รหัส ${code}`, time });
         }
     } catch (e) {
-        resultBox.innerHTML = `<div class="qr-result-card">เกิดข้อผิดพลาด: ${escHtmlAdmin(e.message)}</div>`;
+        flashVideoWrap(false);
+        resultBox.innerHTML = `<div class="qr-result-card error">เกิดข้อผิดพลาด: ${escHtmlAdmin(e.message)}</div>`;
+        qrHistory.unshift({ ok: false, title: 'เกิดข้อผิดพลาด', sub: e.message, time });
     }
+    renderQrHistory();
 }
 
 /* ════ ADMIN EMAIL MANAGEMENT ════ */

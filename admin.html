@@ -233,23 +233,40 @@
             <!-- สแกน QR -->
             <section class="admin-panel" id="tab-qr">
                 <div class="admin-card">
-                    <div class="admin-card-title">สแกน QR เช็คชื่อ</div>
-                    <p style="color:var(--ink-50);font-size:var(--font-size-sm);margin-bottom:16px">
-                        ให้นักศึกษาเปิดหน้า "เช็คชื่อด้วย QR" แล้วแสกนโค้ดที่แสดงบนมือถือของนักศึกษา ระบบจะแสดงรหัสนักศึกษาและรหัส Generic ให้เทียบยืนยันตัวตนก่อนบันทึกเช็คชื่อ
-                    </p>
-                    <div class="qr-video-wrap">
+                    <div class="qr-card-head">
+                        <div>
+                            <div class="admin-card-title" style="margin-bottom:2px">สแกน QR เช็คชื่อ</div>
+                            <p class="qr-card-desc">แสกนต่อเนื่องได้เลย ไม่ต้องกดเริ่มใหม่ทุกคน — ระบบจะเทียบรหัสนักศึกษา + รหัส Generic ให้ก่อนบันทึกทุกครั้ง</p>
+                        </div>
+                        <div class="qr-session-badge"><i class="fa-solid fa-user-check"></i> เช็คชื่อแล้ว <strong id="qrSessionCount">0</strong> คน</div>
+                    </div>
+
+                    <div class="qr-video-wrap" id="qrVideoWrap">
                         <video id="qrVideo" playsinline muted></video>
+                        <div class="qr-scan-frame"></div>
+                        <div class="qr-live-badge" id="qrLiveBadge" style="display:none"><span class="qr-live-dot"></span>กำลังสแกน...</div>
                     </div>
                     <canvas id="qrCanvas" hidden></canvas>
+
                     <div class="admin-row" style="justify-content:center">
                         <button class="admin-btn primary" id="startScanBtn"><i class="fa-solid fa-camera"></i> เริ่มสแกนกล้อง</button>
                         <button class="admin-btn danger" id="stopScanBtn" style="display:none"><i class="fa-solid fa-stop"></i> หยุดสแกน</button>
                     </div>
+
+                    <div class="qr-divider"><span>หรือพิมพ์รหัสด้วยตนเอง</span></div>
                     <form id="qrManualForm" class="admin-row" style="justify-content:center">
-                        <input class="admin-input" id="qrManualInput" placeholder="หรือพิมพ์รหัส 6 หลักด้วยตนเอง" maxlength="6">
+                        <input class="admin-input" id="qrManualInput" placeholder="รหัส 6 หลัก" maxlength="6" inputmode="numeric">
                         <button type="submit" class="admin-btn">ยืนยันรหัส</button>
                     </form>
+
                     <div id="qrResultBox"></div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="admin-card-title">ประวัติการสแกนล่าสุด</div>
+                    <div id="qrHistoryList" class="qr-history-list">
+                        <div class="qr-history-empty">ยังไม่มีการสแกนในรอบนี้</div>
+                    </div>
                 </div>
             </section>
 
