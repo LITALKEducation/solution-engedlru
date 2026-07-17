@@ -88,6 +88,7 @@ enged/
 │   ├── checkup.js
 │   ├── sys.js
 │   ├── budget.js
+│   ├── admin.js            # ตรรกะของ Admin Dashboard
 │   └── pwa.js              # ระบบควบคุมการทำงานของ Progressive Web App
 ├── img/                    # แหล่งเก็บภาพ ไอคอน และทรัพยากรภาพของระบบ
 ├── vote/                   # โฟลเดอร์ระบบเลือกตั้งผู้แทนสาขาวิชา
@@ -98,9 +99,10 @@ enged/
 │   ├── ivote.html          # คูหาลงคะแนนเสียง
 │   └── results.html        # หน้าผลการเลือกตั้งแบบเรียลไทม์
 ├── index.html              # หน้าหลักสารสนเทศ (Home Dashboard)
-├── checkup.html            # หน้าเช็คชื่อร่วมกิจกรรม
+├── checkup.html            # หน้าเช็คชื่อร่วมกิจกรรม (GPS + QR Code)
 ├── sys.html                # หน้าสืบค้น Token Key
 ├── budget.html             # หน้าบันทึกงบประมาณโครงการ
+├── admin.html              # Admin Dashboard (เฉพาะอีเมลที่มีสิทธิ์แอดมิน)
 ├── manifest.json           # การตั้งค่าแอป PWA
 ├── service-worker.js       # เซอร์วิสเวิร์กเกอร์สำหรับ PWA (แคชและออฟไลน์)
 └── README.md               # เอกสารชี้แจงและแนะนำโปรเจกต์ (ไฟล์นี้)
