@@ -1,9 +1,5 @@
 import { json } from "../lib/cors.js";
 
-const TARGET_LAT = 17.5393285;
-const TARGET_LNG = 101.7193514;
-const MAX_DISTANCE_METERS = 100;
-
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const rad = v => (v * Math.PI) / 180;
@@ -13,30 +9,35 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// GET /checkup/schedule — เดิมคือ checkup.gs doGet()
+// GET /checkup/schedule — เดิมคือ checkup.gs doGet() (ตอนนี้แต่ละกิจกรรมมีพิกัด/รัศมีของตัวเอง)
 export async function getSchedule(request, env) {
   const { results } = await env.DB.prepare(
-    "SELECT name, open_at, close_at FROM checkup_schedule ORDER BY id"
+    "SELECT id, name, open_at, close_at, lat, lng, radius_m FROM checkup_schedule ORDER BY id"
   ).all();
 
-  const schedule = results.map(r => ({ name: r.name, open: r.open_at, close: r.close_at }));
+  const schedule = results.map(r => ({
+    id: r.id, name: r.name, open: r.open_at, close: r.close_at,
+    lat: r.lat, lng: r.lng, radiusM: r.radius_m
+  }));
   return json(request, env, { status: "success", data: schedule });
 }
 
-async function isSystemOpen(env) {
+// หากิจกรรมที่ "เปิดอยู่" ในเวลานี้ (ใช้ทั้งฝั่ง GPS check-in และ QR check-in)
+export async function findActiveSchedule(env) {
   const now = Date.now();
   const { results } = await env.DB.prepare(
-    "SELECT open_at, close_at FROM checkup_schedule"
+    "SELECT id, name, open_at, close_at, lat, lng, radius_m FROM checkup_schedule"
   ).all();
 
-  return results.some(row => {
+  for (const row of results) {
     const openTime = new Date(row.open_at.replace(/-/g, "/")).getTime();
     const closeTime = new Date(row.close_at.replace(/-/g, "/")).getTime();
-    return now >= openTime && now < closeTime;
-  });
+    if (now >= openTime && now < closeTime) return row;
+  }
+  return null;
 }
 
-// POST /checkup/checkin — เดิมคือ checkup.gs doPost()
+// POST /checkup/checkin — เดิมคือ checkup.gs doPost() (ตรวจพิกัดตามกิจกรรมที่เปิดอยู่ ไม่ใช่ค่าคงที่กลาง)
 export async function postCheckin(request, env) {
   let data;
   try {
@@ -50,7 +51,8 @@ export async function postCheckin(request, env) {
     return json(request, env, { status: "error", message: "ข้อมูลไม่ครบถ้วน" }, 400);
   }
 
-  if (!(await isSystemOpen(env))) {
+  const active = await findActiveSchedule(env);
+  if (!active) {
     return json(request, env, { status: "error", message: "ถูกปฏิเสธ: นอกเวลาทำการ ไม่สามารถบันทึกข้อมูลได้" });
   }
 
@@ -62,8 +64,8 @@ export async function postCheckin(request, env) {
     return json(request, env, { status: "error", message: `ถูกปฏิเสธ: ไม่พบรหัสนักศึกษา ${studentId} ในระบบ` });
   }
 
-  const distance = haversine(lat, lng, TARGET_LAT, TARGET_LNG);
-  if (distance > MAX_DISTANCE_METERS) {
+  const distance = haversine(lat, lng, active.lat, active.lng);
+  if (distance > active.radius_m) {
     return json(request, env, {
       status: "error",
       message: `ถูกปฏิเสธ: อยู่นอกพื้นที่กิจกรรม (ระยะห่าง ${Math.round(distance)} เมตร)`
@@ -72,8 +74,9 @@ export async function postCheckin(request, env) {
 
   const mapLink = `https://maps.google.com/?q=${lat},${lng}`;
   await env.DB.prepare(
-    "INSERT INTO checkup_logs (student_id, name, lat, lng, distance, map_link) VALUES (?, ?, ?, ?, ?, ?)"
-  ).bind(String(studentId).trim(), String(name).trim(), lat, lng, Math.round(distance), mapLink).run();
+    `INSERT INTO checkup_logs (student_id, name, lat, lng, distance, map_link, schedule_id, method)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'gps')`
+  ).bind(String(studentId).trim(), String(name).trim(), lat, lng, Math.round(distance), mapLink, active.id).run();
 
   return json(request, env, { status: "success" });
 }

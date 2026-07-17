@@ -1,9 +1,16 @@
 import { handleOptions, json } from "./lib/cors.js";
+import { requireAdmin } from "./lib/admin.js";
 import { getSchedule, postCheckin } from "./handlers/checkup.js";
 import { getActivities, search } from "./handlers/tokens.js";
 import { postBudget } from "./handlers/budget.js";
 import { postProfile } from "./handlers/profile.js";
 import { getFile } from "./handlers/files.js";
+import { generateQr, scanQr } from "./handlers/qr.js";
+import { me, listAdmins, addAdmin, removeAdmin } from "./handlers/admin/admins.js";
+import {
+  listSchedule, createSchedule, updateSchedule, deleteSchedule, listLogs
+} from "./handlers/admin/checkupAdmin.js";
+import { getTemplateCsv, importCsv } from "./handlers/admin/tokensAdmin.js";
 
 export default {
   async fetch(request, env) {
@@ -18,6 +25,9 @@ export default {
       }
       if (pathname === "/checkup/checkin" && request.method === "POST") {
         return await postCheckin(request, env);
+      }
+      if (pathname === "/checkup/qr" && request.method === "POST") {
+        return await generateQr(request, env);
       }
 
       if (pathname === "/tokens" && request.method === "GET") {
@@ -37,6 +47,38 @@ export default {
 
       if (pathname.startsWith("/files/") && request.method === "GET") {
         return await getFile(request, env, pathname.slice("/files/".length));
+      }
+
+      // /admin/me เป็นเส้นทางเดียวใน /admin/* ที่ไม่ต้องผ่าน requireAdmin (ใช้เช็คสถานะตัวเอง)
+      if (pathname === "/admin/me" && request.method === "GET") {
+        return await me(request, env);
+      }
+
+      if (pathname.startsWith("/admin/")) {
+        const admin = await requireAdmin(request, env);
+        if (!admin.ok) return admin.response;
+
+        if (pathname === "/admin/admins" && request.method === "GET") return await listAdmins(request, env);
+        if (pathname === "/admin/admins" && request.method === "POST") return await addAdmin(request, env);
+        const adminsMatch = pathname.match(/^\/admin\/admins\/([^/]+)$/);
+        if (adminsMatch && request.method === "DELETE") {
+          return await removeAdmin(request, env, adminsMatch[1], admin.email);
+        }
+
+        if (pathname === "/admin/checkup/schedule" && request.method === "GET") return await listSchedule(request, env);
+        if (pathname === "/admin/checkup/schedule" && request.method === "POST") return await createSchedule(request, env);
+        const scheduleMatch = pathname.match(/^\/admin\/checkup\/schedule\/(\d+)$/);
+        if (scheduleMatch && request.method === "PUT") return await updateSchedule(request, env, scheduleMatch[1]);
+        if (scheduleMatch && request.method === "DELETE") return await deleteSchedule(request, env, scheduleMatch[1]);
+
+        if (pathname === "/admin/checkup/logs" && request.method === "GET") return await listLogs(request, env, url);
+
+        if (pathname === "/admin/checkup/qr/scan" && request.method === "POST") return await scanQr(request, env, admin.email);
+
+        if (pathname === "/admin/tokens/template.csv" && request.method === "GET") return await getTemplateCsv(request, env);
+        if (pathname === "/admin/tokens/import" && request.method === "POST") return await importCsv(request, env);
+
+        return json(request, env, { error: "Not Found" }, 404);
       }
 
       return json(request, env, { error: "Not Found" }, 404);
