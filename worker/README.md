@@ -117,3 +117,19 @@ npm run dev
 ```
 
 แล้วตั้งค่า `API_BASE_URL` ใน `JavaScript/apiConfig.js` ชั่วคราวเป็น `http://127.0.0.1:8787` เพื่อทดสอบ
+
+## รัน Automated Tests
+
+ใช้ [Vitest](https://vitest.dev/) ร่วมกับ `@cloudflare/vitest-pool-workers` ซึ่งรันเทสต์จริงบน Workers
+runtime (workerd) พร้อม D1/R2 แบบ local — ไม่ต้องใช้ resource บน Cloudflare จริง:
+
+```bash
+npm install
+npm test
+```
+
+โครงสร้างเทสต์อยู่ใน `test/` แยกตาม `src/`:
+- `test/lib/` — unit test ของฟังก์ชัน pure/near-pure (CSV parsing, CORS, การถอด data URL, การเช็คสิทธิ์แอดมิน)
+- `test/handlers/` — เทสต์ handler แต่ละตัวโดยเรียกฟังก์ชันตรง ๆ พร้อม D1 ในหน่วยความจำ (schema จำลองอยู่ใน `test/schema.js`
+  ต้องอัปเดตให้ตรงกับ `schema*.sql` เวลามี migration ใหม่)
+- `test/index.test.js` — integration test ของ router ทั้งเส้นทาง (`worker.fetch()`)
