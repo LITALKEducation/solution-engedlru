@@ -8,11 +8,13 @@ import { getFile } from "./handlers/files.js";
 import { generateQr, scanQr } from "./handlers/qr.js";
 import { me, listAdmins, addAdmin, removeAdmin } from "./handlers/admin/admins.js";
 import {
-  listSchedule, createSchedule, updateSchedule, deleteSchedule, listLogs, exportLogsCsv
+  listSchedule, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule,
+  listLogs, exportLogsCsv, listStudents, addStudent, deleteStudent
 } from "./handlers/admin/checkupAdmin.js";
 import {
   getTemplateCsv, importCsv, addTokenRecord, listTokenRecords, deleteTokenRecord
 } from "./handlers/admin/tokensAdmin.js";
+import { getStats } from "./handlers/admin/stats.js";
 
 export default {
   async fetch(request, env) {
@@ -67,16 +69,25 @@ export default {
           return await removeAdmin(request, env, adminsMatch[1], admin.email);
         }
 
+        if (pathname === "/admin/stats" && request.method === "GET") return await getStats(request, env);
+
         if (pathname === "/admin/checkup/schedule" && request.method === "GET") return await listSchedule(request, env);
         if (pathname === "/admin/checkup/schedule" && request.method === "POST") return await createSchedule(request, env);
         const scheduleMatch = pathname.match(/^\/admin\/checkup\/schedule\/(\d+)$/);
         if (scheduleMatch && request.method === "PUT") return await updateSchedule(request, env, scheduleMatch[1]);
         if (scheduleMatch && request.method === "DELETE") return await deleteSchedule(request, env, scheduleMatch[1]);
+        const scheduleDupMatch = pathname.match(/^\/admin\/checkup\/schedule\/(\d+)\/duplicate$/);
+        if (scheduleDupMatch && request.method === "POST") return await duplicateSchedule(request, env, scheduleDupMatch[1]);
 
         if (pathname === "/admin/checkup/logs" && request.method === "GET") return await listLogs(request, env, url);
         if (pathname === "/admin/checkup/logs/export.csv" && request.method === "GET") return await exportLogsCsv(request, env, url);
 
         if (pathname === "/admin/checkup/qr/scan" && request.method === "POST") return await scanQr(request, env, admin.email);
+
+        if (pathname === "/admin/checkup/students" && request.method === "GET") return await listStudents(request, env);
+        if (pathname === "/admin/checkup/students" && request.method === "POST") return await addStudent(request, env);
+        const studentMatch = pathname.match(/^\/admin\/checkup\/students\/([^/]+)$/);
+        if (studentMatch && request.method === "DELETE") return await deleteStudent(request, env, studentMatch[1]);
 
         if (pathname === "/admin/tokens/template.csv" && request.method === "GET") return await getTemplateCsv(request, env);
         if (pathname === "/admin/tokens/import" && request.method === "POST") return await importCsv(request, env);
