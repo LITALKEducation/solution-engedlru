@@ -30,6 +30,7 @@ function showCardGate(state, email) {
     document.getElementById('cardGate').style.display = 'flex';
     document.getElementById('cardWrap').style.display = 'none';
     stopQrLoop();
+    setCardBrightMode(false);
 
     const title = document.getElementById('cardGateTitle');
     const sub = document.getElementById('cardGateSub');
@@ -66,8 +67,46 @@ function showCard(studentId, name, email, picture) {
     document.getElementById('idCardEmail').textContent = email || '—';
     document.getElementById('idCardPhoto').src = picture || 'https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico';
 
+    setCardBrightMode(true);
     startQrLoop();
 }
+
+/* ────────────────────────────────────────
+   BRIGHT MODE — บัตรใช้แสดงให้เจ้าหน้าที่สแกน จึงบังคับพื้นหลังสว่าง
+   เต็มที่ (ไม่ตามโหมดมืดของเครื่อง) พร้อมกันหน้าจอดับ/หรี่ระหว่างแสดงบัตร
+──────────────────────────────────────── */
+let cardWakeLock = null;
+
+function setCardBrightMode(on) {
+    document.body.classList.toggle('card-bright-mode', on);
+    if (on) requestCardWakeLock();
+    else releaseCardWakeLock();
+}
+
+async function requestCardWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        cardWakeLock = await navigator.wakeLock.request('screen');
+    } catch (err) {
+        // ขอไม่สำเร็จ (เช่น แบตเตอรี่ต่ำ) — ปล่อยผ่าน หน้าจอจะดับตามปกติของเครื่อง
+        cardWakeLock = null;
+    }
+}
+
+async function releaseCardWakeLock() {
+    if (cardWakeLock) {
+        try { await cardWakeLock.release(); } catch (err) { /* no-op */ }
+        cardWakeLock = null;
+    }
+}
+
+// Wake Lock จะถูกปล่อยอัตโนมัติเมื่อสลับแท็บ/ล็อกหน้าจอ — ขอใหม่เมื่อกลับมาที่
+// หน้านี้อีกครั้งระหว่างที่ยังแสดงบัตรอยู่
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && document.body.classList.contains('card-bright-mode')) {
+        requestCardWakeLock();
+    }
+});
 
 /* ────────────────────────────────────────
    QR STATE HELPERS

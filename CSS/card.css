@@ -408,3 +408,33 @@ body {
     .id-card-photo-wrap { width: 72px; height: 72px; }
     .id-card-qr-imgwrap img { width: 148px; height: 148px; }
 }
+
+/* ──────────────────────────────────────────────────────────────
+   BRIGHT MODE — บัตรใช้แสดงให้เจ้าหน้าที่/เครื่องสแกนดู จึงบังคับพื้นหลัง
+   สว่างเต็มที่ขณะแสดงบัตร โดยไม่สนใจโหมดมืดของเครื่อง (ต่างจากหน้าอื่น ๆ
+   ในระบบที่ตามโหมดมืดของเครื่องตามปกติ). Custom properties ที่ประกาศซ้ำ
+   ตรงนี้มี specificity สูงกว่า `:root` ใน @media (dark) ของ theme.css
+   จึงชนะเสมอไม่ว่าเครื่องจะตั้งค่าโหมดมืดไว้หรือไม่ — ทุก var(--ink)/
+   var(--white) ฯลฯ ที่ใช้อยู่ทั่วหน้าจึงพลอยสว่างขึ้นตามไปด้วยโดยไม่ต้อง
+   ไล่ overwrite ทีละ component.
+   ────────────────────────────────────────────────────────────── */
+body.card-bright-mode {
+    --ink:       #000000;
+    --ink-70:    #27272a;
+    --ink-50:    #52525b;
+    --ink-30:    #a1a1aa;
+    --ink-15:    #e4e4e7;
+    --ink-07:    #f4f4f5;
+    --white:     #ffffff;
+    --bg:        #ffffff;
+    --bg-alt:    #f8fafc;
+    background-color: #ffffff;
+}
+
+/* .site-header (brandmenu.css) ใช้สี rgba ตายตัวสลับตาม @media (dark)
+   ไม่ได้อ้างอิงตัวแปรข้างบน จึงต้อง override ตรงนี้แยกต่างหาก */
+body.card-bright-mode .site-header {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-bottom-color: rgba(0, 0, 0, 0.05) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 4px 24px rgba(0, 0, 0, 0.02) !important;
+}
