@@ -1,5 +1,5 @@
 // เพิ่มเลขเวอร์ชันทุกครั้งที่ต้องการบังคับล้าง cache เก่าของผู้ใช้
-const CACHE_NAME = 'sorasukt-pwa-v3';
+const CACHE_NAME = 'sorasukt-pwa-v4';
 
 const ASSETS_TO_CACHE = [
     'https://solution.litalkeducation.com/',
@@ -7,12 +7,14 @@ const ASSETS_TO_CACHE = [
     'https://solution.litalkeducation.com/404.html',
     'https://solution.litalkeducation.com/budget.html',
     'https://solution.litalkeducation.com/checkup.html',
+    'https://solution.litalkeducation.com/card.html',
     'https://solution.litalkeducation.com/sys.html',
     'https://solution.litalkeducation.com/CSS/index.css',
     'https://solution.litalkeducation.com/CSS/system.css',
     'https://solution.litalkeducation.com/CSS/maintenance.css',
     'https://solution.litalkeducation.com/CSS/budget.css',
     'https://solution.litalkeducation.com/CSS/checkup.css',
+    'https://solution.litalkeducation.com/CSS/card.css',
     'https://solution.litalkeducation.com/CSS/sys.css',
     'https://solution.litalkeducation.com/CSS/404.css',
     'https://solution.litalkeducation.com/CSS/brandmenu.css',
@@ -24,6 +26,7 @@ const ASSETS_TO_CACHE = [
     'https://solution.litalkeducation.com/JavaScript/maintenance.js',
     'https://solution.litalkeducation.com/JavaScript/budget.js',
     'https://solution.litalkeducation.com/JavaScript/checkup.js',
+    'https://solution.litalkeducation.com/JavaScript/card.js',
     'https://solution.litalkeducation.com/JavaScript/sys.js',
     'https://solution.litalkeducation.com/vote/index.html',
     'https://solution.litalkeducation.com/vote/CSS/index.css',

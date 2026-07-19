@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.auth0.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; media-src 'self' blob:; connect-src 'self' https://*.auth0.com https://engedlru-api.litalk.workers.dev; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>จุดเช็คชื่อเข้าร่วมกิจกรรม | English Education</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico">
+    <meta name="description" content="เครื่องสแกน QR เช็คชื่อเข้าร่วมกิจกรรมหน้างาน (เจ้าหน้าที่เท่านั้น)">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha384-/o6I2CkkWC//PSjvWC/eYN7l3xM3tJm8ZzVkCOfp//W05QcE3mlGskpoHB6XqI+B" crossorigin="anonymous" />
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+
+    <link rel="stylesheet" href="CSS/scan.css">
+
+    <meta name="theme-color" content="#0b0c0f">
+</head>
+
+<body>
+
+    <!-- ════ Login screen ════ -->
+    <div id="scanLoginScreen" class="scan-screen">
+        <img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico" alt="ENGED">
+        <h1>จุดเช็คชื่อเข้าร่วมกิจกรรม</h1>
+        <p>สำหรับเจ้าหน้าที่/แอดมินเท่านั้น — เข้าสู่ระบบด้วยบัญชีเดียวกับ Admin Dashboard</p>
+        <button class="scan-btn" onclick="loginUser()"><i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ</button>
+        <div id="scanLoginError" class="scan-login-error"></div>
+    </div>
+
+    <!-- ════ Device-mode selection ════ -->
+    <div id="scanModeScreen" class="scan-screen">
+        <img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico" alt="ENGED">
+        <h1>เลือกอุปกรณ์ที่ใช้งาน</h1>
+        <p id="scanModeStaffName"></p>
+        <div class="mode-cards">
+            <button class="mode-card" onclick="selectKioskMode('desktop')">
+                <i class="fa-solid fa-desktop"></i>
+                <span>เครื่อง Stand/Computer เจ้าหน้าที่</span>
+            </button>
+            <button class="mode-card" onclick="selectKioskMode('ipad')">
+                <i class="fa-solid fa-tablet-screen-button"></i>
+                <span>แท็บเล็ตหน้าห้อง/หน้างาน</span>
+            </button>
+            <button class="mode-card" onclick="selectKioskMode('phone')">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+                <span>โทรศัพท์เจ้าหน้าที่</span>
+            </button>
+        </div>
+        <button class="scan-link-btn" onclick="logoutFromScan()">ออกจากระบบ</button>
+    </div>
+
+    <!-- ════ Kiosk screen ════ -->
+    <div id="scanKioskScreen" class="scan-screen scan-screen--kiosk">
+        <div class="scan-topbar">
+            <img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico" alt="ENGED">
+            <span class="scan-topbar-title">จุดเช็คชื่อเข้าร่วมกิจกรรม <span class="scan-topbar-staff" id="scanStaffName"></span></span>
+            <span class="scan-session-badge"><i class="fa-solid fa-user-check"></i> <span id="scanSessionCount">0</span></span>
+            <button class="scan-icon-btn" onclick="changeDeviceMode()" aria-label="เปลี่ยนอุปกรณ์" title="เปลี่ยนอุปกรณ์"><i class="fa-solid fa-sliders"></i></button>
+            <button class="scan-icon-btn" onclick="logoutFromScan()" aria-label="ออกจากระบบ" title="ออกจากระบบ"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+        </div>
+
+        <div class="scan-stage" id="scanStage">
+            <!-- Desktop / stand computer -->
+            <div id="stageDesktopWelcome" class="kiosk-stage-view">
+                <div class="stage-logo-wrap"><img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico" alt="ENGED" class="stage-logo"></div>
+                <h2 class="stage-title">ยินดีต้อนรับ</h2>
+                <p class="stage-desc">พิมพ์/ยิงรหัสด้วยเครื่องอ่านบาร์โค้ด หรือกดปุ่มเพื่อใช้กล้องสแกน QR</p>
+                <button class="scan-btn" onclick="attemptDesktopCamera()"><i class="fa-solid fa-camera"></i> แสกนด้วยกล้อง</button>
+                <div class="stage-chips">
+                    <span class="scan-status-chip nfc-ready"><span class="dot"></span> เครื่องอ่านบาร์โค้ด/คีย์บอร์ดพร้อมใช้งาน</span>
+                </div>
+            </div>
+
+            <!-- Tablet at the door: tap anywhere, front camera -->
+            <div id="stageIpadIdle" class="kiosk-stage-view" onclick="startIpadScan()">
+                <div class="stage-logo-wrap"><img src="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico" alt="ENGED" class="stage-logo"></div>
+                <h2 class="stage-title">แตะที่ใดก็ได้เพื่อแสกน QR</h2>
+                <p class="stage-desc">นำบัตรนักศึกษาดิจิทัลมาแสดงที่กล้องหน้าเครื่อง</p>
+            </div>
+
+            <!-- Shared camera stage: desktop (after clicking button), tablet (front), phone (rear) -->
+            <div id="stageCamera" class="kiosk-stage-view">
+                <video id="scanVideo" autoplay playsinline muted></video>
+                <canvas id="scanCanvas" hidden></canvas>
+                <div class="scan-frame" aria-hidden="true"></div>
+                <div class="scan-idle-hint"><i class="fa-solid fa-qrcode"></i> วางบัตรดิจิทัลให้อยู่ในกรอบเพื่อสแกน</div>
+                <div id="cameraUnavailable" class="stage-cam-unavailable">
+                    <i class="fa-solid fa-video-slash"></i>
+                    <span>เปิดกล้องไม่สำเร็จ — ใช้เครื่องอ่านบาร์โค้ดหรือพิมพ์รหัสด้วยตนเองแทนได้</span>
+                    <button class="scan-link-btn" onclick="backToWelcome()">กลับ</button>
+                </div>
+            </div>
+
+            <!-- Result — mini card, auto-dismisses -->
+            <div id="scanResult" class="scan-result-overlay">
+                <div class="scan-result-card">
+                    <div class="scan-result-banner" id="scanResultBanner">
+                        <span class="scan-result-badge" id="scanResultBadge"></span>
+                    </div>
+                    <div class="scan-result-body">
+                        <div class="scan-result-row">
+                            <div class="scan-result-avatar" id="scanResultAvatar"></div>
+                            <div class="scan-result-text">
+                                <div class="scan-result-name" id="scanResultName"></div>
+                                <div class="scan-result-id" id="scanResultId"></div>
+                            </div>
+                        </div>
+                        <div class="scan-result-time" id="scanResultTime"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scan-bottom-bar" id="scanBottomBar">
+            <span class="scan-status-chip nfc-ready"><span class="dot"></span> เครื่องอ่านบาร์โค้ด/คีย์บอร์ดพร้อมใช้งาน</span>
+            <form id="scanManualForm" class="scan-manual-form">
+                <input id="scanManualInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์รหัส 6 หลัก" maxlength="6" inputmode="numeric">
+                <button type="submit"><i class="fa-solid fa-check"></i></button>
+            </form>
+        </div>
+
+        <!-- Always-focused in desktop mode so a keyboard-emulating barcode
+             reader "types" its payload here, terminated by Enter. -->
+        <input id="scanHiddenInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" tabindex="-1" aria-hidden="true">
+    </div>
+
+    <script src="JavaScript/apiConfig.js" defer></script>
+    <script src="JavaScript/auth.js" defer></script>
+    <script src="JavaScript/scan.js" defer></script>
+
+</body>
+
+</html>

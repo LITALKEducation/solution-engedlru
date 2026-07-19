@@ -1,0 +1,502 @@
+/* ================================================================
+   scan.css — จุดเช็คชื่อเข้าร่วมกิจกรรม (scan.html)
+   English Education, Loei Rajabhat University
+   Standalone dark kiosk UI — ไม่พึ่ง theme.css/brandmenu.css โดยตั้งใจ
+   (อุปกรณ์ kiosk ไม่ต้องมีเมนูเว็บไซต์หลักหรือสลับธีมตามผู้ใช้)
+   ================================================================ */
+
+:root {
+    --bg: #0b0c0f;
+    --bg-panel: #131418;
+    --bg-elevated: #1c1e24;
+    --border: #272a32;
+    --text: #f4f5f7;
+    --text-muted: #8a90a2;
+    --success: #3ecf8e;
+    --success-bg: rgba(62, 207, 142, 0.14);
+    --info: #4c9aff;
+    --info-bg: rgba(76, 154, 255, 0.14);
+    --danger: #f0644a;
+    --danger-bg: rgba(240, 100, 74, 0.14);
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans Thai', 'Montserrat', sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---------- Shared full-screen screens ---------- */
+.scan-screen {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+}
+
+#scanLoginScreen,
+#scanModeScreen {
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px;
+    text-align: center;
+}
+
+#scanLoginScreen img,
+#scanModeScreen img { height: 34px; margin-bottom: 8px; }
+#scanLoginScreen h1,
+#scanModeScreen h1 { font-size: 20px; margin: 0; }
+#scanLoginScreen p,
+#scanModeScreen p { color: var(--text-muted); font-size: 14px; margin: 0; max-width: 340px; }
+
+.scan-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 26px;
+    border-radius: 999px;
+    border: none;
+    background: #ffffff;
+    color: #0b0c0f;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.scan-btn:hover { opacity: 0.9; }
+
+.scan-link-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.scan-link-btn:hover { color: var(--text); }
+
+.scan-login-error {
+    color: var(--danger);
+    font-size: 13px;
+    min-height: 18px;
+}
+
+/* ---------- Device-mode selection ---------- */
+.mode-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    width: 100%;
+    max-width: 620px;
+    margin-top: 6px;
+}
+
+.mode-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 28px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+.mode-card i { font-size: 30px; color: var(--info); }
+
+.mode-card:hover,
+.mode-card:active {
+    border-color: var(--info);
+    background: var(--bg-elevated);
+    transform: translateY(-2px);
+}
+
+/* ---------- Kiosk topbar ---------- */
+.scan-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+}
+
+.scan-topbar img { height: 20px; }
+.scan-topbar-title { font-weight: 700; font-size: 14px; flex: 1; }
+.scan-topbar-staff { font-size: 12.5px; color: var(--text-muted); font-weight: 400; }
+
+.scan-session-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--success);
+    background: var(--success-bg);
+    padding: 6px 12px;
+    border-radius: 999px;
+}
+
+.scan-icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.scan-icon-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* ---------- Kiosk stage ---------- */
+.scan-stage {
+    flex: 1;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    background: #000;
+}
+
+.kiosk-stage-view {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 24px;
+    text-align: center;
+}
+
+.kiosk-stage-view.active { display: flex; }
+
+#stageDesktopWelcome,
+#stageIpadIdle { background: var(--bg); }
+
+#stageIpadIdle { cursor: pointer; }
+
+#stageDesktopWelcome::before,
+#stageIpadIdle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 18% 15%, rgba(76, 154, 255, 0.16), transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(62, 207, 142, 0.12), transparent 42%);
+    pointer-events: none;
+}
+
+.stage-logo-wrap {
+    position: relative;
+    width: 132px;
+    height: 132px;
+    border-radius: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(76, 154, 255, 0.16), rgba(62, 207, 142, 0.1));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    animation: scanPulseSoft 2.6s ease-in-out infinite;
+}
+
+.stage-logo {
+    width: 82px;
+    height: 82px;
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes scanPulseSoft {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(76, 154, 255, 0.35); }
+    50% { box-shadow: 0 0 0 18px rgba(76, 154, 255, 0); }
+}
+
+.stage-title { position: relative; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+.stage-desc { position: relative; font-size: 14.5px; color: var(--text-muted); margin: 0; max-width: 380px; line-height: 1.6; }
+
+.stage-chips {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+#stageCamera { padding: 0; }
+
+#scanVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.scan-frame {
+    position: absolute;
+    inset: 12% 20%;
+    border: 3px solid rgba(255, 255, 255, 0.55);
+    border-radius: 24px;
+    pointer-events: none;
+}
+
+.scan-idle-hint {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.stage-cam-unavailable {
+    display: none;
+    position: absolute;
+    inset: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text-muted);
+    padding: 24px;
+    text-align: center;
+    background: var(--bg);
+}
+
+.stage-cam-unavailable i { font-size: 32px; }
+.stage-cam-unavailable span { max-width: 320px; line-height: 1.6; }
+
+/* ---------- Result overlay — mini digital-ID card, auto-dismisses ---------- */
+.scan-result-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(11, 12, 15, 0.92);
+    backdrop-filter: blur(6px);
+}
+
+.scan-result-overlay.show { display: flex; }
+
+.scan-result-card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+    text-align: center;
+}
+
+.scan-result-banner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 20px;
+    color: #fff;
+    background: linear-gradient(135deg, #3a3d46, #565a66);
+    transition: background 0.2s ease;
+    overflow: hidden;
+}
+
+.scan-result-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 16px);
+    pointer-events: none;
+}
+
+.scan-result-banner.success { background: linear-gradient(135deg, #1f8a5c, #3ecf8e); }
+.scan-result-banner.error { background: linear-gradient(135deg, #b5402c, #f0644a); }
+.scan-result-banner.loading { background: linear-gradient(135deg, #3a3d46, #565a66); }
+
+.scan-result-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.scan-result-body { padding: 22px 24px 26px; text-align: left; }
+
+.scan-result-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.scan-result-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    font-weight: 800;
+    color: var(--text-muted);
+    box-shadow: inset 0 0 0 1px var(--border);
+    flex-shrink: 0;
+}
+
+.scan-result-text { min-width: 0; flex: 1; }
+
+.scan-result-name { font-size: 19px; font-weight: 800; word-break: break-word; }
+.scan-result-id { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+.scan-result-time {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* ---------- Bottom bar (desktop mode) ---------- */
+.scan-bottom-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+body[data-kiosk-mode="desktop"] .scan-bottom-bar { display: flex; }
+
+.scan-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.scan-status-chip .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.scan-status-chip.nfc-ready .dot {
+    background: var(--success);
+    animation: scanPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes scanPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.75); }
+}
+
+.scan-manual-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.scan-manual-form input {
+    width: 140px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+}
+
+.scan-manual-form input:focus {
+    outline: 2px solid var(--info);
+    outline-offset: 1px;
+}
+
+.scan-manual-form button {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--success);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.scan-manual-form button:hover { border-color: var(--success); }
+
+@media (prefers-reduced-motion: reduce) {
+    .scan-status-chip.nfc-ready .dot,
+    .stage-logo-wrap { animation: none; }
+}
+
+/* Kept in the layout but visually hidden — barcode-reader hardware that
+   emulates a keyboard "types" its payload here, terminated by Enter. */
+#scanHiddenInput {
+    position: fixed;
+    top: -100px;
+    left: -100px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+@media (max-width: 480px) {
+    .scan-bottom-bar { justify-content: space-between; }
+    .scan-manual-form input { width: 110px; }
+}
