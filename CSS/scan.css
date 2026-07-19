@@ -332,10 +332,9 @@ body {
 .scan-result-banner {
     position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: 26px 20px 0;
+    justify-content: center;
+    padding: 18px 20px;
     color: #fff;
     background: linear-gradient(135deg, #3a3d46, #565a66);
     transition: background 0.2s ease;
@@ -367,33 +366,39 @@ body {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
 
+.scan-result-body { padding: 22px 24px 26px; text-align: left; }
+
+.scan-result-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 .scan-result-avatar {
-    position: relative;
-    width: 108px;
-    height: 108px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    margin-bottom: -54px;
-    border: 4px solid var(--bg-panel);
     background: var(--bg-elevated);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 36px;
+    font-size: 25px;
     font-weight: 800;
     color: var(--text-muted);
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 0 0 1px var(--border);
     flex-shrink: 0;
 }
 
-.scan-result-body { padding: 68px 24px 28px; }
+.scan-result-text { min-width: 0; flex: 1; }
 
-.scan-result-name { font-size: 21px; font-weight: 800; word-break: break-word; }
-.scan-result-id { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.scan-result-name { font-size: 19px; font-weight: 800; word-break: break-word; }
+.scan-result-id { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
 .scan-result-time {
-    margin-top: 18px;
-    padding-top: 16px;
+    margin-top: 16px;
+    padding-top: 14px;
     border-top: 1px dashed var(--border);
+    text-align: center;
     font-size: 13px;
     color: var(--text-muted);
 }
