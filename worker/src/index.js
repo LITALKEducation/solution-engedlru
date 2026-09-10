@@ -15,6 +15,7 @@ import {
   getTemplateCsv, importCsv, addTokenRecord, listTokenRecords, deleteTokenRecord
 } from "./handlers/admin/tokensAdmin.js";
 import { getStats } from "./handlers/admin/stats.js";
+import { getOgImage, listOgImages, upsertOgImage } from "./handlers/og.js";
 
 async function health(request, env) {
   const checks = {
@@ -93,6 +94,10 @@ export default {
         return await postProfile(request, env);
       }
 
+      if (pathname === "/og/image" && request.method === "GET") {
+        return await getOgImage(request, env, url);
+      }
+
       if (pathname.startsWith("/files/") && request.method === "GET") {
         return await getFile(request, env, pathname.slice("/files/".length));
       }
@@ -113,6 +118,9 @@ export default {
         }
 
         if (pathname === "/admin/stats" && request.method === "GET") return await getStats(request, env);
+
+        if (pathname === "/admin/og-images" && request.method === "GET") return json(request, env, await listOgImages(request, env));
+        if (pathname === "/admin/og-images" && request.method === "POST") return json(request, env, await upsertOgImage(request, env));
 
         if (pathname === "/admin/checkup/schedule" && request.method === "GET") return await listSchedule(request, env);
         if (pathname === "/admin/checkup/schedule" && request.method === "POST") return await createSchedule(request, env);

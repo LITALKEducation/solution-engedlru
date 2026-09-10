@@ -57,3 +57,12 @@ CREATE TABLE IF NOT EXISTS budget_entries (
   file_name  TEXT,
   file_mime  TEXT
 );
+
+
+-- ── Open Graph images (metadata in D1, binary files in R2) ──
+CREATE TABLE IF NOT EXISTS site_og_images (
+  page       TEXT PRIMARY KEY,
+  image_key  TEXT NOT NULL,
+  mime       TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
