@@ -16,6 +16,38 @@ import {
 } from "./handlers/admin/tokensAdmin.js";
 import { getStats } from "./handlers/admin/stats.js";
 
+async function health(request, env) {
+  const checks = {
+    worker: true,
+    db: false,
+    r2: Boolean(env.FILES),
+    auth0Domain: Boolean(env.AUTH0_DOMAIN)
+  };
+
+  try {
+    if (env.DB) {
+      const result = await env.DB.prepare("SELECT 1 AS ok").first();
+      checks.db = result?.ok === 1;
+    }
+  } catch (_) {
+    checks.db = false;
+  }
+
+  const healthy = checks.worker && checks.db && checks.r2 && checks.auth0Domain;
+
+  return json(
+    request,
+    env,
+    {
+      service: "engedlru-api",
+      status: healthy ? "ok" : "degraded",
+      checks,
+      timestamp: new Date().toISOString()
+    },
+    healthy ? 200 : 503
+  );
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return handleOptions(request, env);
@@ -24,6 +56,18 @@ export default {
     const { pathname } = url;
 
     try {
+      if (pathname === "/" && request.method === "GET") {
+        return json(request, env, {
+          service: "engedlru-api",
+          status: "online",
+          health: "/health"
+        });
+      }
+
+      if (pathname === "/health" && request.method === "GET") {
+        return await health(request, env);
+      }
+
       if (pathname === "/checkup/schedule" && request.method === "GET") {
         return await getSchedule(request, env);
       }
@@ -53,7 +97,6 @@ export default {
         return await getFile(request, env, pathname.slice("/files/".length));
       }
 
-      // /admin/me เป็นเส้นทางเดียวใน /admin/* ที่ไม่ต้องผ่าน requireAdmin (ใช้เช็คสถานะตัวเอง)
       if (pathname === "/admin/me" && request.method === "GET") {
         return await me(request, env);
       }
