@@ -11,95 +11,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: improve/admin-data-workflow
-      - name: Enhance admin data workflow
-        env:
-          JS_SNIPPET_B64: CgovKiBBRE1JTiBQUk9EVUNUSVZJVFkgRU5IQU5DRU1FTlRTICovCmNvbnN0IEFETUlOX0RBVEFfVklFV1MgPSB7CiAgICBjaGVja2luOiB7IGxhYmVsOiAn4LiC4LmJ4Lit4Lih4Li54Li14LmA4LmA4LiL4LmA4LiZ4LmJ4Li54Lih4LmJ4LmJ4Lit4LmJ4Liw4LiiJywgdGFibGU6ICgpID0+IGNoZWNraW5UYWJsZSB9LAogICAgcm9zdGVyOiB7IGxhYmVsOiAn4Lij4Liy4Lii4LiK4Li34LmI4Lit4LiZ4Lix4LiB4Lio4Li24LiB4Lip4LiyJywgdGFibGU6ICgpID0+IHJvc3RlclRhYmxlIH0sCiAgICB0b2tlbnM6IHsgbGFiZWw6ICdUb2tlbiBLZXknLCB0YWJsZTogKCkgPT4gdG9rZW5SZWNvcmRzVGFibGUgfSwKICAgIGFkbWluczogeyBsYWJlbDogJ+CmsuC4suC4ouC4iuC4t+C5iOC4reC5geC4reC4lOC4oeC4tOC4micsIHRhYmxlOiAoKSA9PiBhZG1pbnNUYWJsZSB9Cn07CgpsZXQgYWRtaW5MYXN0U3luY0F0ID0gbnVsbDsKCmZ1bmN0aW9uIGNzdkVzY2FwZUFkbWluKHZhbHVlKSB7CiAgICBjb25zdCB0ZXh0ID0gdmFsdWUgPT0gbnVsbCA/ICcnIDogKHR5cGVvZiB2YWx1ZSA9PT0gJ29iamVjdCcgPyBKU09OLnN0cmluZ2lmeSh2YWx1ZSkgOiBTdHJpbmcodmFsdWUpKTsKICAgIHJldHVybiBgIiR7dGV4dC5yZXBsYWNlKC8iL2csICciIicpfSJgOwp9CgpmdW5jdGlvbiBkb3dubG9hZEFkbWluRmlsZShmaWxlbmFtZSwgY29udGVudCwgdHlwZSkgewogICAgY29uc3QgYmxvYiA9IG5ldyBCbG9iKFtjb250ZW50XSwgeyB0eXBlIH0pOwogICAgY29uc3QgdXJsID0gVVJMLmNyZWF0ZU9iamVjdFVSTChibG9iKTsKICAgIGNvbnN0IGEgPSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KCdhJyk7CiAgICBhLmhyZWYgPSB1cmw7CiAgICBhLmRvd25sb2FkID0gZmlsZW5hbWU7CiAgICBkb2N1bWVudC5ib2R5LmFwcGVuZENoaWxkKGEpOwogICAgYS5jbGljaygpOwogICAgYS5yZW1vdmUoKTsKICAgIFVSTC5yZXZva2VPYmplY3RVUkwodXJsKTsKfQoKZnVuY3Rpb24gZ2V0Q3VycmVudEFkbWluUm93cygpIHsKICAgIGNvbnN0IGNvbmZpZyA9IEFETUlOX0RBVEFfVklFV1NbY3VycmVudFZpZXddOwogICAgaWYgKCFjb25maWcpIHJldHVybiBudWxsOwogICAgY29uc3QgdGFibGUgPSBjb25maWcudGFibGUoKTsKICAgIHJldHVybiB7IGNvbmZpZywgcm93czogdGFibGUuZ2V0RmlsdGVyZWQoKSB9Owp9CgpmdW5jdGlvbiBleHBvcnRDdXJyZW50QWRtaW5EYXRhKGZvcm1hdCA9ICdjTicpIHsKICAgIGNvbnN0IGRhdGEgPSBnZXRDdXJyZW50QWRtaW5Sb3dzKCk7CiAgICBpZiAoIWRhdGEpIHJldHVybiBzaG93VG9hc3QoJ+CuquC4meC5ieC4suC4meC4teC5ieC5hOC4oeC5iOC5iOC4iuC4uOC4lOC4guC5ieC4reC4oeC4ueC4peC4quC4sOC4lOC4quC4sOC4i+CmsuC4reC4h+C5hOC4lOC5iCcsICdpbmZvJyk7CiAgICBpZiAoIWRhdGEucm93cy5sZW5ndGgpIHJldHVybiBzaG93VG9hc3QoJ+CmsuC5hOC4oeC5iOC5iOC4guC5ieC4reC4oeC4ueC4peC4leC4suC4oeC4leC4seC4p+CmsOC4reC4hycsICdpbmZvJyk7CiAgICBjb25zdCBzdGFtcCA9IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKS5zbGljZSgwLCAxMCk7CiAgICBjb25zdCBiYXNlID0gYGVuZ2VkLSR7Y3VycmVudFZpZXd9LSR7c3RhbXB9YDsKICAgIGlmIChmb3JtYXQgPT09ICdqc29uJykgewogICAgICAgIGRvd25sb2FkQWRtaW5GaWxlKGAke2Jhc2V9Lmpzb25gLCBKU09OLnN0cmluZ2lmeShkYXRhLnJvd3MsIG51bGwsIDIpLCAnYXBwbGljYXRpb24vanNvbjtjaGFyc2V0PXV0Zi04Jyk7CiAgICB9IGVsc2UgewogICAgICAgIGNvbnN0IGtleXMgPSBbLi4ubmV3IFNldChkYXRhLnJvd3MuZmxhdE1hcChyb3cgPT4gT2JqZWN0LmtleXMocm93KSkpXTsKICAgICAgICBjb25zdCBjc3YgPSAn77u/JyArIFtrZXlzLm1hcChjc3ZFc2NhcGVBZG1pbikuam9pbignLCcpLCAuLi5kYXRhLnJvd3MubWFwKHJvdyA9PiBrZXlzLm1hcChrID0+IGNzdkVzY2FwZUFkbWluKHJvd1trXSkpLmpvaW4oJywnKSldLmpvaW4oJ1xyXG4nKTsKICAgICAgICBkb3dubG9hZEFkbWluRmlsZShgJHtiYXNlfS5jc3ZgLCBjc3YsICd0ZXh0L2NzdjtjaGFyc2V0PXV0Zi04Jyk7CiAgICB9CiAgICBzaG93VG9hc3QoYOC4quC5iOC4h+C4reC4reC4gICR7ZGF0YS5yb3dzLmxlbmd0aH0g4Lij4Liy4Lii4LiB4Liy4Lij4Liq4Liz4LmA4Lij4LmH4LiIYCwgJ3N1Y2Nlc3MnKTsKfQoKYXN5bmMgZnVuY3Rpb24gcmVmcmVzaEN1cnJlbnRBZG1pblZpZXcoKSB7CiAgICBjb25zdCBidG4gPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnYWRtaW5SZWZyZXNoQnRuJyk7CiAgICBidG4/LmNsYXNzTGlzdC5hZGQoJ2lzLWxvYWRpbmcnKTsKICAgIHRyeSB7CiAgICAgICAgaWYgKGN1cnJlbnRWaWV3ID09PSAnZGFzaGJvYXJkJykgYXdhaXQgbG9hZERhc2hib2FyZCgpOwogICAgICAgIGVsc2UgaWYgKGN1cnJlbnRWaWV3ID09PSAnY2hlY2tpbicpIGF3YWl0IGxvYWRDaGVja2luVGFiKCk7CiAgICAgICAgZWxzZSBpZiAoY3VycmVudFZpZXcgPT09ICdzY2hlZHVsZScpIGF3YWl0IGxvYWRTY2hlZHVsZVRhYigpOwogICAgICAgIGVsc2UgaWYgKGN1cnJlbnRWaWV3ID09PSAncm9zdGVyJykgYXdhaXQgbG9hZFJvc3RlclRhYigpOwogICAgICAgIGVsc2UgaWYgKGN1cnJlbnRWaWV3ID09PSAndG9rZW5zJykgYXdhaXQgbG9hZFRva2Vuc1RhYigpOwogICAgICAgIGVsc2UgaWYgKGN1cnJlbnRWaWV3ID09PSAnYWRtaW5zJykgYXdhaXQgbG9hZEFkbWluc1RhYigpOwogICAgICAgIGFkbWluTGFzdFN5bmNBdCA9IG5ldyBEYXRlKCk7CiAgICAgICAgdXBkYXRlQWRtaW5Qcm9kdWN0aXZpdHlCYXIoKTsKICAgICAgICBzaG93VG9hc3QoJ+CuquC4seC4mOC5gOC4lOC4leC4guC5ieC4reC4oeC4ueC4peC4peC5iOC4suC4quC4uOC4lOC5geC4peC5ieC4pycsICdzdWNjZXNzJywgMjIwMCk7CiAgICB9IGNhdGNoIChlcnJvcikgewogICAgICAgIHNob3dUb2FzdChg4Lij4Li14LmA4LiniOC4o+C4iuC5hOC4oeC5iOC4quC4sOC5gOC4o+C5hOC4iSDoke2Vycm9yLm1lc3NhZ2V9YCwgJ2Vycm9yJyk7CiAgICB9IGZpbmFsbHkgewogICAgICAgIGJ0bj8uY2xhc3NMaXN0LnJlbW92ZSgnaXMtbG9hZGluZycpOwogICAgfQp9CgpmdW5jdGlvbiB1cGRhdGVBZG1pblByb2R1Y3Rpdml0eUJhcigpIHsKICAgIGNvbnN0IGV4cG9ydFdyYXAgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnYWRtaW5FeHBvcnRBY3Rpb25zJyk7CiAgICBjb25zdCBtZXRhID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2FkbWluRGF0YU1ldGEnKTsKICAgIGNvbnN0IGRhdGEgPSBnZXRDdXJyZW50QWRtaW5Sb3dzKCk7CiAgICBpZiAoZXhwb3J0V3JhcCkgZXhwb3J0V3JhcC5oaWRkZW4gPSAhZGF0YTsKICAgIGlmIChtZXRhKSB7CiAgICAgICAgY29uc3QgY291bnQgPSBkYXRhID8gZGF0YS5yb3dzLmxlbmd0aCA6IG51bGw7CiAgICAgICAgY29uc3QgdGltZSA9IGFkbWluTGFzdFN5bmNBdCA/IGFkbWluTGFzdFN5bmNBdC50b0xvY2FsZVRpbWVTdHJpbmc('th-TH', { hour: '2-digit', minute: '2-digit' }) : '—';
-        meta.textContent = count == null ? `อัปเดตล่าสุด ${time}` : `${count.toLocaleString('th-TH')} รายการ · อัปเดตล่าสุด ${time}`;
-    }
-}
-
-function installAdminProductivityBar() {
-    if (document.getElementById('adminProductivityBar')) return;
-    const content = document.querySelector('.content');
-    if (!content) return;
-    const bar = document.createElement('div');
-    bar.id = 'adminProductivityBar';
-    bar.className = 'admin-productivity-bar';
-    bar.innerHTML = `
-        <div class="admin-productivity-context">
-            <span class="admin-productivity-kicker">DATA TOOLS</span>
-            <span id="adminDataMeta" class="admin-productivity-meta">อัปเดตล่าสุด —</span>
-        </div>
-        <div class="admin-productivity-actions">
-            <button class="admin-utility-btn" id="adminRefreshBtn" type="button" title="รีเฟรชข้อมูล"><i class="fa-solid fa-rotate"></i><span>รีเฟรช</span></button>
-            <div id="adminExportActions" class="admin-export-actions" hidden>
-                <button class="admin-utility-btn" type="button" data-export="csv"><i class="fa-solid fa-file-csv"></i><span>CSV</span></button>
-                <button class="admin-utility-btn" type="button" data-export="json"><i class="fa-solid fa-code"></i><span>JSON</span></button>
-            </div>
-        </div>`;
-    content.prepend(bar);
-    document.getElementById('adminRefreshBtn').addEventListener('click', refreshCurrentAdminView);
-    bar.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', () => exportCurrentAdminData(btn.dataset.export)));
-    updateAdminProductivityBar();
-}
-
-document.addEventListener('DOMContentLoaded', installAdminProductivityBar);
-
-const originalNavigateToAdmin = navigateTo;
-navigateTo = function(view, opts = {}) {
-    originalNavigateToAdmin(view, opts);
-    setTimeout(updateAdminProductivityBar, 0);
-};
-'''
-          js.write_text(s)
-
-          css = Path('CSS/admin.css')
-          c = css.read_text()
-          if '/* ADMIN PRODUCTIVITY BAR */' not in c:
-              c += r'''
-
-/* ADMIN PRODUCTIVITY BAR */
-.admin-productivity-bar {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    margin: -8px 0 22px; padding: 10px 12px; background: var(--white);
-    border: 1px solid var(--ink-15); border-radius: var(--r-md); box-shadow: var(--shadow-sm);
-    position: sticky; top: calc(var(--topbar-h) + 10px); z-index: 20;
-}
-.admin-productivity-context { display:flex; align-items:center; gap:10px; min-width:0; }
-.admin-productivity-kicker { font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--ink-30); }
-.admin-productivity-meta { font-size:12.5px; color:var(--ink-50); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.admin-productivity-actions, .admin-export-actions { display:flex; align-items:center; gap:6px; }
-.admin-utility-btn { min-height:34px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:7px 11px; border:1px solid var(--ink-15); border-radius:var(--r-sm); background:var(--white); color:var(--ink-70); font-size:12.5px; font-weight:700; cursor:pointer; transition:var(--t-fast); }
-.admin-utility-btn:hover { background:var(--ink-07); color:var(--ink); border-color:var(--ink-30); }
-.admin-utility-btn.is-loading i { animation:adminSpin .7s linear infinite; }
-.admin-export-actions:not([hidden]) { display:flex; padding-left:6px; margin-left:2px; border-left:1px solid var(--ink-15); }
-@media (max-width:720px) {
-    .admin-productivity-bar { top:calc(var(--topbar-h) + 6px); margin-top:-12px; gap:8px; }
-    .admin-productivity-kicker { display:none; }
-    .admin-productivity-meta { font-size:11.5px; max-width:145px; }
-    .admin-utility-btn span { display:none; }
-    .admin-utility-btn { width:36px; padding:7px; }
-}
-'''
-          css.write_text(c)
-
-          sw = Path('service-worker.js')
-          if sw.exists():
-              w = sw.read_text()
-              w = re.sub(r"const CACHE_NAME = 'sorasukt-pwa-v(\d+)'", lambda m: f"const CACHE_NAME = 'sorasukt-pwa-v{int(m.group(1))+1}'", w, count=1)
-              sw.write_text(w)
-          PY
+      - name: Apply enhancement
+        run: python3 .github/scripts/admin_enhance.py
       - name: Validate
         run: |
           node --check JavaScript/admin.js
           grep -q "Export ตามกิจกรรม" admin.html
           grep -q "ADMIN PRODUCTIVITY ENHANCEMENTS" JavaScript/admin.js
-      - name: Remove one-time workflow
-        run: rm .github/workflows/admin-ux-enhancement.yml
+      - name: Remove migration files
+        run: rm .github/workflows/admin-ux-enhancement.yml .github/scripts/admin_enhance.py
       - name: Commit enhancement
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add admin.html JavaScript/admin.js CSS/admin.css service-worker.js .github/workflows/admin-ux-enhancement.yml
+          git add admin.html JavaScript/admin.js CSS/admin.css service-worker.js .github/workflows/admin-ux-enhancement.yml .github/scripts/admin_enhance.py
           git commit -m "Improve admin data workflow and activity exports"
           git push origin HEAD:improve/admin-data-workflow
