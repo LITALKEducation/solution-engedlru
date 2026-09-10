@@ -209,6 +209,7 @@ const NAV_ITEMS = [
     { view: 'qr', label: 'สแกน QR เช็คชื่อ', icon: 'fa-qrcode' },
     { view: 'roster', label: 'รายชื่อนักศึกษา', icon: 'fa-users' },
     { view: 'tokens', label: 'จัดการ Token Key', icon: 'fa-key' },
+    { view: 'media', label: 'สื่อเว็บไซต์', icon: 'fa-photo-film' },
     { view: 'admins', label: 'จัดการแอดมิน', icon: 'fa-user-shield' }
 ];
 
@@ -229,6 +230,7 @@ function navigateTo(view, opts = {}) {
     if (view === 'schedule') loadScheduleTab();
     if (view === 'roster') loadRosterTab();
     if (view === 'tokens') loadTokensTab();
+    if (view === 'media') loadMediaTab();
     if (view === 'admins') loadAdminsTab();
 
     if (opts.focus) setTimeout(() => document.getElementById(opts.focus)?.focus(), 250);
@@ -1045,3 +1047,113 @@ document.getElementById('addAdminForm').addEventListener('submit', async e => {
 });
 
 document.addEventListener('DOMContentLoaded', () => { initAuth(); });
+
+
+/* ADMIN PRODUCTIVITY ENHANCEMENTS */
+const ADMIN_DATA_VIEWS = {
+    checkin: { label: 'ข้อมูลเช็คชื่อ', table: () => checkinTable },
+    roster: { label: 'รายชื่อนักศึกษา', table: () => rosterTable },
+    tokens: { label: 'Token Key', table: () => tokenRecordsTable },
+    admins: { label: 'รายชื่อแอดมิน', table: () => adminsTable }
+};
+let adminLastSyncAt = null;
+function csvEscapeAdmin(value) {
+    const text = value == null ? '' : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+    return `"${text.replace(/"/g, '""')}"`;
+}
+function downloadAdminFile(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+}
+function getCurrentAdminRows() {
+    const config = ADMIN_DATA_VIEWS[currentView];
+    if (!config) return null;
+    const table = config.table();
+    return { config, rows: table.getFiltered() };
+}
+function exportCurrentAdminData(format = 'csv') {
+    const data = getCurrentAdminRows();
+    if (!data) return showToast('หน้านี้ไม่มีชุดข้อมูลสำหรับส่งออก', 'info');
+    if (!data.rows.length) return showToast('ไม่มีข้อมูลตามตัวกรองปัจจุบัน', 'info');
+    const stamp = new Date().toISOString().slice(0, 10);
+    const base = `enged-${currentView}-${stamp}`;
+    if (format === 'json') {
+        downloadAdminFile(`${base}.json`, JSON.stringify(data.rows, null, 2), 'application/json;charset=utf-8');
+    } else {
+        const keys = [...new Set(data.rows.flatMap(row => Object.keys(row)))];
+        const csv = '\ufeff' + [keys.map(csvEscapeAdmin).join(','), ...data.rows.map(row => keys.map(k => csvEscapeAdmin(row[k])).join(','))].join('\r\n');
+        downloadAdminFile(`${base}.csv`, csv, 'text/csv;charset=utf-8');
+    }
+    showToast(`ส่งออก ${data.rows.length} รายการสำเร็จ`, 'success');
+}
+async function refreshCurrentAdminView() {
+    const btn = document.getElementById('adminRefreshBtn');
+    btn?.classList.add('is-loading');
+    try {
+        if (currentView === 'dashboard') await loadDashboard();
+        else if (currentView === 'checkin') await loadCheckinTab();
+        else if (currentView === 'schedule') await loadScheduleTab();
+        else if (currentView === 'roster') await loadRosterTab();
+        else if (currentView === 'tokens') await loadTokensTab();
+        else if (currentView === 'admins') await loadAdminsTab();
+        adminLastSyncAt = new Date();
+        updateAdminProductivityBar();
+        showToast('อัปเดตข้อมูลล่าสุดแล้ว', 'success', 2200);
+    } catch (error) {
+        showToast(`รีเฟรชไม่สำเร็จ: ${error.message}`, 'error');
+    } finally { btn?.classList.remove('is-loading'); }
+}
+function updateAdminProductivityBar() {
+    const exportWrap = document.getElementById('adminExportActions');
+    const meta = document.getElementById('adminDataMeta');
+    const data = getCurrentAdminRows();
+    if (exportWrap) exportWrap.hidden = !data;
+    if (meta) {
+        const count = data ? data.rows.length : null;
+        const time = adminLastSyncAt ? adminLastSyncAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '—';
+        meta.textContent = count == null ? `อัปเดตล่าสุด ${time}` : `${count.toLocaleString('th-TH')} รายการ · อัปเดตล่าสุด ${time}`;
+    }
+}
+function installAdminProductivityBar() {
+    if (document.getElementById('adminProductivityBar')) return;
+    const content = document.querySelector('.content');
+    if (!content) return;
+    const bar = document.createElement('div');
+    bar.id = 'adminProductivityBar';
+    bar.className = 'admin-productivity-bar';
+    bar.innerHTML = `
+        <div class="admin-productivity-context"><span class="admin-productivity-kicker">DATA TOOLS</span><span id="adminDataMeta" class="admin-productivity-meta">อัปเดตล่าสุด —</span></div>
+        <div class="admin-productivity-actions">
+            <button class="admin-utility-btn" id="adminRefreshBtn" type="button" title="รีเฟรชข้อมูล"><i class="fa-solid fa-rotate"></i><span>รีเฟรช</span></button>
+            <div id="adminExportActions" class="admin-export-actions" hidden>
+                <button class="admin-utility-btn" type="button" data-export="csv"><i class="fa-solid fa-file-csv"></i><span>CSV</span></button>
+                <button class="admin-utility-btn" type="button" data-export="json"><i class="fa-solid fa-code"></i><span>JSON</span></button>
+            </div>
+        </div>`;
+    content.prepend(bar);
+    document.getElementById('adminRefreshBtn').addEventListener('click', refreshCurrentAdminView);
+    bar.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', () => exportCurrentAdminData(btn.dataset.export)));
+    updateAdminProductivityBar();
+}
+document.addEventListener('DOMContentLoaded', installAdminProductivityBar);
+const originalNavigateToAdmin = navigateTo;
+navigateTo = function(view, opts = {}) {
+    originalNavigateToAdmin(view, opts);
+    setTimeout(updateAdminProductivityBar, 0);
+};
+
+
+/* WEBSITE MEDIA MANAGER */
+async function mediaJson(res){let d=null;try{d=await res.json()}catch(_){ }if(!res.ok)throw new Error(d?.details||d?.error||`HTTP ${res.status}`);return d}
+async function mediaUpload(path,form){const token=await auth0Client.getTokenSilently();return mediaJson(await fetch(`${API_BASE_URL}${path}`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form}))}
+async function loadMediaTab(){try{const [o,a]=await Promise.all([adminFetch('/admin/og-images'),adminFetch('/admin/media/ads')]);renderOgMedia(await mediaJson(o));renderAds(await mediaJson(a))}catch(e){showToast(`โหลดสื่อไม่สำเร็จ: ${e.message}`,'error')}}
+function renderOgMedia(rows=[]){const n={home:'หน้าหลัก',checkup:'บันทึกกิจกรรม',card:'บัตรนักศึกษา',sys:'Token Key'};document.getElementById('ogMediaList').innerHTML=rows.length?rows.map(r=>`<div class="media-row"><img src="${API_BASE_URL}/og/image?page=${encodeURIComponent(r.page)}&v=${encodeURIComponent(r.updated_at||'')}" alt=""><div class="media-row-main"><strong>${escHtmlAdmin(n[r.page]||r.page)}</strong><small>${escHtmlAdmin(r.image_key)}</small><small>${escHtmlAdmin(r.updated_at||'—')}</small></div></div>`).join(''):'<div class="dt-empty">ยังไม่มี OG image ในฐานข้อมูล</div>'}
+function renderAds(rows=[]){document.getElementById('adMediaList').innerHTML=rows.length?rows.map(r=>`<div class="media-row"><img src="${escHtmlAdmin(r.image_url)}?v=${encodeURIComponent(r.updated_at||'')}" alt=""><div class="media-row-main"><strong>${escHtmlAdmin(r.title||`โฆษณา #${r.id}`)}</strong><small>${r.active?'กำลังแสดง':'ซ่อนอยู่'} · ลำดับ ${r.sort_order||0}</small><small>${escHtmlAdmin(r.link_url||'ไม่มีลิงก์')}</small></div><div class="media-row-actions"><button class="admin-btn sm" onclick='toggleAd(${r.id},${r.active?0:1},${r.sort_order||0},${JSON.stringify(r.title||'')},${JSON.stringify(r.link_url||'')})'>${r.active?'ซ่อน':'แสดง'}</button><button class="admin-btn sm danger" onclick="removeAd(${r.id})"><i class="fa-solid fa-trash"></i></button></div></div>`).join(''):'<div class="dt-empty">ยังไม่มีรูปโฆษณา</div>'}
+document.getElementById('ogUploadForm')?.addEventListener('submit',async e=>{e.preventDefault();const b=e.currentTarget.querySelector('button');b.disabled=true;try{await mediaUpload('/admin/media/og/upload',new FormData(e.currentTarget));showToast('อัปโหลด OG image สำเร็จ','success');e.currentTarget.querySelector('[name=file]').value='';await loadMediaTab()}catch(x){showToast(x.message,'error')}finally{b.disabled=false}})
+document.getElementById('adUploadForm')?.addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,fd=new FormData(f),b=f.querySelector('button');fd.set('active',f.querySelector('[name=active]').checked?'1':'0');b.disabled=true;try{await mediaUpload('/admin/media/ads',fd);showToast('เพิ่มรูปโฆษณาสำเร็จ','success');f.reset();f.querySelector('[name=active]').checked=true;f.querySelector('[name=sort_order]').value='0';await loadMediaTab()}catch(x){showToast(x.message,'error')}finally{b.disabled=false}})
+async function toggleAd(id,active,sort_order,title,link_url){try{await mediaJson(await adminFetch(`/admin/media/ads/${id}`,{method:'PUT',body:JSON.stringify({active:!!active,sort_order,title,link_url})}));await loadMediaTab()}catch(e){showToast(e.message,'error')}}
+async function removeAd(id){if(!await confirmDialog({title:'ลบรูปโฆษณา',body:'รูปจะถูกลบจาก R2 และฐานข้อมูล',okText:'ลบรูป'}))return;try{await mediaJson(await adminFetch(`/admin/media/ads/${id}`,{method:'DELETE'}));showToast('ลบรูปแล้ว','success');await loadMediaTab()}catch(e){showToast(e.message,'error')}}

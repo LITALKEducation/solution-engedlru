@@ -48,12 +48,16 @@
             checkSystemStatus();
             setInterval(checkSystemStatus, 60000); // Check every 1 minute
 
+            loadHomepageAds();
+
             // Initialize Auth0 using central script
             initAuth();
         });
 
+        async function loadHomepageAds(){try{const r=await fetch(`${API_BASE_URL}/ads`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const ads=await r.json();if(!Array.isArray(ads)||!ads.length)return;const slider=document.querySelector('.slider');slider.innerHTML=ads.map(ad=>{const alt=String(ad.title||'ประกาศ').replace(/"/g,'&quot;');const img=`<img src="${ad.image_url}" alt="${alt}" loading="lazy" decoding="async">`;return `<div class="slide">${ad.link_url?`<a href="${ad.link_url}" target="_blank" rel="noopener noreferrer sponsored">${img}</a>`:img}</div>`}).join('');slides=document.querySelectorAll('.slide');currentSlide=0;dotsContainer.innerHTML='';slides.forEach((_,i)=>{const d=document.createElement('span');d.classList.add('dot');if(i===0)d.classList.add('active');d.onclick=()=>goToSlide(i);dotsContainer.appendChild(d)});updateSlider();document.querySelectorAll('.slider-btn').forEach(b=>b.style.display=slides.length>1?'':'none');dotsContainer.style.display=slides.length>1?'':'none';resetInterval()}catch(e){console.warn('Homepage ads unavailable; using fallback slide',e)}}
+
         // Slider functionality
-        const slides = document.querySelectorAll('.slide');
+        let slides = document.querySelectorAll('.slide');
         const dotsContainer = document.querySelector('.slider-dots');
         let currentSlide = 0;
         let slideInterval;

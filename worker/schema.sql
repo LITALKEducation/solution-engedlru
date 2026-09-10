@@ -57,3 +57,27 @@ CREATE TABLE IF NOT EXISTS budget_entries (
   file_name  TEXT,
   file_mime  TEXT
 );
+
+
+-- ── Open Graph images (metadata in D1, binary files in R2) ──
+CREATE TABLE IF NOT EXISTS site_og_images (
+  page       TEXT PRIMARY KEY,
+  image_key  TEXT NOT NULL,
+  mime       TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+
+-- Homepage advertisements
+CREATE TABLE IF NOT EXISTS site_ads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT,
+  image_key TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  link_url TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_site_ads_active_sort ON site_ads (active, sort_order, id);
