@@ -1,0 +1,103 @@
+name: Apply worker endpoint migration
+
+on:
+  push:
+    branches:
+      - fix/worker-api-production-ready
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/worker-api-production-ready
+          fetch-depth: 0
+
+      - name: Replace legacy Worker endpoint
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          old = "https://engedlru-api.litalk.workers.dev"
+          new = "https://engedlru-api.stnetworld.workers.dev"
+          changed = []
+
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or ".git" in path.parts:
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except (UnicodeDecodeError, OSError):
+                  continue
+              if old in text:
+                  path.write_text(text.replace(old, new), encoding="utf-8")
+                  changed.append(str(path))
+
+          print("Updated files:")
+          for path in changed:
+              print(f"- {path}")
+
+          leftovers = []
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or ".git" in path.parts:
+                  continue
+              try:
+                  if old in path.read_text(encoding="utf-8"):
+                      leftovers.append(str(path))
+              except (UnicodeDecodeError, OSError):
+                  pass
+
+          if leftovers:
+              raise SystemExit("Legacy endpoint remains in: " + ", ".join(leftovers))
+          PY
+
+      - name: Bump service worker cache
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("service-worker.js")
+          text = path.read_text(encoding="utf-8")
+          text, count = re.subn(
+              r"const CACHE_NAME = 'sorasukt-pwa-v(\d+)';",
+              lambda m: f"const CACHE_NAME = 'sorasukt-pwa-v{int(m.group(1)) + 1}';",
+              text,
+              count=1,
+          )
+          if count:
+              path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Validate Worker source
+        shell: bash
+        run: |
+          node --check worker/src/index.js
+          node --check worker/src/lib/cors.js
+          if grep -RIl 'engedlru-api\.litalk\.workers\.dev' . --exclude-dir=.git | grep -q .; then
+            echo "Legacy endpoint still exists"
+            grep -RIl 'engedlru-api\.litalk\.workers\.dev' . --exclude-dir=.git
+            exit 1
+          fi
+
+      - name: Remove one-time migration workflow
+        run: rm -f .github/workflows/apply-worker-endpoint-migration.yml
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: migrate frontend to production Worker endpoint"
+          git push origin HEAD:fix/worker-api-production-ready
