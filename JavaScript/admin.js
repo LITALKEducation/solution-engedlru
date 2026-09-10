@@ -1045,3 +1045,101 @@ document.getElementById('addAdminForm').addEventListener('submit', async e => {
 });
 
 document.addEventListener('DOMContentLoaded', () => { initAuth(); });
+
+
+/* ADMIN PRODUCTIVITY ENHANCEMENTS */
+const ADMIN_DATA_VIEWS = {
+    checkin: { label: 'ข้อมูลเช็คชื่อ', table: () => checkinTable },
+    roster: { label: 'รายชื่อนักศึกษา', table: () => rosterTable },
+    tokens: { label: 'Token Key', table: () => tokenRecordsTable },
+    admins: { label: 'รายชื่อแอดมิน', table: () => adminsTable }
+};
+let adminLastSyncAt = null;
+function csvEscapeAdmin(value) {
+    const text = value == null ? '' : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+    return `"${text.replace(/"/g, '""')}"`;
+}
+function downloadAdminFile(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+}
+function getCurrentAdminRows() {
+    const config = ADMIN_DATA_VIEWS[currentView];
+    if (!config) return null;
+    const table = config.table();
+    return { config, rows: table.getFiltered() };
+}
+function exportCurrentAdminData(format = 'csv') {
+    const data = getCurrentAdminRows();
+    if (!data) return showToast('หน้านี้ไม่มีชุดข้อมูลสำหรับส่งออก', 'info');
+    if (!data.rows.length) return showToast('ไม่มีข้อมูลตามตัวกรองปัจจุบัน', 'info');
+    const stamp = new Date().toISOString().slice(0, 10);
+    const base = `enged-${currentView}-${stamp}`;
+    if (format === 'json') {
+        downloadAdminFile(`${base}.json`, JSON.stringify(data.rows, null, 2), 'application/json;charset=utf-8');
+    } else {
+        const keys = [...new Set(data.rows.flatMap(row => Object.keys(row)))];
+        const csv = '\ufeff' + [keys.map(csvEscapeAdmin).join(','), ...data.rows.map(row => keys.map(k => csvEscapeAdmin(row[k])).join(','))].join('\r\n');
+        downloadAdminFile(`${base}.csv`, csv, 'text/csv;charset=utf-8');
+    }
+    showToast(`ส่งออก ${data.rows.length} รายการสำเร็จ`, 'success');
+}
+async function refreshCurrentAdminView() {
+    const btn = document.getElementById('adminRefreshBtn');
+    btn?.classList.add('is-loading');
+    try {
+        if (currentView === 'dashboard') await loadDashboard();
+        else if (currentView === 'checkin') await loadCheckinTab();
+        else if (currentView === 'schedule') await loadScheduleTab();
+        else if (currentView === 'roster') await loadRosterTab();
+        else if (currentView === 'tokens') await loadTokensTab();
+        else if (currentView === 'admins') await loadAdminsTab();
+        adminLastSyncAt = new Date();
+        updateAdminProductivityBar();
+        showToast('อัปเดตข้อมูลล่าสุดแล้ว', 'success', 2200);
+    } catch (error) {
+        showToast(`รีเฟรชไม่สำเร็จ: ${error.message}`, 'error');
+    } finally { btn?.classList.remove('is-loading'); }
+}
+function updateAdminProductivityBar() {
+    const exportWrap = document.getElementById('adminExportActions');
+    const meta = document.getElementById('adminDataMeta');
+    const data = getCurrentAdminRows();
+    if (exportWrap) exportWrap.hidden = !data;
+    if (meta) {
+        const count = data ? data.rows.length : null;
+        const time = adminLastSyncAt ? adminLastSyncAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '—';
+        meta.textContent = count == null ? `อัปเดตล่าสุด ${time}` : `${count.toLocaleString('th-TH')} รายการ · อัปเดตล่าสุด ${time}`;
+    }
+}
+function installAdminProductivityBar() {
+    if (document.getElementById('adminProductivityBar')) return;
+    const content = document.querySelector('.content');
+    if (!content) return;
+    const bar = document.createElement('div');
+    bar.id = 'adminProductivityBar';
+    bar.className = 'admin-productivity-bar';
+    bar.innerHTML = `
+        <div class="admin-productivity-context"><span class="admin-productivity-kicker">DATA TOOLS</span><span id="adminDataMeta" class="admin-productivity-meta">อัปเดตล่าสุด —</span></div>
+        <div class="admin-productivity-actions">
+            <button class="admin-utility-btn" id="adminRefreshBtn" type="button" title="รีเฟรชข้อมูล"><i class="fa-solid fa-rotate"></i><span>รีเฟรช</span></button>
+            <div id="adminExportActions" class="admin-export-actions" hidden>
+                <button class="admin-utility-btn" type="button" data-export="csv"><i class="fa-solid fa-file-csv"></i><span>CSV</span></button>
+                <button class="admin-utility-btn" type="button" data-export="json"><i class="fa-solid fa-code"></i><span>JSON</span></button>
+            </div>
+        </div>`;
+    content.prepend(bar);
+    document.getElementById('adminRefreshBtn').addEventListener('click', refreshCurrentAdminView);
+    bar.querySelectorAll('[data-export]').forEach(btn => btn.addEventListener('click', () => exportCurrentAdminData(btn.dataset.export)));
+    updateAdminProductivityBar();
+}
+document.addEventListener('DOMContentLoaded', installAdminProductivityBar);
+const originalNavigateToAdmin = navigateTo;
+navigateTo = function(view, opts = {}) {
+    originalNavigateToAdmin(view, opts);
+    setTimeout(updateAdminProductivityBar, 0);
+};
