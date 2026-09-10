@@ -1,5 +1,5 @@
 // เพิ่มเลขเวอร์ชันทุกครั้งที่ต้องการบังคับล้าง cache เก่าของผู้ใช้
-const CACHE_NAME = 'sorasukt-pwa-v7';
+const CACHE_NAME = 'sorasukt-pwa-v8';
 
 const ASSETS_TO_CACHE = [
     'https://solution.litalkeducation.com/',

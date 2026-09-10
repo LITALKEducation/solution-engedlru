@@ -16,6 +16,7 @@ import {
 } from "./handlers/admin/tokensAdmin.js";
 import { getStats } from "./handlers/admin/stats.js";
 import { getOgImage, listOgImages, upsertOgImage } from "./handlers/og.js";
+import { listPublicAds, serveAd, listAdminAds, uploadOg, uploadAd, updateAd, deleteAd } from "./handlers/media.js";
 
 async function health(request, env) {
   const checks = {
@@ -98,6 +99,10 @@ export default {
         return await getOgImage(request, env, url);
       }
 
+      if (pathname === "/ads" && request.method === "GET") return json(request, env, await listPublicAds(request, env));
+      const adMediaMatch = pathname.match(/^\/media\/ads\/(\d+)$/);
+      if (adMediaMatch && request.method === "GET") return await serveAd(request, env, adMediaMatch[1]);
+
       if (pathname.startsWith("/files/") && request.method === "GET") {
         return await getFile(request, env, pathname.slice("/files/".length));
       }
@@ -121,6 +126,12 @@ export default {
 
         if (pathname === "/admin/og-images" && request.method === "GET") return json(request, env, await listOgImages(request, env));
         if (pathname === "/admin/og-images" && request.method === "POST") return json(request, env, await upsertOgImage(request, env));
+        if (pathname === "/admin/media/og/upload" && request.method === "POST") return json(request, env, await uploadOg(request, env));
+        if (pathname === "/admin/media/ads" && request.method === "GET") return json(request, env, await listAdminAds(request, env));
+        if (pathname === "/admin/media/ads" && request.method === "POST") return json(request, env, await uploadAd(request, env));
+        const adminAdMatch = pathname.match(/^\/admin\/media\/ads\/(\d+)$/);
+        if (adminAdMatch && request.method === "PUT") return json(request, env, await updateAd(request, env, adminAdMatch[1]));
+        if (adminAdMatch && request.method === "DELETE") return json(request, env, await deleteAd(request, env, adminAdMatch[1]));
 
         if (pathname === "/admin/checkup/schedule" && request.method === "GET") return await listSchedule(request, env);
         if (pathname === "/admin/checkup/schedule" && request.method === "POST") return await createSchedule(request, env);
