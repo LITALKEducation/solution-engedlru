@@ -1,4 +1,4 @@
-const API='https://engedlru-api.stnetworld.workers.dev',AUTH_DOMAIN='litalkeducation.us.auth0.com',CLIENT_ID='PGqozL94LzOwstm4pD39W5kvalYRiK7w';
+const API=window.BUDGET_API||'https://engedlru-api.stnetworld.workers.dev',AUTH_DOMAIN=window.BUDGET_AUTH0_DOMAIN||'litalkeducation.us.auth0.com',CLIENT_ID=window.BUDGET_AUTH0_CLIENT_ID||'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
 let auth0Client,me,meta,reportRows=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
