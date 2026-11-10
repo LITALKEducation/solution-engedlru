@@ -1,6 +1,6 @@
 // Budget PWA service worker. Bump VERSION to force clients to refresh the shell.
-const VERSION = 'budget-v9';
-const SHELL = ['/', '/assets/budget-v2.css', '/assets/budget-v2.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+const VERSION = 'budget-v10';
+const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -17,11 +17,8 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put('/', copy)); return r; }).catch(() => caches.match('/')));
     return;
   }
-  // Static assets: stale-while-revalidate
-  e.respondWith(caches.match(req).then(hit => {
-    const net = fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(VERSION).then(c => c.put(req, copy)); } return r; }).catch(() => hit);
-    return hit || net;
-  }));
+  // Static assets: network-first (so HTML and JS/CSS never get out of sync), cache only as offline fallback.
+  e.respondWith(fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(VERSION).then(c => c.put(req, copy)); } return r; }).catch(() => caches.match(req)));
 });
 
 // Web Push: payload is JSON {title, body, tag, url}
