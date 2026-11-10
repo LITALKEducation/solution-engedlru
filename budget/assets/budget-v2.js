@@ -38,8 +38,32 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
   if(u==='/budget/transactions'&&post){const f=opt.body,acc=accs.find(a=>a.uuid===f.get('accountUuid')),cat=cats.find(c=>c.uuid===f.get('categoryUuid'));n++;const id='DEMO-'+String(n).padStart(4,'0');txs.unshift({transaction_id:id,transaction_uuid:'t'+n,account_uuid:acc.uuid,account_name:acc.name,type:f.get('type'),category:cat.name,amount:Number(f.get('amount')),details:f.get('details'),created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date().toISOString(),status:'active'});return res({transaction:{transactionId:id,uuid:'demo-'+n,accountUuid:acc.uuid,type:f.get('type'),amount:Number(f.get('amount')),details:f.get('details')},verificationUrl:location.origin+'/verify/?id='+id})}
   if(u.endsWith('/evidence'))return res({});
   return res({ok:true})}})();
+
+// ---- phone install gate: phones/tablets must use the installed web app (desktop is exempt) ----
+const UA=navigator.userAgent;
+const IS_IOS=/iPhone|iPad|iPod/i.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const IS_MOBILE=IS_IOS||/Android|Mobile|Windows Phone|webOS|BlackBerry/i.test(UA);
+const IN_APP_BROWSER=/Line\/|FBAN|FBAV|Instagram|MicroMessenger|TikTok|; wv\)/i.test(UA);
+const isStandalone=()=>['standalone','fullscreen','minimal-ui'].some(m=>matchMedia('(display-mode: '+m+')').matches)||navigator.standalone===true;
+const needsInstall=()=>!TEST&&IS_MOBILE&&!isStandalone();
+const icoShare=()=>svgI('<path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),icoDots=()=>svgI('<circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/>');
+function updateGate(){gateRender();const st=$('gateSteps');st.innerHTML=st.innerHTML.replace(/<li>/g,'<li><span>').replace(/<\/li>/g,'</span></li>')}
+function gateRender(){
+ const steps=$('gateSteps'),inst=$('gateInstall'),copy=$('gateCopy');
+ copy.classList.add('hidden');inst.classList.add('hidden');
+ if(IN_APP_BROWSER){
+  $('gateLead').textContent='เบราว์เซอร์ในแอป (เช่น LINE/Facebook) ติดตั้งแอปไม่ได้';
+  steps.innerHTML='<li>เปิดลิงก์นี้ใน <b>'+(IS_IOS?'Safari':'Chrome')+'</b> (แตะเมนู แล้วเลือก “เปิดในเบราว์เซอร์”)</li><li>ทำตามขั้นตอนติดตั้งแอปที่แสดงในเบราว์เซอร์</li>';
+  copy.classList.remove('hidden');return}
+ if(IS_IOS){
+  steps.innerHTML='<li>แตะปุ่มแชร์ '+icoShare()+' ใน Safari</li><li>เลือก <b>“เพิ่มไปยังหน้าจอโฮม”</b></li><li>แตะ <b>“เพิ่ม”</b> แล้วเปิดแอป Budget จากหน้าจอโฮม</li>';return}
+ if(deferredInstall){inst.classList.remove('hidden');steps.innerHTML='<li>แตะปุ่ม <b>“ติดตั้งแอป”</b> ด้านล่าง</li><li>เปิดแอป Budget จากหน้าจอหลัก</li>';return}
+ steps.innerHTML='<li>แตะเมนู '+icoDots()+' ของ Chrome</li><li>เลือก <b>“ติดตั้งแอป”</b> หรือ <b>“เพิ่มลงในหน้าจอหลัก”</b></li><li>เปิดแอป Budget จากหน้าจอหลัก</li>'}
+$('gateInstall').addEventListener('click',async()=>{if(!deferredInstall)return;deferredInstall.prompt();const r=await deferredInstall.userChoice;deferredInstall=null;if(r.outcome==='accepted')toast('ติดตั้งแล้ว เปิดแอป Budget จากหน้าจอหลักได้เลย');updateGate()});
+$('gateCopy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.origin+'/');toast('คัดลอกลิงก์แล้ว')}catch(e){toast(location.origin+'/')}});
 async function init(){
  updateOnline();
+ if(needsInstall()){updateGate();show('gate');return}
  if(TEST){me={name:'โหมดทดสอบ',email:'demo@example.com',isAdmin:true};$('userName').textContent=me.name;$('adminNav').classList.remove('hidden');startNotifs();$('testBanner').classList.remove('hidden');show('app');await loadMeta();const q=new URLSearchParams(location.search).get('page');if(q)showPage(q);await loadDashboard();return}
  const T=12000;
  try{
@@ -57,7 +81,7 @@ async function init(){
  try{await loadMeta();const q=new URLSearchParams(location.search).get('page');if(['transaction','donation','audit'].includes(q))showPage(q);await loadDashboard()}catch(e){console.error(e);toast('โหลดข้อมูลไม่สำเร็จ',1)}
 }
 function loginMsg(t){const b=$('loginMsg');b.textContent=t;b.classList.toggle('hidden',!t)}
-function show(id){['loading','login','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 async function login(){try{loginMsg('');if(!auth0Client)throw new Error('ระบบเข้าสู่ระบบยังไม่พร้อม กรุณารีเฟรชหน้า');await auth0Client.loginWithRedirect()}catch(e){loginMsg(e.message)}}
 async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
 async function token(){return auth0Client.getTokenSilently()}
@@ -320,7 +344,6 @@ async function disablePush(){
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 let deferredInstall;
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;if(!standalone)$('installBox').classList.remove('hidden')});
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;if(!standalone&&!IS_MOBILE)$('installBox').classList.remove('hidden');if(!$('gate').classList.contains('hidden'))updateGate()});
 $('installBtn').addEventListener('click',async()=>{if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null}$('installBox').classList.add('hidden')});
 addEventListener('appinstalled',()=>$('installBox').classList.add('hidden'));
-if(!standalone&&/iphone|ipad|ipod/i.test(navigator.userAgent)){$('installText').textContent='iPhone: แตะปุ่มแชร์ แล้วเลือก “เพิ่มไปยังหน้าจอโฮม”';$('installBtn').classList.add('hidden');$('installBox').classList.remove('hidden')}
