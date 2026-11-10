@@ -78,7 +78,9 @@ npx wrangler secret put AUTH0_M2M_CLIENT_SECRET
 
 Worker จะส่ง scope ทั้งสามรายการในคำขอ M2M token โดยตรง หากขาด scope หรือ M2M credentials ไม่ถูกต้อง ระบบ Budget จะแจ้ง `AUTH0_ROLE_LOOKUP_FAILED` แทนการแสดง Role ว่างโดยไม่บอกสาเหตุ
 
-ตั้งค่า `AUTH0_DOMAIN` เป็นโดเมน Auth0 ที่ใช้งานจริง (ในระบบนี้คือ `auth.litalkeducation.com`) และ Role สำหรับผู้ดูแล Budget ต้องใช้ชื่อ **`budget_admin`** ตรงตามตัวพิมพ์เล็ก/ใหญ่ใน Auth0.
+ตั้งค่า `AUTH0_DOMAIN` เป็น Custom Domain ที่ใช้ล็อกอิน (ในระบบนี้คือ `auth.litalkeducation.com`) และตั้งค่า Worker variable `AUTH0_MANAGEMENT_API_AUDIENCE` เป็น **Identifier ของ Auth0 Management API จากโดเมนหลัก (Canonical Tenant Domain)** ในหน้า Auth0 Dashboard → Applications → APIs → Auth0 Management API. รูปแบบจะเป็น `https://<canonical-tenant-domain>/api/v2/` ไม่ใช่ `https://auth.litalkeducation.com/api/v2/` หาก Custom Domain ไม่ใช่โดเมนหลักของ Tenant. ให้ตั้งค่า variable นี้ใน Cloudflare Worker → Settings → Variables and Secrets หรือ uncomment ตัวอย่างใน `wrangler.toml` แล้วแทนค่าด้วย Identifier จริงก่อน deploy.
+
+Role สำหรับผู้ดูแล Budget ต้องใช้ชื่อ **`budget_admin`** ตรงตามตัวพิมพ์เล็ก/ใหญ่ใน Auth0 และต้อง Assign ให้ผู้ใช้ในแท็บ Roles ของหน้า User (ไม่ใช่เพียงสร้าง Role ไว้เฉย ๆ).
 
 ### 5. ตรวจสอบตัวแปรใน `wrangler.toml`
 
