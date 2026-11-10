@@ -119,6 +119,48 @@ async function getEvidence(request,env,auth,uuid) {
   return new Response(obj.body,{headers:{"Content-Type":row.mime_type,"Content-Disposition:`inline; filename="${row.file_name}"`","Cache-Control":"private, no-store"}});
 }
 
+
+async function adminOnly(request,env,auth){if(!auth.isAdmin)return fail(request,env,"ต้องใช้สิทธิ์ budget_admin",403);}
+
+async function adminAccounts(request,env,auth){
+ await adminOnly(request,env,auth);
+ if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,name,description,currency,active,created_at,updated_at FROM budget_accounts ORDER BY name").all();return json(request,env,{accounts:x.results||[]});}
+ const b=await request.json().catch(()=>null); if(!b?.name)return fail(request,env,"กรุณาระบุชื่อบัญชี");
+ const uuid=crypto.randomUUID();
+ try{await env.DB.prepare("INSERT INTO budget_accounts (uuid,name,description,currency) VALUES (?,?,?,?)").bind(uuid,clean(b.name,120),clean(b.description,500),clean(b.currency||"THB",3)).run();await audit(env,auth,"ACCOUNT_CREATED","account",uuid,{name:b.name});return json(request,env,{ok:true,uuid},201);}catch(e){return fail(request,env,"ไม่สามารถสร้างบัญชีได้: "+e.message,400);}
+}
+
+async function adminCategories(request,env,auth){
+ await adminOnly(request,env,auth);
+ if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,name,type,active FROM budget_categories ORDER BY name").all();return json(request,env,{categories:x.results||[]});}
+ const b=await request.json().catch(()=>null); if(!b?.name||!["income","expense","both"].includes(b.type))return fail(request,env,"ข้อมูลหมวดหมู่ไม่ถูกต้อง");
+ const uuid=crypto.randomUUID();
+ try{await env.DB.prepare("INSERT INTO budget_categories (uuid,name,type) VALUES (?,?,?)").bind(uuid,clean(b.name,120),b.type).run();await audit(env,auth,"CATEGORY_CREATED","category",uuid,{name:b.name,type:b.type});return json(request,env,{ok:true,uuid},201);}catch(e){return fail(request,env,"ไม่สามารถสร้างหมวดหมู่ได้: "+e.message,400);}
+}
+
+async function adminUsers(request,env,auth){
+ await adminOnly(request,env,auth);
+ if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,auth0_user_id,email,student_id,display_name,enabled FROM budget_users ORDER BY email").all();return json(request,env,{users:x.results||[]});}
+ const b=await request.json().catch(()=>null); if(!b?.email)return fail(request,env,"กรุณาระบุอีเมล");
+ const email=String(b.email).trim().toLowerCase();
+ const existing=await env.DB.prepare("SELECT uuid FROM budget_users WHERE email=?").bind(email).first();
+ if(existing)return fail(request,env,"อีเมลนี้มีอยู่แล้ว");
+ const uuid=crypto.randomUUID();
+ await env.DB.prepare("INSERT INTO budget_users (uuid,auth0_user_id,email,student_id,display_name,enabled) VALUES (?,?,?,?,?,?)").bind(uuid,b.auth0UserId||"pending:"+uuid,email,clean(b.studentId,50),clean(b.displayName,200),b.enabled===false?0:1).run();
+ if(Array.isArray(b.accountUuids))for(const a of b.accountUuids){await env.DB.prepare("INSERT OR IGNORE INTO budget_account_access (user_uuid,account_uuid) VALUES (?,?)").bind(uuid,a).run();}
+ await audit(env,auth,"USER_ENABLED","user",uuid,{email,student_id:b.studentId||null});
+ return json(request,env,{ok:true,uuid},201);
+}
+
+async function report(request,env,auth,url){
+ if(!auth.isAdmin)return fail(request,env,"ต้องใช้สิทธิ์ budget_admin",403);
+ const from=url.searchParams.get("from"),to=url.searchParams.get("to");
+ const p=[];const w=["1=1"];if(from){w.push("date(t.created_at)>=date(?)");p.push(from);}if(to){w.push("date(t.created_at)<=date(?)");p.push(to);}
+ const x=await env.DB.prepare(`SELECT t.transaction_id,t.uuid transaction_uuid,t.account_uuid,a.name account_name,t.created_at,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.status,t.reversal_of_uuid FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE ${w.join(" AND ")} ORDER BY t.created_at DESC LIMIT 5000`).bind(...p).all();
+ await audit(env,auth,"REPORT_EXPORTED","report",null,{count:(x.results||[]).length,from,to});
+ return json(request,env,{transactions:x.results||[]});
+}
+
 export async function budgetV2(request,env,url){
   if(request.method==="GET" && url.pathname.match(/^\/budget\/verify\/[^/]+$/)) return verify(request,env,url);
   const auth=await requireBudgetAuth(request,env); if(!auth.ok)return auth.response;
@@ -126,6 +168,10 @@ export async function budgetV2(request,env,url){
   if(request.method==="GET" && url.pathname==="/budget/meta") return meta(request,env,auth);
   if(request.method==="GET" && url.pathname==="/budget/dashboard") return dashboard(request,env,auth);
   if(request.method==="GET" && url.pathname==="/budget/transactions") return listTransactions(request,env,auth,url);
+  if(url.pathname==="/budget/report" && request.method==="GET") return report(request,env,auth,url);
+  if(url.pathname==="/budget/admin/accounts" && (request.method==="GET"||request.method==="POST")) return adminAccounts(request,env,auth);
+  if(url.pathname==="/budget/admin/categories" && (request.method==="GET"||request.method==="POST")) return adminCategories(request,env,auth);
+  if(url.pathname==="/budget/admin/users" && (request.method==="GET"||request.method==="POST")) return adminUsers(request,env,auth);
   const ev=url.pathname.match(/^\/budget\/transactions\/([^/]+)\/evidence$/); if(ev&&request.method==="GET")return getEvidence(request,env,auth,ev[1]);
   if(request.method==="POST" && url.pathname==="/budget/transactions") return createTransaction(request,env,auth);
   return json(request,env,{error:"Not Found"},404);
