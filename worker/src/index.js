@@ -2,7 +2,6 @@ import { handleOptions, json } from "./lib/cors.js";
 import { requireAdmin } from "./lib/admin.js";
 import { getSchedule, postCheckin } from "./handlers/checkup.js";
 import { getActivities, search } from "./handlers/tokens.js";
-import { postBudget } from "./handlers/budget.js";
 import { budgetV2 } from "./handlers/budget-v2.js";
 import { postProfile } from "./handlers/profile.js";
 import { getFile } from "./handlers/files.js";
@@ -91,10 +90,6 @@ export default {
       if (pathname.startsWith("/budget/verify/")) return await budgetV2(request, env, url);
       if (pathname.startsWith("/budget/") && pathname !== "/budget/") return await budgetV2(request, env, url);
 
-      if (pathname === "/budget" && request.method === "POST") {
-        return await postBudget(request, env);
-      }
-
       if (pathname === "/profile" && request.method === "POST") {
         return await postProfile(request, env);
       }
@@ -106,6 +101,10 @@ export default {
       if (pathname === "/ads" && request.method === "GET") return json(request, env, await listPublicAds(request, env));
       const adMediaMatch = pathname.match(/^\/media\/ads\/(\d+)$/);
       if (adMediaMatch && request.method === "GET") return await serveAd(request, env, adMediaMatch[1]);
+
+      if (pathname.startsWith("/files/budget/evidence/") && request.method === "GET") {
+        return json(request, env, { error: "Evidence files require an authenticated Budget request." }, 404);
+      }
 
       if (pathname.startsWith("/files/") && request.method === "GET") {
         return await getFile(request, env, pathname.slice("/files/".length));
