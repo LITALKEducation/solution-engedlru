@@ -106,6 +106,8 @@ const IC={
  caret:svgI('<path d="M6 9l6 6 6-6"/>'),del:svgI('<path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM18 9l-6 6M12 9l6 6"/>')};
 function money(n){return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})}
 const lists={recent:[],rep:[],don:[]};
+async function errMsg(r){try{const d=await r.json();return d.error||('เกิดข้อผิดพลาด ('+r.status+')')}catch(e){return 'เกิดข้อผิดพลาด ('+r.status+')'}}
+function failBox(msg,retry){return '<div class="failbox"><b>โหลดข้อมูลไม่สำเร็จ</b><p>'+esc(msg)+'</p><button class="cta small-cta" onclick="'+retry+'">ลองใหม่</button></div>'}
 function rowHtml(t,src,i){
  const don=src==='don',k=don?'donation':(t.is_donation?'donation':t.type),inc=don||t.type==='income';
  const title=don?t.donor_name:t.details;
@@ -134,7 +136,7 @@ function openMenu(){const n=me?.name||me?.email||'';$('userName').textContent=n;
 function closeMenu(){$('menu').classList.add('hidden')}
 
 async function loadMeta(){
- const r=await api('/budget/meta');meta=await r.json();
+ const r=await api('/budget/meta');if(!r.ok){toast(await errMsg(r),1);return}meta=await r.json();
  const accounts=meta.accounts||[],cats=meta.categories||[];
  $('account').innerHTML=accounts.map(x=>'<option value="'+esc(x.uuid)+'">'+esc(x.name)+'</option>').join('');
  $('filterAccount').innerHTML='<option value="">ทุกบัญชี</option>'+accounts.map(x=>'<option value="'+esc(x.uuid)+'">'+esc(x.name)+'</option>').join('');
@@ -172,7 +174,8 @@ function Pad(o){
 let dash=null,acctSel='';
 async function loadDashboard(){
  if(!dash)$('summary').innerHTML='<div class="skeleton" style="height:270px;border-radius:0 0 32px 32px;margin:0 -16px"></div>';
- let r;try{r=await api('/budget/dashboard')}catch(e){toast('โหลดข้อมูลไม่สำเร็จ',1);return}if(!r.ok){toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ let r;try{r=await api('/budget/dashboard')}catch(e){if(!dash)$('summary').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadDashboard()');else toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ if(!r.ok){const m=await errMsg(r);if(!dash)$('summary').innerHTML=failBox(m,'loadDashboard()');else toast(m,1);return}
  dash=await r.json();lastDash=Date.now();renderDash()}
 function pickAcct(u){acctSel=acctSel===u?'':u;renderDash()}
 function renderDash(){
@@ -227,7 +230,7 @@ let repType='',repQ='';
 async function loadReport(){
  const p=new URLSearchParams();if($('from').value)p.set('from',$('from').value);if($('to').value)p.set('to',$('to').value);
  if(!reportRows.length)$('reportCards').innerHTML='<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
- let r;try{r=await api('/budget/report?'+p)}catch(e){toast('โหลดข้อมูลไม่สำเร็จ',1);return}if(!r.ok){toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ let r;try{r=await api('/budget/report?'+p)}catch(e){$('reportCards').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadReport()');return}if(!r.ok){$('reportCards').innerHTML=failBox(await errMsg(r),'loadReport()');return}
  const d=await r.json();reportRows=d.transactions||[];renderReport()}
 function renderReport(){const af=$('filterAccount').value;let rows=reportRows;
  if(af)rows=rows.filter(x=>x.account_uuid===af);
@@ -254,10 +257,10 @@ async function exportPdf(){try{await needPdf()}catch(e){return toast(e.message,1
  doc.setFontSize(18);doc.setFont('Sarabun','bold');doc.text('รายงานรายการงบประมาณ (Budget)',14,15);doc.setFont('Sarabun','normal');doc.setFontSize(11);doc.text('พิมพ์เมื่อ '+dt(new Date()),14,22);
  doc.autoTable({startY:28,head:[['Transaction ID','บัญชี','ประเภท','หมวดหมู่','จำนวนเงิน','รายละเอียด','ผู้บันทึก','วันที่']],body:reportRows.map(x=>[x.transaction_id,x.account_name,tl(x),x.category,money(x.amount),x.details,x.created_by_name||x.created_by_email,dt(x.created_at)]),styles:{font:'Sarabun',fontSize:9,cellPadding:2},headStyles:{font:'Sarabun',fontStyle:'bold',fillColor:[15,118,110]},columnStyles:{4:{halign:'right'}}});
  doc.save('budget-report-'+new Date().toISOString().slice(0,10)+'.pdf')}
-async function loadAdmin(){if(!me.isAdmin)return;const r=await api('/budget/admin/users');const d=await r.json();$('users').innerHTML=(d.users||[]).map(x=>'<div class="kv-row"><span>'+esc(x.email)+'<br><small>'+esc(x.student_id||'ไม่ได้ผูกรหัสนักศึกษา')+'</small></span><b>'+(x.enabled?'Enabled':'Disabled')+'</b></div>').join('')||'<p>ยังไม่มีผู้ใช้</p>'}
-$('accountForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newAccount').value,description:$('accountDesc').value})});if(!r.ok)return toast((await r.json()).error,1);e.target.reset();await loadMeta();toast('เพิ่มบัญชีแล้ว')});
-$('categoryForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newCategory').value,type:$('newCategoryType').value})});if(!r.ok)return toast((await r.json()).error,1);e.target.reset();await loadMeta();toast('เพิ่มหมวดหมู่แล้ว')});
-$('userForm').addEventListener('submit',async e=>{e.preventDefault();const accounts=[...$('newUserAccount').querySelectorAll('input:checked')].map(x=>x.value);const r=await api('/budget/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('newUserEmail').value,studentId:$('newStudentId').value,displayName:$('newUserName').value,accountUuids:accounts})});if(!r.ok)return toast((await r.json()).error,1);e.target.reset();await loadAdmin();toast('เปิดสิทธิ์แล้ว')});
+async function loadAdmin(){if(!me.isAdmin)return;const r=await api('/budget/admin/users');if(!r.ok){$('users').innerHTML=failBox(await errMsg(r),'loadAdmin()');return}const d=await r.json();$('users').innerHTML=(d.users||[]).map(x=>'<div class="kv-row"><span>'+esc(x.email)+'<br><small>'+esc(x.student_id||'ไม่ได้ผูกรหัสนักศึกษา')+'</small></span><b>'+(x.enabled?'Enabled':'Disabled')+'</b></div>').join('')||'<p>ยังไม่มีผู้ใช้</p>'}
+$('accountForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newAccount').value,description:$('accountDesc').value})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadMeta();toast('เพิ่มบัญชีแล้ว')});
+$('categoryForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newCategory').value,type:$('newCategoryType').value})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadMeta();toast('เพิ่มหมวดหมู่แล้ว')});
+$('userForm').addEventListener('submit',async e=>{e.preventDefault();const accounts=[...$('newUserAccount').querySelectorAll('input:checked')].map(x=>x.value);const r=await api('/budget/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('newUserEmail').value,studentId:$('newStudentId').value,displayName:$('newUserName').value,accountUuids:accounts})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadAdmin();toast('เปิดสิทธิ์แล้ว')});
 window.addEventListener('DOMContentLoaded',init);
 
 // ---- Donations ----
@@ -291,7 +294,7 @@ $('donForm').addEventListener('submit',async e=>{
   loadDonations();lastDash=0;loadDashboard()}catch(err){st.textContent=err.message}finally{$('donSave').disabled=false}});
 async function loadDonations(){
  if(!donRows.length)$('donList').innerHTML='<div class="skeleton"></div><div class="skeleton"></div>';
- let r;try{r=await api('/budget/donations')}catch(e){toast('โหลดข้อมูลไม่สำเร็จ',1);return}if(!r.ok){toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ let r;try{r=await api('/budget/donations')}catch(e){$('donList').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadDonations()');return}if(!r.ok){$('donList').innerHTML=failBox(await errMsg(r),'loadDonations()');return}
  const d=await r.json();donRows=d.donations||[];const t=d.totals||{};
  $('donTotal').textContent='฿'+money(t.all);
  $('donPills').innerHTML='<span class="pn don">เงินสด ฿'+money(t.cash)+'</span><span class="pn don">PromptPay ฿'+money(t.promptpay)+'</span>';

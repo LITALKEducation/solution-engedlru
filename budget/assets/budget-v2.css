@@ -267,3 +267,8 @@ nav button.active{color:var(--brand);font-weight:700}
 .steps li svg{display:inline-block;width:18px;height:18px;vertical-align:-3px;color:var(--brand)}
 #gate .secondary.block{margin-top:10px}
 .steps li>span{flex:1;padding-top:4px}
+
+.failbox{background:var(--panel);border-radius:22px;padding:20px;text-align:center;margin:12px 0}
+.failbox b{display:block;font-size:16px}
+.failbox p{margin:6px 0 10px;color:var(--brand-d);font-size:13px;word-break:break-word}
+.failbox .cta{margin-top:4px;width:auto;padding:0 28px;display:inline-flex}
