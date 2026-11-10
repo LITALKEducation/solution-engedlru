@@ -1,5 +1,5 @@
 // Budget PWA service worker. Bump VERSION to force clients to refresh the shell.
-const VERSION = 'budget-v3';
+const VERSION = 'budget-v4';
 const SHELL = ['/', '/assets/budget-v2.css', '/assets/budget-v2.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', e => {

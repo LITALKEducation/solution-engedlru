@@ -29,6 +29,7 @@
 <div id="offline" class="hidden">ออฟไลน์ — ไม่สามารถบันทึกหรือโหลดข้อมูลใหม่ได้</div>
 <nav aria-label="เมนูหลัก">
 <button data-page="dashboard" onclick="showPage('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>หน้าหลัก</span></button>
+<button data-page="donation" onclick="showPage('donation')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg><span>บริจาค</span></button>
 <button data-page="audit" onclick="showPage('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>รายการ</span></button>
 <button data-page="transaction" class="add" onclick="showPage('transaction')"><span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><b>บันทึก</b></button>
 <button id="adminNav" data-page="admin" onclick="showPage('admin')" class="hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>ตั้งค่า</span></button>
@@ -54,6 +55,25 @@
 <div id="preview" class="preview hidden"></div></div>
 <div class="wide submit-bar"><button class="primary block" type="submit" id="saveBtn">บันทึกรายการ</button><span id="txStatus" role="status"></span></div>
 </form></section>
+<section id="page-donation" class="page hidden"><div class="page-head"><div><div class="eyebrow">Donations</div><h1>บริจาค</h1></div><button class="primary small" onclick="toggleDonForm()" id="donToggle">+ บันทึกการบริจาค</button></div>
+<form id="donForm" class="card form-grid hidden">
+<div class="field wide"><div class="seg" role="group" aria-label="ช่องทางบริจาค"><button type="button" data-method="cash" class="on income">เงินสด</button><button type="button" data-method="promptpay" class="income">PromptPay</button></div><input type="hidden" id="donMethod" value="cash"></div>
+<label class="wide">จำนวนเงิน<div class="amount-wrap"><input id="donAmount" type="number" inputmode="decimal" min="0.01" step="0.01" required placeholder="0.00"></div></label>
+<label class="wide">ชื่อผู้บริจาค<input id="donName" maxlength="200" required placeholder="ชื่อ-นามสกุล / ชื่อหน่วยงาน" autocomplete="off"></label>
+<label class="check-row wide"><input id="donAnon" type="checkbox"><span>ไม่ประสงค์ออกนาม</span></label>
+<label>ช่องทางติดต่อ (ถ้ามี)<input id="donContact" maxlength="200" placeholder="เบอร์โทร / อีเมล" autocomplete="off"></label>
+<label>วันที่บริจาค<input id="donDate" type="date" required></label>
+<label class="wide">เข้าบัญชี<select id="donAccount" required></select></label>
+<label class="wide">หมายเหตุ (ถ้ามี)<textarea id="donNote" maxlength="1000" style="min-height:70px"></textarea></label>
+<div class="wide file"><div><b style="color:inherit">สลิปโอนเงิน / หลักฐาน</b> <b id="donReq">(ไม่บังคับสำหรับเงินสด)</b></div><small>JPG, PNG, WebP หรือ PDF · ไม่เกิน 10 MB</small>
+<div class="file-btns"><label class="secondary" for="donCam" style="font-weight:700"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>ถ่ายรูป</label><label class="secondary" for="donFile" style="font-weight:700"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>เลือกไฟล์</label></div>
+<input id="donCam" type="file" accept="image/*" capture="environment"><input id="donFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+<div id="donPreview" class="preview hidden"></div></div>
+<div class="wide submit-bar"><button class="primary block" type="submit" id="donSave">บันทึกการบริจาค</button><span id="donStatus" role="status"></span></div>
+</form>
+<div id="donSummary" class="stats three"></div>
+<div class="filters card donf"><input id="donSearch" type="search" placeholder="ค้นหาชื่อผู้บริจาค" aria-label="ค้นหา"><select id="donFilter"><option value="">ทุกช่องทาง</option><option value="cash">เงินสด</option><option value="promptpay">PromptPay</option></select></div>
+<div id="donList" class="tx-list show-all"></div></section>
 <section id="page-audit" class="page hidden"><div class="page-head"><div><div class="eyebrow">Audit &amp; Report</div><h1>รายการบัญชี</h1></div><div class="actions"><button class="secondary small" onclick="exportExcel()">Excel</button><button class="primary small" onclick="exportPdf()">PDF</button></div></div>
 <div class="filters card"><input id="from" type="date" aria-label="ตั้งแต่"><input id="to" type="date" aria-label="ถึง"><select id="filterAccount"></select><select id="filterType"><option value="">ทุกประเภท</option><option value="income">เงินเข้า</option><option value="expense">เงินออก</option></select><button class="secondary" onclick="loadReport()">ค้นหา</button></div>
 <div id="reportCards" class="tx-list"></div>

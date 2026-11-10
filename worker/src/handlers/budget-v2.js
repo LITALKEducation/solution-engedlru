@@ -172,6 +172,81 @@ async function report(request,env,auth,url){
  return json(request,env,{transactions:x.results||[]});
 }
 
+
+// ---- Donations (cash / PromptPay) ----
+const DONATION_METHODS=["cash","promptpay"];
+const METHOD_LABEL={cash:"เงินสด",promptpay:"PromptPay"};
+
+async function donationCategory(env){
+  await env.DB.prepare("INSERT OR IGNORE INTO budget_categories (uuid,name,type) VALUES (?,?,'income')").bind(crypto.randomUUID(),"เงินบริจาค").run();
+  return env.DB.prepare("SELECT uuid,name FROM budget_categories WHERE name=? AND type='income'").bind("เงินบริจาค").first();
+}
+
+async function listDonations(request,env,auth,url){
+  const from=url.searchParams.get("from"),to=url.searchParams.get("to"),method=url.searchParams.get("method");
+  const p=[],w=["1=1"];
+  if(from){w.push("date(d.donated_at)>=date(?)");p.push(from);}
+  if(to){w.push("date(d.donated_at)<=date(?)");p.push(to);}
+  if(DONATION_METHODS.includes(method)){w.push("d.method=?");p.push(method);}
+  if(!auth.isAdmin){w.push("d.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?)");p.push(auth.row.uuid);}
+  const x=await env.DB.prepare(`SELECT d.uuid,d.transaction_uuid,t.transaction_id,d.account_uuid,a.name account_name,d.donor_name,d.donor_contact,d.anonymous,d.method,d.amount,d.donated_at,d.note,d.created_by_email,d.created_at,
+    (SELECT f.uuid FROM budget_transaction_files f WHERE f.transaction_uuid=d.transaction_uuid LIMIT 1) evidence_uuid
+    FROM budget_donations d JOIN budget_accounts a ON a.uuid=d.account_uuid JOIN budget_transactions t ON t.uuid=d.transaction_uuid
+    WHERE ${w.join(" AND ")} ORDER BY d.donated_at DESC, d.created_at DESC LIMIT 2000`).bind(...p).all();
+  const rows=x.results||[];
+  const sum=m=>rows.filter(r=>!m||r.method===m).reduce((s,r)=>s+Number(r.amount),0);
+  return json(request,env,{donations:rows,totals:{all:sum(),cash:sum("cash"),promptpay:sum("promptpay"),count:rows.length}});
+}
+
+async function createDonation(request,env,auth){
+  const body=await request.formData().catch(()=>null);
+  if(!body)return fail(request,env,"Invalid form data");
+  const accountUuid=clean(body.get("accountUuid"),100),method=clean(body.get("method"),20);
+  const anonymous=["1","true","on"].includes(String(body.get("anonymous")||"").toLowerCase());
+  const donorName=anonymous?"ไม่ประสงค์ออกนาม":clean(body.get("donorName"),200);
+  const contact=clean(body.get("donorContact"),200),note=clean(body.get("note"),1000);
+  const donatedAt=clean(body.get("donatedAt"),10)||new Date().toISOString().slice(0,10);
+  const value=amount(body.get("amount"));
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(donatedAt)||Number.isNaN(Date.parse(donatedAt)))return fail(request,env,"วันที่ไม่ถูกต้อง");
+  if(!accountUuid||!DONATION_METHODS.includes(method)||!donorName||!value)return fail(request,env,"กรุณากรอกข้อมูลการบริจาคให้ครบ");
+  if(!canAccessAccount(auth,accountUuid))return fail(request,env,"ไม่มีสิทธิ์เข้าถึงบัญชีนี้",403);
+  const account=await env.DB.prepare("SELECT * FROM budget_accounts WHERE uuid=? AND active=1").bind(accountUuid).first();
+  if(!account)return fail(request,env,"บัญชีไม่ถูกต้อง");
+  const file=body.get("evidence");
+  const hasFile=file instanceof File&&file.size>0;
+  if(method==="promptpay"&&!hasFile)return fail(request,env,"กรุณาแนบสลิปโอนเงิน PromptPay");
+  let bytes,mime,safeName;
+  if(hasFile){
+    mime=String(file.type||"").toLowerCase();
+    if(!ALLOWED_MIME.has(mime))return fail(request,env,"รองรับเฉพาะ JPG, PNG, WebP และ PDF");
+    if(file.size>MAX_FILE)return fail(request,env,"ไฟล์ต้องไม่เกิน 10 MB");
+    bytes=await file.arrayBuffer();
+    safeName=String(file.name||"evidence").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,255);
+  }
+  const category=await donationCategory(env);
+  const txUuid=crypto.randomUUID(),donationUuid=crypto.randomUUID(),id=txId(),now=new Date().toISOString(),email=auth.user.email||auth.row.email;
+  const details=`บริจาคโดย ${donorName} (${METHOD_LABEL[method]})`;
+  const key=hasFile?`budget/evidence/${txUuid}/${crypto.randomUUID()}-${safeName}`:null;
+  if(hasFile)await putFile(env,key,bytes,mime);
+  try{
+    const stmts=[
+      env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_at) VALUES (?,?,?,'income',?,?,?,?,?,?,?)")
+        .bind(txUuid,id,accountUuid,category.uuid,value,details,note,auth.user.sub,email,now),
+      env.DB.prepare("INSERT INTO budget_donations (uuid,transaction_uuid,account_uuid,donor_name,donor_contact,anonymous,method,amount,donated_at,note,created_by_email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+        .bind(donationUuid,txUuid,accountUuid,donorName,contact,anonymous?1:0,method,value,donatedAt,note,email,now),
+      env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
+        .bind(crypto.randomUUID(),auth.user.sub,email,"DONATION_CREATED","donation",donationUuid,JSON.stringify({transaction_id:id,account_uuid:accountUuid,method,amount:value}))
+    ];
+    if(hasFile)stmts.push(env.DB.prepare("INSERT INTO budget_transaction_files (uuid,transaction_uuid,r2_key,file_name,mime_type,file_size,uploaded_by_auth0_id) VALUES (?,?,?,?,?,?,?)")
+      .bind(crypto.randomUUID(),txUuid,key,safeName,mime,bytes.byteLength,auth.user.sub));
+    await env.DB.batch(stmts);
+  }catch(e){
+    if(key)await env.FILES.delete(key).catch(()=>{});
+    throw e;
+  }
+  return json(request,env,{ok:true,donation:{uuid:donationUuid,transactionUuid:txUuid,transactionId:id,accountUuid,donorName,method,amount:value,donatedAt,note},verificationUrl:`https://enged.sorasukt.com/verify/?id=${encodeURIComponent(id)}`},201);
+}
+
 export async function budgetV2(request,env,url){
   if(request.method==="GET" && url.pathname.match(/^\/budget\/verify\/[^/]+$/)) return verify(request,env,url);
   const auth=await requireBudgetAuth(request,env); if(!auth.ok)return auth.response;
@@ -185,5 +260,7 @@ export async function budgetV2(request,env,url){
   if(url.pathname==="/budget/admin/users" && (request.method==="GET"||request.method==="POST")) return adminUsers(request,env,auth);
   const ev=url.pathname.match(/^\/budget\/transactions\/([^/]+)\/evidence$/); if(ev&&request.method==="GET")return getEvidence(request,env,auth,ev[1]);
   if(request.method==="POST" && url.pathname==="/budget/transactions") return createTransaction(request,env,auth);
+  if(url.pathname==="/budget/donations" && request.method==="GET") return listDonations(request,env,auth,url);
+  if(url.pathname==="/budget/donations" && request.method==="POST") return createDonation(request,env,auth);
   return json(request,env,{error:"Not Found"},404);
 }

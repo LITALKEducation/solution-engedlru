@@ -56,3 +56,9 @@ The frontend is mobile-first and installable:
 ## Test mode
 
 Open `/?test=true` (optionally `&page=transaction`) to try the UI without logging in. It runs entirely on local fake data in the browser: no Auth0 login, no Budget API calls, nothing is saved. It does not grant access to real data.
+
+## Donations (บริจาค)
+
+The บริจาค tab records donors giving by cash or PromptPay (donor name or anonymous, amount, date, account, optional contact/note, slip — required for PromptPay). Each donation also creates an income transaction in category "เงินบริจาค", so balances, reports and evidence viewing keep working.
+
+Before deploying the Worker, apply the D1 migration `worker/migrations/0003_budget_donations.sql` (the table does not exist until then).
