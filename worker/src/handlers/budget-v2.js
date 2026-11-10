@@ -152,9 +152,8 @@ async function adminUsers(request,env,auth){
 }
 
 async function report(request,env,auth,url){
- if(!auth.isAdmin)return fail(request,env,"ต้องใช้สิทธิ์ budget_admin",403);
  const from=url.searchParams.get("from"),to=url.searchParams.get("to");
- const p=[];const w=["1=1"];if(from){w.push("date(t.created_at)>=date(?)");p.push(from);}if(to){w.push("date(t.created_at)<=date(?)");p.push(to);}
+ const p=[];const w=["1=1"];if(from){w.push("date(t.created_at)>=date(?)");p.push(from);}if(to){w.push("date(t.created_at)<=date(?)");p.push(to);}if(!auth.isAdmin){w.push("t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?)");p.push(auth.row.uuid);}
  const x=await env.DB.prepare(`SELECT t.transaction_id,t.uuid transaction_uuid,t.account_uuid,a.name account_name,t.created_at,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.status,t.reversal_of_uuid FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE ${w.join(" AND ")} ORDER BY t.created_at DESC LIMIT 5000`).bind(...p).all();
  await audit(env,auth,"REPORT_EXPORTED","report",null,{count:(x.results||[]).length,from,to});
  return json(request,env,{transactions:x.results||[]});
