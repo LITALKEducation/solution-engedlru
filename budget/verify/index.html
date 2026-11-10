@@ -1,1 +1,93 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#d32f2f"><link rel="icon" href="/icons/icon-192.png"><meta name="robots" content="noindex,nofollow"><title>ตรวจสอบรายการ · Budget</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap"><style>*{box-sizing:border-box}body{margin:0;background:#f6f7f9;color:#111827;font-family:'Noto Sans Thai',sans-serif}.wrap{min-height:100vh;display:grid;place-items:center;padding:16px}.card{width:min(520px,100%);background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:24px 20px;box-shadow:0 8px 28px #0000000a}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#6b7280}h1{margin:8px 0 20px;font-size:28px}.status{padding:12px 14px;border-radius:10px;background:#f3f4f6;margin-bottom:18px}.row{display:flex;justify-content:space-between;gap:20px;padding:12px 0;border-bottom:1px solid #eee}.row:last-child{border:0}.label{color:#6b7280;font-size:13px}.value{text-align:right;font-weight:700}a{color:#111827}.error{color:#b91c1c}</style></head><body><main class="wrap"><section class="card"><div class="eyebrow">Budget Verification</div><h1>ตรวจสอบรายการธุรกรรม</h1><div id="status" class="status">กำลังตรวจสอบ…</div><div id="details"></div></section></main><script>const API='https://engedlru-api.stnetworld.workers.dev';const q=new URLSearchParams(location.search);const id=q.get('id');const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));async function run(){if(!id){status.className='status error';status.textContent='ไม่พบ Transaction ID';return}try{const r=await fetch(API+'/budget/verify/'+encodeURIComponent(id));const d=await r.json();if(!r.ok||!d.valid){status.className='status error';status.textContent=d.message||'ไม่พบรายการธุรกรรม';return}status.textContent='รายการนี้ได้รับการตรวจสอบแล้ว';const t=d.transaction;details.innerHTML='<div class="row"><span class="label">Transaction ID</span><span class="value">'+esc(t.transactionId)+'</span></div><div class="row"><span class="label">บัญชี</span><span class="value">'+esc(t.account)+'</span></div><div class="row"><span class="label">ประเภท</span><span class="value">'+esc(t.type==='income'?'เงินเข้า':'เงินออก')+'</span></div><div class="row"><span class="label">หมวดหมู่</span><span class="value">'+esc(t.category)+'</span></div><div class="row"><span class="label">จำนวนเงิน</span><span class="value">฿'+Number(t.amount).toLocaleString('th-TH',{minimumFractionDigits:2})+'</span></div><div class="row"><span class="label">วันที่</span><span class="value">'+esc(t.createdAt)+'</span></div><div class="row"><span class="label">สถานะ</span><span class="value">'+esc(t.status)+'</span></div>'}catch(e){status.className='status error';status.textContent='ไม่สามารถเชื่อมต่อระบบตรวจสอบได้'}}run();</script></body></html>
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#d32f2f">
+<meta name="robots" content="noindex,nofollow">
+<title>ตรวจสอบรายการ · Budget</title>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--brand:#d32f2f;--brand-d:#b71c1c;--panel:#faf3f2;--ink:#171212;--mute:#82787a;--line:#efe6e5;--ok:#15803d;--okbg:#dcfce7;--warn:#b45309;--warnbg:#fef3c7;--bad:#b71c1c;--badbg:#fde8e8}
+*{box-sizing:border-box}
+body{margin:0;background:#e8eaea;color:var(--ink);font-family:'Noto Sans Thai',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;background:#fff;display:flex;flex-direction:column}
+@media(min-width:520px){.wrap{box-shadow:0 0 0 1px #0000000d,0 20px 60px #00000014}}
+.top{background:linear-gradient(160deg,#e53935,#b71c1c);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 20px) 24px 76px;border-radius:0 0 36px 36px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:40px;height:40px;border-radius:12px;background:#fff}
+.brand b{display:block;font-size:17px}.brand small{opacity:.85;font-size:12px}
+main{padding:0 20px 28px;margin-top:-52px;flex:1}
+.card{background:#fff;border-radius:28px;box-shadow:0 12px 36px #17121224;padding:26px 22px;text-align:center}
+.badge{width:76px;height:76px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center}
+.badge svg{width:40px;height:40px}
+.ok .badge{background:var(--okbg);color:var(--ok)}.warn .badge{background:var(--warnbg);color:var(--warn)}.bad .badge{background:var(--badbg);color:var(--bad)}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--mute);font-size:14px;margin:0}
+.amount{font-size:42px;font-weight:800;letter-spacing:-1px;margin:18px 0 4px;line-height:1.15}
+.amount.in{color:var(--ok)}
+.pill{display:inline-block;border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700;margin-top:4px}
+.ok .pill{background:var(--okbg);color:var(--ok)}.warn .pill{background:var(--warnbg);color:var(--warn)}
+.list{text-align:left;margin-top:22px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);font-size:15px}
+.row span{color:var(--mute);flex:none}.row b{font-weight:600;text-align:right;word-break:break-word}
+.note{margin:18px 4px 0;color:var(--mute);font-size:12px;line-height:1.7;text-align:center}
+.btn{margin-top:18px;height:52px;padding:0 32px;border:0;border-radius:26px;background:var(--brand);color:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer}
+.spin{width:44px;height:44px;border:4px solid #f6d5d3;border-top-color:var(--brand);border-radius:50%;margin:8px auto 16px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sk{height:16px;border-radius:8px;background:linear-gradient(90deg,#f3eceb 25%,#faf6f5 37%,#f3eceb 63%);background-size:400% 100%;animation:sk 1.3s ease infinite;margin:14px 0}
+@keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.err{font-size:12px;color:var(--mute);margin-top:10px;word-break:break-word}
+footer{text-align:center;color:var(--mute);font-size:12px;padding:0 20px calc(env(safe-area-inset-bottom,0px) + 20px)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><div class="brand"><img src="/icons/icon-192.png" alt=""><div><b>Budget</b><small>English Education · ตรวจสอบรายการ</small></div></div></header>
+<main><div id="out" class="card" aria-live="polite"></div></main>
+<footer>ข้อมูลนี้แสดงเฉพาะรายละเอียดที่เปิดเผยได้ ไม่รวมไฟล์หลักฐานและข้อมูลส่วนบุคคล</footer>
+</div>
+<script>
+const API='https://engedlru-api.stnetworld.workers.dev';
+const out=document.getElementById('out');
+const id=new URLSearchParams(location.search).get('id');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const ICON={
+ ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+ warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 17h.01"/><path d="M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+ bad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'};
+const STATUS={completed:'สำเร็จ',reversed:'ถูกยกเลิก'};
+function loading(){out.className='card';out.innerHTML='<div class="spin"></div><h1>กำลังตรวจสอบ…</h1><p class="sub">โปรดรอสักครู่</p><div class="sk"></div><div class="sk"></div><div class="sk"></div>'}
+function state(kind,title,sub,extra){out.className='card '+kind;out.innerHTML='<div class="badge">'+ICON[kind]+'</div><h1>'+esc(title)+'</h1><p class="sub">'+esc(sub)+'</p>'+(extra||'')}
+function retryBtn(){return '<button class="btn" onclick="run()">ลองใหม่</button>'}
+function fmtDate(d){try{return new Date(d).toLocaleString('th-TH',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return d||'-'}}
+function show(t,valid){
+ const inc=t.type==='income',don=/บริจาค/.test(t.category||'');
+ const rows=[['เลขที่รายการ',t.transactionId],['ประเภท',(don?'เงินบริจาค':inc?'เงินเข้า':'เงินออก')],['บัญชี',t.account],['หมวดหมู่',t.category],['วันที่-เวลา',fmtDate(t.createdAt)],['สถานะ',STATUS[t.status]||t.status]];
+ const kind=valid?'ok':'warn';
+ state(kind,valid?'รายการนี้ถูกต้อง':'รายการนี้ถูกยกเลิก',valid?'ตรวจสอบกับระบบ Budget เรียบร้อยแล้ว':'พบรายการนี้ในระบบ แต่ไม่ได้อยู่ในสถานะสำเร็จ',
+  '<div class="amount'+(inc?' in':'')+'">'+(inc?'+ ':'- ')+'฿'+money(t.amount)+'</div><span class="pill">'+esc(STATUS[t.status]||t.status)+'</span>'
+  +'<div class="list">'+rows.map(r=>'<div class="row"><span>'+r[0]+'</span><b>'+esc(r[1]||'-')+'</b></div>').join('')+'</div>'
+  +'<p class="note">ตรวจสอบเมื่อ '+esc(fmtDate(new Date().toISOString()))+'</p>')}
+async function run(){
+ if(!id){state('bad','ไม่พบเลขที่รายการ','ลิงก์นี้ไม่ถูกต้อง กรุณาสแกน QR จากใบรับรายการอีกครั้ง');return}
+ loading();
+ const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),12000);
+ try{
+  const r=await fetch(API+'/budget/verify/'+encodeURIComponent(id),{signal:ctl.signal});
+  let d=null;try{d=await r.json()}catch(e){}
+  if(r.status===404||(d&&d.valid===false&&!d.transaction)){state('bad','ไม่พบรายการนี้','ไม่พบเลขที่ '+id+' ในระบบ อาจพิมพ์ผิดหรือไม่ใช่รายการจริง');return}
+  if(!r.ok||!d){state('warn','ระบบตรวจสอบขัดข้อง','เซิร์ฟเวอร์ตอบกลับผิดปกติ (รหัส '+r.status+') ไม่ได้หมายความว่ารายการไม่ถูกต้อง',retryBtn());return}
+  show(d.transaction,d.valid)
+ }catch(e){
+  const timeout=e&&e.name==='AbortError';
+  state('warn',timeout?'ตอบกลับช้ากว่าปกติ':'เชื่อมต่อไม่ได้',timeout?'ระบบใช้เวลานานเกิน 12 วินาที กรุณาลองใหม่':'ตรวจสอบอินเทอร์เน็ตของคุณแล้วลองใหม่',retryBtn()+'<div class="err">'+esc(timeout?'timeout':(e&&e.message)||'')+'</div>')
+ }finally{clearTimeout(timer)}
+}
+run();
+</script>
+</body>
+</html>

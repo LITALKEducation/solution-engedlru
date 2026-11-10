@@ -242,11 +242,11 @@ async function saveReceiptImage(){
  try{await Promise.all([document.fonts.load('700 30px "Noto Sans Thai"'),document.fonts.load('400 26px "Noto Sans Thai"')])}catch(e){}
  const S=2,W=720,P=48,F='"Noto Sans Thai",system-ui,sans-serif',inc=r.type==='income';
  const c=document.createElement('canvas'),x=c.getContext('2d');
- const rows=[['Transaction ID',r.id],['บัญชี',r.account],['ประเภท',r.typeLabel],['วันที่',r.when],['รายละเอียด',r.details]];
+ const rows=[['Transaction ID',r.id],['บัญชี',r.account],['ประเภท',r.typeLabel],['วันที่',r.when]];
  x.font='400 26px '+F;const labelW=190,valW=W-P*2-labelW;
  const laid=rows.map(([k,v])=>({k,lines:wrapText(x,v,valW)}));
  const rowsH=laid.reduce((s,r)=>s+Math.max(1,r.lines.length)*38+22,0);
- const QR=260,H=170+120+rowsH+40+QR+130;
+ const QR=260,H=170+120+rowsH+40+QR+96;
  c.width=W*S;c.height=H*S;x.scale(S,S);
  x.fillStyle='#fff';x.fillRect(0,0,W,H);
  const g=x.createLinearGradient(0,0,W,170);g.addColorStop(0,'#e53935');g.addColorStop(1,'#b71c1c');x.fillStyle=g;x.fillRect(0,0,W,170);
@@ -260,7 +260,6 @@ async function saveReceiptImage(){
  const qc=document.createElement('canvas');const ok=drawQR(qc,r.url,QR*S);
  if(ok){x.imageSmoothingEnabled=false;x.drawImage(qc,(W-QR)/2,y,QR,QR);x.imageSmoothingEnabled=true}
  y+=QR+40;x.textAlign='center';x.fillStyle='#82787a';x.font='400 24px '+F;x.fillText('สแกน QR เพื่อตรวจสอบรายการ',W/2,y);
- x.font='400 18px '+F;x.fillText(r.url.replace(/^https?:\/\//,''),W/2,y+34);
  const blob=await new Promise(res=>c.toBlob(res,'image/png'));if(!blob)return toast('สร้างภาพไม่สำเร็จ',1);
  const file=new File([blob],'receipt-'+r.id+'.png',{type:'image/png'});
  const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
