@@ -5,6 +5,8 @@ export async function requireBudgetAuth(request,env){
  const user=auth.user,roles=await getAuth0Roles(env,user.sub),email=(user.email||"").toLowerCase();
  let row=await env.DB.prepare("SELECT * FROM budget_users WHERE auth0_user_id=? AND enabled=1").bind(user.sub).first();
  if(!row&&email)row=await env.DB.prepare("SELECT * FROM budget_users WHERE email=? AND enabled=1").bind(email).first();
+ if(row && row.student_id && email !== `sb${row.student_id}@lru.ac.th` && !roles.includes("budget_admin")) return {ok:false,response:json(request,env,{error:"อีเมลไม่ตรงกับรหัสนักศึกษาที่ได้รับสิทธิ์"},403)};
+ if(row && row.auth0_user_id !== user.sub) await env.DB.prepare("UPDATE budget_users SET auth0_user_id=?,updated_at=datetime('now') WHERE uuid=?").bind(user.sub,row.uuid).run();
  const isAdmin=roles.includes("budget_admin");
  if(!row&&!isAdmin)return {ok:false,response:json(request,env,{error:"บัญชีนี้ไม่ได้รับสิทธิ์ใช้งาน Budget"},403)};
  if(!row&&isAdmin){const uuid=crypto.randomUUID();await env.DB.prepare("INSERT INTO budget_users (uuid,auth0_user_id,email,display_name,enabled) VALUES (?,?,?,?,1)").bind(uuid,user.sub,email,user.name||user.nickname||email).run();row=await env.DB.prepare("SELECT * FROM budget_users WHERE uuid=?").bind(uuid).first();}
