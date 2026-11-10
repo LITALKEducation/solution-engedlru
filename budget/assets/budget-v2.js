@@ -222,7 +222,51 @@ function setPreview(){const f=$('evidence').files[0],box=$('preview');if(!f){box
  $('rmFile').onclick=()=>{$('evidence').value='';$('evidenceCam').value='';setPreview()}}
 $('evidence').addEventListener('change',()=>{$('evidenceCam').value='';setPreview()});
 $('evidenceCam').addEventListener('change',()=>{const f=$('evidenceCam').files[0];if(!f)return;const dt=new DataTransfer();dt.items.add(f);$('evidence').files=dt.files;setPreview()});
-function showReceipt(t,url){$('receiptBody').innerHTML='<p><b>Transaction ID:</b> '+esc(t.transactionId)+'</p><p><b>บัญชี:</b> '+esc((meta.accounts.find(a=>a.uuid===t.accountUuid)||{}).name||t.accountUuid)+'</p><p><b>ประเภท:</b> '+(t.type==='income'?'เงินเข้า':'เงินออก')+'</p><p><b>จำนวน:</b> ฿'+money(t.amount)+'</p><p><b>รายละเอียด:</b> '+esc(t.details)+'</p><p class="muted">UUID: '+esc(t.uuid)+'</p>';$('receipt').classList.remove('hidden');if(window.QRCode)QRCode.toCanvas($('qr'),url,{width:180,margin:1})}
+// QR: local generator (qrcode-generator) drawn onto a canvas
+function drawQR(canvas,text,size){
+ if(typeof qrcode!=='function')return false;
+ const q=qrcode(0,'M');q.addData(text);q.make();const n=q.getModuleCount(),quiet=2,cell=Math.max(1,Math.floor(size/(n+quiet*2))),px=cell*(n+quiet*2);
+ canvas.width=canvas.height=px;const x=canvas.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,px,px);x.fillStyle='#171212';
+ for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))x.fillRect((c+quiet)*cell,(r+quiet)*cell,cell,cell);
+ canvas.style.width=canvas.style.height=Math.min(px,size)+'px';return true}
+let lastReceipt=null;
+function showReceipt(t,url){
+ const acc=(meta.accounts.find(a=>a.uuid===t.accountUuid)||{}).name||t.accountUuid;
+ lastReceipt={id:t.transactionId,account:acc,typeLabel:t.type==='income'?'เงินเข้า':'เงินออก',type:t.type,amount:t.amount,details:t.details,when:new Date().toLocaleString('th-TH',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}),url};
+ $('receiptBody').innerHTML='<p><b>Transaction ID:</b> '+esc(t.transactionId)+'</p><p><b>บัญชี:</b> '+esc(acc)+'</p><p><b>ประเภท:</b> '+lastReceipt.typeLabel+'</p><p><b>จำนวน:</b> ฿'+money(t.amount)+'</p><p><b>รายละเอียด:</b> '+esc(t.details)+'</p><p class="muted">UUID: '+esc(t.uuid)+'</p>';
+ $('receipt').classList.remove('hidden');
+ try{if(!drawQR($('qr'),url,200))console.warn('QR library not loaded')}catch(e){console.error('QR failed',e)}}
+function wrapText(ctx,text,maxW){const out=[];String(text).split('\n').forEach(par=>{let line='';for(const ch of par){const t=line+ch;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=ch}else line=t}out.push(line)});return out}
+async function saveReceiptImage(){
+ const r=lastReceipt;if(!r)return;
+ try{await Promise.all([document.fonts.load('700 30px "Noto Sans Thai"'),document.fonts.load('400 26px "Noto Sans Thai"')])}catch(e){}
+ const S=2,W=720,P=48,F='"Noto Sans Thai",system-ui,sans-serif',inc=r.type==='income';
+ const c=document.createElement('canvas'),x=c.getContext('2d');
+ const rows=[['Transaction ID',r.id],['บัญชี',r.account],['ประเภท',r.typeLabel],['วันที่',r.when]];
+ x.font='400 26px '+F;const labelW=190,valW=W-P*2-labelW;
+ const laid=rows.map(([k,v])=>({k,lines:wrapText(x,v,valW)}));
+ const rowsH=laid.reduce((s,r)=>s+Math.max(1,r.lines.length)*38+22,0);
+ const QR=260,H=170+120+rowsH+40+QR+96;
+ c.width=W*S;c.height=H*S;x.scale(S,S);
+ x.fillStyle='#fff';x.fillRect(0,0,W,H);
+ const g=x.createLinearGradient(0,0,W,170);g.addColorStop(0,'#e53935');g.addColorStop(1,'#b71c1c');x.fillStyle=g;x.fillRect(0,0,W,170);
+ x.fillStyle='#fff';x.textBaseline='alphabetic';x.font='700 38px '+F;x.fillText('ใบรับรายการ',P,82);x.font='400 24px '+F;x.globalAlpha=.85;x.fillText('Budget · English Education',P,122);x.globalAlpha=1;
+ x.textAlign='center';x.fillStyle=inc?'#15803d':'#171212';x.font='800 64px '+F;x.fillText((inc?'+ ':'- ')+'฿'+money(r.amount),W/2,262);x.textAlign='left';
+ let y=300;
+ laid.forEach(row=>{x.strokeStyle='#efe6e5';x.lineWidth=2;x.beginPath();x.moveTo(P,y);x.lineTo(W-P,y);x.stroke();y+=44;
+  x.fillStyle='#82787a';x.font='400 26px '+F;x.fillText(row.k,P,y);x.fillStyle='#171212';x.font='600 26px '+F;
+  row.lines.forEach((ln,i)=>{x.fillText(ln,P+labelW,y+i*38)});y+=Math.max(0,row.lines.length-1)*38+16});
+ y+=26;
+ const qc=document.createElement('canvas');const ok=drawQR(qc,r.url,QR*S);
+ if(ok){x.imageSmoothingEnabled=false;x.drawImage(qc,(W-QR)/2,y,QR,QR);x.imageSmoothingEnabled=true}
+ y+=QR+40;x.textAlign='center';x.fillStyle='#82787a';x.font='400 24px '+F;x.fillText('สแกน QR เพื่อตรวจสอบรายการ',W/2,y);
+ const blob=await new Promise(res=>c.toBlob(res,'image/png'));if(!blob)return toast('สร้างภาพไม่สำเร็จ',1);
+ const file=new File([blob],'receipt-'+r.id+'.png',{type:'image/png'});
+ const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+ // iPhone can only save to Photos via the share sheet; elsewhere download directly.
+ if(IS_IOS&&canShare){try{await navigator.share({files:[file],title:'ใบรับรายการ '+r.id});return}catch(e){if(e&&e.name==='AbortError')return}}
+ try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('บันทึกภาพแล้ว');return}catch(e){}
+ if(canShare){try{await navigator.share({files:[file]})}catch(e){}}}
 function closeReceipt(){$('receipt').classList.add('hidden')}
 
 // ---- transactions list ----
