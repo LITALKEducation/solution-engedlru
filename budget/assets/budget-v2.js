@@ -92,7 +92,14 @@ function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).clas
 async function login(){try{loginMsg('');if(!auth0Client)throw new Error('ระบบเข้าสู่ระบบยังไม่พร้อม กรุณารีเฟรชหน้า');await auth0Client.loginWithRedirect()}catch(e){loginMsg(e.message)}}
 async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
 async function token(){return auth0Client.getTokenSilently()}
-async function api(path,opt={}){if(TEST)return mock(path,opt);const t=await token();opt.headers={...(opt.headers||{}),Authorization:'Bearer '+t};return fetch(API+path,opt)}
+async function api(path,opt={}){
+ if(TEST)return mock(path,opt);
+ const go=async fresh=>{const t=fresh?await auth0Client.getTokenSilently({cacheMode:'off'}):await token();return fetch(API+path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}})};
+ let r=await go(false);
+ if(r.status===401){ // token rejected: ask Auth0 for a fresh one once, then give up and ask the user to sign in again
+  try{r=await go(true)}catch(e){}
+  if(!r||r.status===401){loginMsg('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');show('login')}}
+ return r}
 
 // ---- helpers ----
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;

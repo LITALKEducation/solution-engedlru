@@ -18,22 +18,62 @@ function auth0ManagementDomain(env) {
   return normalizeDomain(env.AUTH0_MANAGEMENT_API_DOMAIN, "AUTH0_MANAGEMENT_API_DOMAIN");
 }
 
+// Auth0 rate-limits /userinfo, the M2M token endpoint and the Management API. The Budget app fires several
+// requests at once (dashboard, meta, notifications, ...), so cache per isolate and share in-flight calls.
+const USER_TTL = 30_000, ROLES_TTL = 60_000;
+const userCache = new Map(), rolesCache = new Map();
+let mgmtToken = null; // { token, exp, promise }
+function remember(map, key, ttl, promise, ok) {
+  map.set(key, { exp: Date.now() + ttl, promise });
+  if (map.size > 300) for (const [k, v] of map) if (v.exp < Date.now()) map.delete(k);
+  promise.then((v) => { if (!ok(v)) map.delete(key); }, () => map.delete(key));
+  return promise;
+}
+
+// Returns { user, status }: user=null with status 401/403 means a bad/expired token; 429, 5xx or 0 (network)
+// means Auth0 itself was unavailable and the caller should NOT treat the session as invalid.
+export async function getAuth0UserEx(env, accessToken) {
+  if (!accessToken) return { user: null, status: 401 };
+  const hit = userCache.get(accessToken);
+  if (hit && hit.exp > Date.now()) return hit.promise;
+  const promise = (async () => {
+    try {
+      const res = await fetch(`https://${auth0Domain(env)}/userinfo`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!res.ok) return { user: null, status: res.status };
+      return { user: await res.json(), status: 200 };
+    } catch (e) {
+      console.error("[auth0] userinfo failed:", e?.message || e);
+      return { user: null, status: 0 };
+    }
+  })();
+  return remember(userCache, accessToken, USER_TTL, promise, (v) => !!v.user);
+}
+
 export async function getAuth0User(env, accessToken) {
-  if (!accessToken) return null;
-  const res = await fetch(`https://${auth0Domain(env)}/userinfo`, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!res.ok) return null;
-  return res.json();
+  return (await getAuth0UserEx(env, accessToken)).user;
 }
 
 export async function getAuth0UserFromRequest(request, env) {
   const h = request.headers.get('Authorization') || '';
   if (!h.startsWith('Bearer ')) return { user:null, response:new Response(JSON.stringify({error:'Missing Authorization'}), {status:401,headers:{'Content-Type':'application/json'}}) };
-  const user = await getAuth0User(env, h.slice(7));
-  if (!user) return { user:null, response:new Response(JSON.stringify({error:'Invalid or expired access token'}), {status:401,headers:{'Content-Type':'application/json'}}) };
+  const { user, status } = await getAuth0UserEx(env, h.slice(7));
+  if (!user) {
+    const unavailable = status === 429 || status >= 500 || status === 0;
+    return { user:null, unavailable, response:new Response(JSON.stringify({error: unavailable ? 'ระบบยืนยันตัวตน (Auth0) ไม่ว่างชั่วคราว กรุณาลองใหม่อีกครั้ง' : 'Invalid or expired access token'}), {status: unavailable ? 503 : 401,headers:{'Content-Type':'application/json'}}) };
+  }
   return { user, response:null };
 }
 
 export async function getManagementToken(env) {
+  if (mgmtToken && mgmtToken.exp > Date.now() + 60_000) return mgmtToken.token;
+  if (mgmtToken && mgmtToken.promise) return mgmtToken.promise;
+  const promise = fetchManagementToken(env).then((t) => { mgmtToken = { token: t.token, exp: Date.now() + t.ttl * 1000 }; return t.token; },
+    (e) => { mgmtToken = null; throw e; });
+  mgmtToken = { token: null, exp: 0, promise };
+  return promise;
+}
+
+async function fetchManagementToken(env) {
   const domain = auth0ManagementDomain(env);
   const audience = String(env.AUTH0_MANAGEMENT_API_AUDIENCE || "").trim();
   if (!audience) throw new Error("AUTH0_MANAGEMENT_API_AUDIENCE is not configured");
@@ -59,11 +99,17 @@ export async function getManagementToken(env) {
   }
   const data = await res.json();
   if (!data.access_token) throw new Error("Auth0 Management API did not return an access_token");
-  return data.access_token;
+  return { token: data.access_token, ttl: Math.max(120, Number(data.expires_in) || 3600) };
 }
 
 export async function getAuth0Roles(env, userId) {
   if (!userId) throw new Error("Auth0 user ID is missing");
+  const hit = rolesCache.get(userId);
+  if (hit && hit.exp > Date.now()) return hit.promise;
+  return remember(rolesCache, userId, ROLES_TTL, fetchAuth0Roles(env, userId), () => true);
+}
+
+async function fetchAuth0Roles(env, userId) {
   const domain = auth0ManagementDomain(env);
   const token = await getManagementToken(env);
   const url = `https://${domain}/api/v2/users/${encodeURIComponent(userId)}/roles?per_page=100&page=0`;
