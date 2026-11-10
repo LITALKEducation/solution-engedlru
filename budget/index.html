@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Budget · English Education</title>
+<link rel="icon" href="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/budget-v2.css">
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js" defer></script>
+</head>
+<body>
+<div id="loading" class="center"><div class="spinner"></div><b>กำลังตรวจสอบสิทธิ์…</b></div>
+<div id="login" class="center hidden"><div class="card auth-card"><div class="eyebrow">Budget Management</div><h1>บริหารงบประมาณ</h1><p>เข้าสู่ระบบด้วยบัญชี Auth0 ที่ได้รับอนุญาต</p><button class="primary" onclick="login()">เข้าสู่ระบบ</button></div></div>
+<div id="denied" class="center hidden"><div class="card auth-card"><div class="eyebrow">Access denied</div><h1>ไม่มีสิทธิ์เข้าใช้งาน</h1><p id="deniedText">บัญชีนี้ไม่ได้รับสิทธิ์ในระบบ Budget</p><button class="secondary" onclick="logout()">ออกจากระบบ</button></div></div>
+<div id="app" class="hidden">
+<header><div><strong>Budget</strong><span> · English Education</span></div><div class="user"><span id="userName"></span><button class="secondary small" onclick="logout()">ออกจากระบบ</button></div></header>
+<nav><button data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button><button data-page="transaction" onclick="showPage('transaction')">Transaction</button><button data-page="audit" onclick="showPage('audit')">Account Transactions</button><button id="adminNav" data-page="admin" onclick="showPage('admin')" class="hidden">Admin</button></nav>
+<main>
+<section id="page-dashboard" class="page"><div class="page-head"><div><div class="eyebrow">Overview</div><h1>Dashboard</h1></div><button class="secondary" onclick="loadDashboard()">รีเฟรช</button></div><div id="summary" class="stats"></div><div class="grid-2"><div class="card"><h2>ยอดคงเหลือรายบัญชี</h2><div id="accounts"></div></div><div class="card"><h2>5 รายการล่าสุด</h2><div id="recent"></div></div></div></section>
+<section id="page-transaction" class="page hidden"><div class="page-head"><div><div class="eyebrow">New transaction</div><h1>บันทึกรายการ</h1></div></div><form id="txForm" class="card form-grid"><label>บัญชี<select id="account" required></select></label><label>ประเภท<select id="type" required><option value="expense">เงินออก</option><option value="income">เงินเข้า</option></select></label><label>หมวดหมู่<select id="category" required></select></label><label>จำนวนเงิน (บาท)<input id="amount" type="number" min="0.01" step="0.01" required></label><label class="wide">รายละเอียด<input id="details" maxlength="4000" required placeholder="อธิบายรายการอย่างละเอียด"></label><label class="wide">หมายเหตุ (ถ้ามี)<textarea id="note" maxlength="1000"></textarea></label><label class="wide file"><span>หลักฐาน / ใบเสร็จ <b>* บังคับ</b></span><input id="evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required><small>JPG, PNG, WebP หรือ PDF · ไม่เกิน 10 MB</small></label><div class="wide actions"><button class="primary" type="submit" id="saveBtn">บันทึกรายการ</button><span id="txStatus"></span></div></form></section>
+<section id="page-audit" class="page hidden"><div class="page-head"><div><div class="eyebrow">Audit & Report</div><h1>รายการบัญชี</h1></div><div class="actions"><button class="secondary" onclick="exportExcel()">Excel</button><button class="primary" onclick="exportPdf()">PDF</button></div></div><div class="card filters"><input id="from" type="date"><input id="to" type="date"><select id="filterAccount"></select><select id="filterType"><option value="">ทุกประเภท</option><option value="income">เงินเข้า</option><option value="expense">เงินออก</option></select><button class="secondary" onclick="loadReport()">ค้นหา</button></div><div class="card table-wrap"><table><thead><tr><th>Transaction ID</th><th>บัญชี</th><th>ประเภท</th><th>หมวด</th><th>จำนวน</th><th>รายละเอียด</th><th>ผู้บันทึก</th><th>วันที่</th><th>หลักฐาน</th></tr></thead><tbody id="reportRows"></tbody></table></div></section>
+<section id="page-admin" class="page hidden"><div class="page-head"><div><div class="eyebrow">Administration</div><h1>ตั้งค่าระบบ</h1></div></div><div class="grid-2"><form id="accountForm" class="card"><h2>เพิ่มบัญชี</h2><input id="newAccount" required placeholder="ชื่อบัญชี"><input id="accountDesc" placeholder="รายละเอียด"><button class="primary">เพิ่มบัญชี</button></form><form id="categoryForm" class="card"><h2>เพิ่มหมวดหมู่</h2><input id="newCategory" required placeholder="ชื่อหมวดหมู่"><select id="newCategoryType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select><button class="primary">เพิ่มหมวดหมู่</button></form></div><form id="userForm" class="card"><h2>เปิดสิทธิ์ผู้ใช้</h2><div class="form-grid"><input id="newUserEmail" type="email" required placeholder="อีเมล"><input id="newStudentId" placeholder="รหัสนักศึกษา"><input id="newUserName" placeholder="ชื่อ"><select id="newUserAccount" multiple></select><button class="primary wide">เปิดสิทธิ์</button></div></form><div class="card"><h2>ผู้ใช้ที่เปิดสิทธิ์</h2><div id="users"></div></div></section>
+</main></div>
+<div id="receipt" class="modal hidden"><div class="modal-card"><button class="close" onclick="closeReceipt()">×</button><div class="eyebrow">Transaction Receipt</div><h2>บันทึกรายการสำเร็จ</h2><div id="receiptBody"></div><canvas id="qr"></canvas><p class="muted">สแกน QR เพื่อตรวจสอบรายการ</p><button class="primary" onclick="window.print()">พิมพ์ใบรับรายการ</button></div></div>
+<script src="assets/budget-v2.js"></script>
+</body></html>
