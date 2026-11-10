@@ -1,4 +1,4 @@
-import { json } from "../lib/cors.js";
+import { json, corsHeaders } from "../lib/cors.js";
 import { requireBudgetAuth, canAccessAccount } from "../lib/budget-auth.js";
 import { putFile } from "../lib/files.js";
 import { sendPush, pushConfigured } from "../lib/webpush.js";
@@ -160,7 +160,8 @@ async function getEvidence(request,env,auth,uuid) {
   if(!row)return fail(request,env,"ไม่พบหลักฐาน",404);
   if(!canAccessAccount(auth,(await env.DB.prepare("SELECT account_uuid FROM budget_transactions WHERE uuid=?").bind(uuid).first())?.account_uuid))return fail(request,env,"Forbidden",403);
   const obj=await env.FILES.get(row.r2_key); if(!obj)return fail(request,env,"ไม่พบไฟล์",404);
-  return new Response(obj.body,{headers:{"Content-Type":row.mime_type,"Content-Disposition":`inline; filename="${row.file_name.replace(/["\\\r\n]/g, "_")}"`,"Cache-Control":"private, no-store"}});
+  // Must carry CORS headers: the app (another origin) reads this response with fetch() and shows it from a blob.
+  return new Response(obj.body,{headers:{...corsHeaders(request,env),"Content-Type":row.mime_type,"Content-Disposition":`inline; filename="${row.file_name.replace(/["\\\r\n]/g, "_")}"`,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 }
 
 

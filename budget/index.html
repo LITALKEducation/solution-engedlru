@@ -15,9 +15,9 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/budget-v2.css?v=15">
+<link rel="stylesheet" href="/assets/budget-v2.css?v=16">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
-<script src="/assets/vendor/qrcode.js?v=15" defer></script>
+<script src="/assets/vendor/qrcode.js?v=16" defer></script>
 </head>
 <body>
 <div id="loading" class="splash"><img class="pulse" src="/icons/icon-192.png" alt=""><b>Budget</b><div class="bar"><i></i></div><small>กำลังตรวจสอบสิทธิ์…</small>
@@ -147,6 +147,7 @@
 
 <div id="receipt" class="modal hidden" onclick="if(event.target===this)closeReceipt()"><div class="modal-card"><button class="close" onclick="closeReceipt()" aria-label="ปิด">×</button><div class="check-wrap"><span class="t-success-check" data-state="out" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" width="72" height="72"><circle cx="24" cy="24" r="23" fill="#dcfce7"/><path d="M14 25l7 7 14-15" stroke="#15803d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><h2>บันทึกรายการสำเร็จ</h2><div id="receiptBody"></div><canvas id="qr"></canvas><p class="muted">สแกน QR เพื่อตรวจสอบรายการ</p><div class="modal-actions"><button class="secondary" onclick="saveReceiptImage()">บันทึกภาพ</button><button class="cta" onclick="closeReceipt();showPage('dashboard')">เสร็จสิ้น</button></div></div></div>
 <div id="detail" class="modal hidden" onclick="if(event.target===this)closeDetail()"><div class="modal-card sheet"><button class="close" onclick="closeDetail()" aria-label="ปิด">×</button><div id="detailBody"></div></div></div>
+<div id="evid" class="modal hidden" onclick="if(event.target===this)closeEvidence()"><div class="modal-card sheet"><button class="close" onclick="closeEvidence()" aria-label="ปิด">×</button><h2>หลักฐาน / สลิป</h2><div id="evBody" class="ev-body"></div><div id="evActions" class="modal-actions hidden"><a id="evOpen" class="secondary btnlink" target="_blank" rel="noopener">เปิดเต็มจอ</a><a id="evSave" class="cta btnlink" download="evidence">บันทึกไฟล์</a></div></div></div>
 <div id="menu" class="modal hidden" onclick="if(event.target===this)closeMenu()"><div class="modal-card sheet"><button class="close" onclick="closeMenu()" aria-label="ปิด">×</button><div class="me"><span class="av big" id="menuAv">?</span><div><b id="userName"></b><small id="menuEmail"></small><span class="role" id="menuRole"></span></div></div><button class="secondary block" onclick="logout()">ออกจากระบบ</button></div></div>
 <div id="notif" class="modal hidden" onclick="if(event.target===this)closeNotifs()"><div class="modal-card sheet"><button class="close" onclick="closeNotifs()" aria-label="ปิด">×</button><h2>การแจ้งเตือน</h2><div id="pushBox" class="push-box"></div><div id="notifList" class="notif-list"></div></div></div>
 <div id="addAccount" class="modal hidden" onclick="if(event.target===this)hideModal('addAccount')"><div class="modal-card sheet"><button class="close" onclick="hideModal('addAccount')" aria-label="ปิด">×</button><h2>เพิ่มบัญชี</h2>
@@ -158,5 +159,5 @@
 <div id="catEdit" class="modal hidden" onclick="if(event.target===this)hideModal('catEdit')"><div class="modal-card sheet"><button class="close" onclick="hideModal('catEdit')" aria-label="ปิด">×</button><h2>แก้ไขหมวดหมู่</h2>
 <form id="catEditForm" class="form-grid"><input type="hidden" id="catEditId"><div class="t-input-wrap"><label>ชื่อหมวดหมู่<input class="t-input" id="catEditName" required maxlength="120"></label><div class="t-error-msg"></div></div><label>ประเภท<select id="catEditType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select></label><small>รายการเดิมจะแสดงชื่อใหม่ทันที ประเภทเปลี่ยนไม่ได้ถ้ามีรายการเดิมคนละประเภท</small><button class="cta" type="submit" id="catEditSave">บันทึก</button></form></div></div>
 <div id="toast" class="t-toast" role="status" aria-live="polite"></div>
-<script src="/assets/budget-v2.js?v=15"></script>
+<script src="/assets/budget-v2.js?v=16"></script>
 </body></html>

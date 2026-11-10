@@ -23,7 +23,7 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
  const dons=[{uuid:'d2',transaction_uuid:'t2',transaction_id:'DEMO-D2',account_name:'บัญชีธนาคาร',donor_name:'คุณสมชาย ใจดี',method:'promptpay',amount:1000,donated_at:'2026-11-08',note:'สนับสนุนโครงการ',evidence_uuid:'e',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ'},{uuid:'d1',transaction_uuid:'t1',transaction_id:'DEMO-D1',account_name:'เงินสดชมรม',donor_name:'ไม่ประสงค์ออกนาม',method:'cash',amount:500,donated_at:'2026-11-05',note:'',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ'}];
  const notifs=[{uuid:'n2',kind:'donation',transaction_id:'DEMO-0003',type:'income',amount:20000,account_name:'บัญชีธนาคาร',title:'บริจาคใหม่ ฿20,000.00',body:'ผู้ช่วย · บัญชีธนาคาร · บริจาคโดย คุณสมชาย ใจดี (PromptPay)',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-36e5).toISOString(),unread:true},{uuid:'n1',kind:'transaction',transaction_id:'DEMO-0002',type:'expense',amount:850.5,account_name:'เงินสดชมรม',title:'เงินออก ฿850.50',body:'ผู้ช่วย · เงินสดชมรม · ซื้อกระดาษ A4 และปากกา',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-2*864e5).toISOString(),unread:true}];
  const users=[{email:'demo@example.com',display_name:'ผู้ทดสอบ',student_id:'0000000',enabled:true},{email:'helper@example.com',display_name:'ผู้ช่วย',student_id:'6401234',enabled:true}];
- const res=o=>({ok:true,status:200,json:async()=>o,blob:async()=>new Blob(['demo evidence'],{type:'text/plain'})});
+ const res=o=>({ok:true,status:200,json:async()=>o,blob:async()=>new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#faf3f2"/><text x="300" y="190" font-size="34" text-anchor="middle" fill="#d32f2f" font-family="sans-serif">Demo receipt</text><text x="300" y="240" font-size="20" text-anchor="middle" fill="#82787a" font-family="sans-serif">sample evidence image</text></svg>'],{type:'image/svg+xml'})});
  return async(path,opt={})=>{const u=path.split('?')[0],post=(opt.method||'GET')==='POST';
   if(u==='/budget/meta')return res({accounts:accs,categories:cats.filter(c=>c.active!==0)});
    if(u==='/budget/admin/categories'&&!post)return res({categories:cats.map(c=>({...c,active:c.active===0?0:1,uses:txs.filter(t=>t.category===c.name).length}))});
@@ -306,7 +306,21 @@ $('repSearch').addEventListener('input',e=>{repQ=e.target.value;renderReport()})
 $('filtBtn').addEventListener('click',()=>$('filterPanel').classList.toggle('hidden'));
 $('repChips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;repType=b.dataset.v;document.querySelectorAll('#repChips .chip').forEach(x=>x.classList.toggle('on',x===b));renderReport()});
 
-async function openEvidence(uuid){const w=window.open('','_blank');const r=await api('/budget/transactions/'+encodeURIComponent(uuid)+'/evidence');if(!r.ok){if(w)w.close();return toast('ไม่สามารถเปิดหลักฐานได้',1)}const u=URL.createObjectURL(await r.blob());if(w)w.location=u;else location.href=u}
+let evUrl=null;
+function closeEvidence(){hideModal('evid');setTimeout(()=>{if(evUrl){URL.revokeObjectURL(evUrl);evUrl=null}$('evBody').innerHTML=''},400)}
+async function openEvidence(uuid){
+ const body=$('evBody'),acts=$('evActions');
+ body.innerHTML='<div class="skeleton" style="height:260px;border-radius:20px"></div>';acts.classList.add('hidden');openModal('evid');
+ const fail=m=>{body.innerHTML=failBox(m,"openEvidence('"+String(uuid).replace(/'/g,'')+"')")};
+ let r;try{r=await api('/budget/transactions/'+encodeURIComponent(uuid)+'/evidence')}catch(e){return fail('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้')}
+ if(!r.ok)return fail(await errMsg(r));
+ let blob;try{blob=await r.blob()}catch(e){return fail('อ่านไฟล์หลักฐานไม่สำเร็จ')}
+ if(evUrl)URL.revokeObjectURL(evUrl);evUrl=URL.createObjectURL(blob);
+ const t=(blob.type||'').toLowerCase(),ext=t==='application/pdf'?'pdf':(t.split('/')[1]||'bin').replace('jpeg','jpg').replace(/\+.*/,'');
+ body.innerHTML=t.startsWith('image/')?'<img class="ev-img" alt="หลักฐาน" src="'+evUrl+'">'
+  :t==='application/pdf'?'<iframe class="ev-pdf" title="หลักฐาน" src="'+evUrl+'"></iframe><p class="muted" style="text-align:center">ถ้าไม่แสดง ให้กด “เปิดเต็มจอ” หรือ “บันทึกไฟล์”</p>'
+  :'<p class="muted" style="text-align:center">ไฟล์ชนิดนี้แสดงในแอปไม่ได้ กด “บันทึกไฟล์” เพื่อเปิดดู</p>';
+ $('evOpen').href=evUrl;$('evSave').href=evUrl;$('evSave').download='evidence-'+Date.now()+'.'+ext;acts.classList.remove('hidden')}
 async function exportExcel(){try{await needXlsx()}catch(e){return toast(e.message,1)}if(!reportRows.length)await loadReport();const rows=reportRows.map(x=>({'Transaction ID':x.transaction_id,'Transaction UUID':x.transaction_uuid,'Account UUID':x.account_uuid,'Account':x.account_name,'Date':x.created_at,'Type':x.is_donation?'donation':x.type,'Category':x.category,'Amount':x.amount,'Details':x.details,'Note':x.note||'','Created By':x.created_by_name||x.created_by_email,'Created By Email':x.created_by_email,'Status':x.status}));const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,'Transactions');XLSX.writeFile(wb,'budget-report-'+new Date().toISOString().slice(0,10)+'.xlsx')}
 let _thFonts;
 async function loadThaiFonts(doc){
