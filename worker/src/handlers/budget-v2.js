@@ -15,6 +15,8 @@ async function audit(env, auth, action, entityType, entityUuid, metadata={}) {
   ).bind(crypto.randomUUID(), auth.user.sub, auth.user.email || auth.row.email, action, entityType, entityUuid || null, JSON.stringify(metadata)).run();
 }
 
+function who(auth){return clean(auth.user.name||auth.user.nickname||auth.user.email||auth.row.email,200);}
+
 function txId() {
   const d = new Date();
   const date = d.toISOString().slice(0,10).replaceAll("-","");
@@ -35,8 +37,8 @@ async function dashboard(request, env, auth) {
     GROUP BY a.uuid ORDER BY a.name
   `).all();
   const recentSql = auth.isAdmin
-    ? `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid ORDER BY t.created_at DESC LIMIT 5`
-    : `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?) ORDER BY t.created_at DESC LIMIT 5`;
+    ? `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,COALESCE(NULLIF(t.created_by_name,''),(SELECT u.display_name FROM budget_users u WHERE u.email=t.created_by_email AND u.display_name<>''),t.created_by_email) created_by_name,t.created_at,t.status,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid ORDER BY t.created_at DESC LIMIT 5`
+    : `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,COALESCE(NULLIF(t.created_by_name,''),(SELECT u.display_name FROM budget_users u WHERE u.email=t.created_by_email AND u.display_name<>''),t.created_by_email) created_by_name,t.created_at,t.status,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?) ORDER BY t.created_at DESC LIMIT 5`;
   const recent = auth.isAdmin ? await env.DB.prepare(recentSql).all() : await env.DB.prepare(recentSql).bind(auth.row.uuid).all();
   const all = (accounts.results || []).filter(x => auth.isAdmin || auth.accessibleAccounts.includes(x.uuid));
   return json(request, env, {
@@ -60,7 +62,7 @@ async function listTransactions(request, env, auth, url) {
   if(to){where.push("date(t.created_at)<=date(?)");params.push(to);}
   const allowed=auth.isAdmin ? "" : " AND t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?)";
   if(!auth.isAdmin) params.push(auth.row.uuid);
-  const sql=`SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.created_at,t.status,t.reversal_of_uuid,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation,
+  const sql=`SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,COALESCE(NULLIF(t.created_by_name,''),(SELECT u.display_name FROM budget_users u WHERE u.email=t.created_by_email AND u.display_name<>''),t.created_by_email) created_by_name,t.created_at,t.status,t.reversal_of_uuid,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation,
     (SELECT f.uuid FROM budget_transaction_files f WHERE f.transaction_uuid=t.uuid LIMIT 1) evidence_uuid
     FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid
     WHERE ${where.join(" AND ")} ${allowed} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`;
@@ -93,8 +95,8 @@ async function createTransaction(request, env, auth) {
   try {
     const fileUuid=crypto.randomUUID();
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-        .bind(uuid,id,accountUuid,type,categoryUuid,value,details,note,auth.user.sub,auth.user.email||auth.row.email,now),
+      env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_by_name,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+        .bind(uuid,id,accountUuid,type,categoryUuid,value,details,note,auth.user.sub,auth.user.email||auth.row.email,who(auth),now),
       env.DB.prepare("INSERT INTO budget_transaction_files (uuid,transaction_uuid,r2_key,file_name,mime_type,file_size,uploaded_by_auth0_id) VALUES (?,?,?,?,?,?,?)")
         .bind(fileUuid,uuid,key,safeName,mime,bytes.byteLength,auth.user.sub),
       env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
@@ -169,7 +171,7 @@ async function adminUsers(request,env,auth){
 async function report(request,env,auth,url){
  const from=url.searchParams.get("from"),to=url.searchParams.get("to");
  const p=[];const w=["1=1"];if(from){w.push("date(t.created_at)>=date(?)");p.push(from);}if(to){w.push("date(t.created_at)<=date(?)");p.push(to);}if(!auth.isAdmin){w.push("t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?)");p.push(auth.row.uuid);}
- const x=await env.DB.prepare(`SELECT t.transaction_id,t.uuid transaction_uuid,t.account_uuid,a.name account_name,t.created_at,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.status,t.reversal_of_uuid,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE ${w.join(" AND ")} ORDER BY t.created_at DESC LIMIT 5000`).bind(...p).all();
+ const x=await env.DB.prepare(`SELECT t.transaction_id,t.uuid transaction_uuid,t.account_uuid,a.name account_name,t.created_at,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,COALESCE(NULLIF(t.created_by_name,''),(SELECT u.display_name FROM budget_users u WHERE u.email=t.created_by_email AND u.display_name<>''),t.created_by_email) created_by_name,t.status,t.reversal_of_uuid,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE ${w.join(" AND ")} ORDER BY t.created_at DESC LIMIT 5000`).bind(...p).all();
  await audit(env,auth,"REPORT_EXPORTED","report",null,{count:(x.results||[]).length,from,to});
  return json(request,env,{transactions:x.results||[]});
 }
@@ -191,7 +193,7 @@ async function listDonations(request,env,auth,url){
   if(to){w.push("date(d.donated_at)<=date(?)");p.push(to);}
   if(DONATION_METHODS.includes(method)){w.push("d.method=?");p.push(method);}
   if(!auth.isAdmin){w.push("d.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?)");p.push(auth.row.uuid);}
-  const x=await env.DB.prepare(`SELECT d.uuid,d.transaction_uuid,t.transaction_id,d.account_uuid,a.name account_name,d.donor_name,d.donor_contact,d.anonymous,d.method,d.amount,d.donated_at,d.note,d.created_by_email,d.created_at,
+  const x=await env.DB.prepare(`SELECT d.uuid,d.transaction_uuid,t.transaction_id,d.account_uuid,a.name account_name,d.donor_name,d.donor_contact,d.anonymous,d.method,d.amount,d.donated_at,d.note,d.created_by_email,COALESCE(NULLIF(d.created_by_name,''),(SELECT u.display_name FROM budget_users u WHERE u.email=d.created_by_email AND u.display_name<>''),d.created_by_email) created_by_name,d.created_at,
     (SELECT f.uuid FROM budget_transaction_files f WHERE f.transaction_uuid=d.transaction_uuid LIMIT 1) evidence_uuid
     FROM budget_donations d JOIN budget_accounts a ON a.uuid=d.account_uuid JOIN budget_transactions t ON t.uuid=d.transaction_uuid
     WHERE ${w.join(" AND ")} ORDER BY d.donated_at DESC, d.created_at DESC LIMIT 2000`).bind(...p).all();
@@ -232,10 +234,10 @@ async function createDonation(request,env,auth){
   if(hasFile)await putFile(env,key,bytes,mime);
   try{
     const stmts=[
-      env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_at) VALUES (?,?,?,'income',?,?,?,?,?,?,?)")
-        .bind(txUuid,id,accountUuid,category.uuid,value,details,note,auth.user.sub,email,now),
-      env.DB.prepare("INSERT INTO budget_donations (uuid,transaction_uuid,account_uuid,donor_name,donor_contact,anonymous,method,amount,donated_at,note,created_by_email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
-        .bind(donationUuid,txUuid,accountUuid,donorName,contact,anonymous?1:0,method,value,donatedAt,note,email,now),
+      env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_by_name,created_at) VALUES (?,?,?,'income',?,?,?,?,?,?,?,?)")
+        .bind(txUuid,id,accountUuid,category.uuid,value,details,note,auth.user.sub,email,who(auth),now),
+      env.DB.prepare("INSERT INTO budget_donations (uuid,transaction_uuid,account_uuid,donor_name,donor_contact,anonymous,method,amount,donated_at,note,created_by_email,created_by_name,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
+        .bind(donationUuid,txUuid,accountUuid,donorName,contact,anonymous?1:0,method,value,donatedAt,note,email,who(auth),now),
       env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
         .bind(crypto.randomUUID(),auth.user.sub,email,"DONATION_CREATED","donation",donationUuid,JSON.stringify({transaction_id:id,account_uuid:accountUuid,method,amount:value}))
     ];
