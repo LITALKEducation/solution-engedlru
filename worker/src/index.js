@@ -51,7 +51,7 @@ async function health(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return handleOptions(request, env);
 
     const url = new URL(request.url);
@@ -87,8 +87,8 @@ export default {
         return json(request, env, { error: "Unknown action" }, 400);
       }
 
-      if (pathname.startsWith("/budget/verify/")) return await budgetV2(request, env, url);
-      if (pathname.startsWith("/budget/") && pathname !== "/budget/") return await budgetV2(request, env, url);
+      if (pathname.startsWith("/budget/verify/")) return await budgetV2(request, env, url, ctx);
+      if (pathname.startsWith("/budget/") && pathname !== "/budget/") return await budgetV2(request, env, url, ctx);
 
       if (pathname === "/profile" && request.method === "POST") {
         return await postProfile(request, env);

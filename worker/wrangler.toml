@@ -8,6 +8,9 @@ ALLOWED_ORIGINS = "https://enged.sorasukt.com,https://solution.litalkeducation.c
 AUTH0_DOMAIN = "auth.litalkeducation.com"
 AUTH0_MANAGEMENT_API_DOMAIN = "litalkeducation.us.auth0.com"
 AUTH0_MANAGEMENT_API_AUDIENCE = "https://litalkeducation.us.auth0.com/api/v2/"
+# Web Push for admin notifications (generate keys: node scripts/generate-vapid.mjs)
+VAPID_PUBLIC_KEY = "BDIq-lFwawzx31tAZpAeIDVpih-pzO4hJ0eH69VxUlodom_d89rCyvXx7VMQdyZg5AikteBANHdIjlqNkLuWmg4"
+VAPID_SUBJECT = "mailto:admin@litalkeducation.com"
 # Budget access is controlled by Auth0 role budget_admin and budget_users in D1.
 
 # ── D1 Database ──
@@ -28,3 +31,4 @@ bucket_name = "engedlru-files"
 # Secrets ที่ต้องตั้งด้วย `wrangler secret put <ชื่อ>` (ห้ามใส่ในไฟล์นี้):
 #   AUTH0_M2M_CLIENT_ID
 #   AUTH0_M2M_CLIENT_SECRET
+#   VAPID_PRIVATE_KEY   (Web Push, from scripts/generate-vapid.mjs)

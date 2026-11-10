@@ -2,31 +2,132 @@
 <html lang="th">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Budget">
 <title>Budget · English Education</title>
-<link rel="icon" href="https://s3.ap-southeast-1.amazonaws.com/files.stnetradio.com/logo/ENGEDLOGO.ico">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/budget-v2.css">
+<link rel="stylesheet" href="/assets/budget-v2.css">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js" defer></script>
 </head>
 <body>
 <div id="loading" class="center"><div class="spinner"></div><b>กำลังตรวจสอบสิทธิ์…</b></div>
-<div id="login" class="center hidden"><div class="card auth-card"><div class="eyebrow">Budget Management</div><h1>บริหารงบประมาณ</h1><p>เข้าสู่ระบบด้วยบัญชี Auth0 ที่ได้รับอนุญาต</p><button class="primary" onclick="login()">เข้าสู่ระบบ</button></div></div>
+<div id="login" class="center hidden"><div class="card auth-card"><img class="logo" src="/icons/icon-192.png" alt=""><div class="eyebrow">Budget Management</div><h1>บริหารงบประมาณ</h1><p>เข้าสู่ระบบด้วยบัญชี Auth0 ที่ได้รับอนุญาต</p><button class="cta" onclick="login()">เข้าสู่ระบบ</button></div></div>
 <div id="denied" class="center hidden"><div class="card auth-card"><div class="eyebrow">Access denied</div><h1>ไม่มีสิทธิ์เข้าใช้งาน</h1><p id="deniedText">บัญชีนี้ไม่ได้รับสิทธิ์ในระบบ Budget</p><button class="secondary" onclick="logout()">ออกจากระบบ</button></div></div>
+
 <div id="app" class="hidden">
-<header><div><strong>Budget</strong><span> · English Education</span></div><div class="user"><span id="userName"></span><button class="secondary small" onclick="logout()">ออกจากระบบ</button></div></header>
-<nav><button data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button><button data-page="transaction" onclick="showPage('transaction')">Transaction</button><button data-page="audit" onclick="showPage('audit')">Account Transactions</button><button id="adminNav" data-page="admin" onclick="showPage('admin')" class="hidden">Admin</button></nav>
+<header class="topbar"><button id="topLeft" class="round" onclick="topLeft()" aria-label="เมนู"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg></button><h1 id="pageTitle">บัญชีของฉัน</h1><button id="bellBtn" class="round bell hidden" onclick="openNotifs()" aria-label="การแจ้งเตือน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><i id="bellBadge" class="badge hidden">0</i></button></header>
+<div id="testBanner" class="hidden">โหมดทดสอบ (?test=true) — ข้อมูลจำลอง ไม่มีการเชื่อมต่อระบบจริง</div>
+<div id="offline" class="hidden">ออฟไลน์ — ไม่สามารถบันทึกหรือโหลดข้อมูลใหม่ได้</div>
 <main>
-<section id="page-dashboard" class="page"><div class="page-head"><div><div class="eyebrow">Overview</div><h1>Dashboard</h1></div><button class="secondary" onclick="loadDashboard()">รีเฟรช</button></div><div id="summary" class="stats"></div><div class="grid-2"><div class="card"><h2>ยอดคงเหลือรายบัญชี</h2><div id="accounts"></div></div><div class="card"><h2>5 รายการล่าสุด</h2><div id="recent"></div></div></div></section>
-<section id="page-transaction" class="page hidden"><div class="page-head"><div><div class="eyebrow">New transaction</div><h1>บันทึกรายการ</h1></div></div><form id="txForm" class="card form-grid"><label>บัญชี<select id="account" required></select></label><label>ประเภท<select id="type" required><option value="expense">เงินออก</option><option value="income">เงินเข้า</option></select></label><label>หมวดหมู่<select id="category" required></select></label><label>จำนวนเงิน (บาท)<input id="amount" type="number" min="0.01" step="0.01" required></label><label class="wide">รายละเอียด<input id="details" maxlength="4000" required placeholder="อธิบายรายการอย่างละเอียด"></label><label class="wide">หมายเหตุ (ถ้ามี)<textarea id="note" maxlength="1000"></textarea></label><label class="wide file"><span>หลักฐาน / ใบเสร็จ <b>* บังคับ</b></span><input id="evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required><small>JPG, PNG, WebP หรือ PDF · ไม่เกิน 10 MB</small></label><div class="wide actions"><button class="primary" type="submit" id="saveBtn">บันทึกรายการ</button><span id="txStatus"></span></div></form></section>
-<section id="page-audit" class="page hidden"><div class="page-head"><div><div class="eyebrow">Audit & Report</div><h1>รายการบัญชี</h1></div><div class="actions"><button class="secondary" onclick="exportExcel()">Excel</button><button class="primary" onclick="exportPdf()">PDF</button></div></div><div class="card filters"><input id="from" type="date"><input id="to" type="date"><select id="filterAccount"></select><select id="filterType"><option value="">ทุกประเภท</option><option value="income">เงินเข้า</option><option value="expense">เงินออก</option></select><button class="secondary" onclick="loadReport()">ค้นหา</button></div><div class="card table-wrap"><table><thead><tr><th>Transaction ID</th><th>บัญชี</th><th>ประเภท</th><th>หมวด</th><th>จำนวน</th><th>รายละเอียด</th><th>ผู้บันทึก</th><th>วันที่</th><th>หลักฐาน</th></tr></thead><tbody id="reportRows"></tbody></table></div></section>
-<section id="page-admin" class="page hidden"><div class="page-head"><div><div class="eyebrow">Administration</div><h1>ตั้งค่าระบบ</h1></div></div><div class="grid-2"><form id="accountForm" class="card"><h2>เพิ่มบัญชี</h2><input id="newAccount" required placeholder="ชื่อบัญชี"><input id="accountDesc" placeholder="รายละเอียด"><button class="primary">เพิ่มบัญชี</button></form><form id="categoryForm" class="card"><h2>เพิ่มหมวดหมู่</h2><input id="newCategory" required placeholder="ชื่อหมวดหมู่"><select id="newCategoryType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select><button class="primary">เพิ่มหมวดหมู่</button></form></div><form id="userForm" class="card"><h2>เปิดสิทธิ์ผู้ใช้</h2><div class="form-grid"><input id="newUserEmail" type="email" required placeholder="อีเมล"><input id="newStudentId" placeholder="รหัสนักศึกษา"><input id="newUserName" placeholder="ชื่อ"><select id="newUserAccount" multiple></select><button class="primary wide">เปิดสิทธิ์</button></div></form><div class="card"><h2>ผู้ใช้ที่เปิดสิทธิ์</h2><div id="users"></div></div></section>
-</main></div>
-<div id="receipt" class="modal hidden"><div class="modal-card"><button class="close" onclick="closeReceipt()">×</button><div class="eyebrow">Transaction Receipt</div><h2>บันทึกรายการสำเร็จ</h2><div id="receiptBody"></div><canvas id="qr"></canvas><p class="muted">สแกน QR เพื่อตรวจสอบรายการ</p><button class="primary" onclick="window.print()">พิมพ์ใบรับรายการ</button></div></div>
-<script src="assets/budget-v2.js"></script>
+<section id="page-dashboard" class="page">
+<div id="installBox" class="install hidden"><span id="installText">ติดตั้งแอปไว้ที่หน้าจอโฮม</span><button class="primary small" id="installBtn">ติดตั้ง</button></div>
+<div id="summary"></div>
+<div class="sec-h"><h2>บัญชี</h2></div>
+<div id="accounts" class="acct-scroll"></div>
+<div class="sec-h"><h2>รายการล่าสุด</h2><button class="link" onclick="showPage('audit')">ดูทั้งหมด ›</button></div>
+<div id="recent"></div>
+</section>
+
+<section id="page-transaction" class="page hidden">
+<form id="txForm">
+<div id="txStep1">
+<div class="seg" role="group" aria-label="ประเภท"><button type="button" data-type="expense" class="on">เงินออก</button><button type="button" data-type="income">เงินเข้า</button></div>
+<input type="hidden" id="type" value="expense"><input type="hidden" id="amount">
+<div class="amount-card"><div id="txDisp" class="disp"></div><div class="hint">ใส่จำนวนเงิน</div></div>
+<div id="txQuick" class="quick"></div>
+<div id="txPad" class="pad"></div>
+<button type="button" class="cta" id="txNext" disabled>ถัดไป</button>
+</div>
+<div id="txStep2" class="hidden">
+<div class="recap"><div><small>จำนวนเงิน</small><b id="txRecap">฿0.00</b></div><button type="button" class="secondary small" onclick="goTx(1)">แก้ไข</button></div>
+<div class="form-grid">
+<label>บัญชี<select id="account" required></select></label>
+<label>หมวดหมู่<select id="category" required></select></label>
+<label>รายละเอียด<input id="details" maxlength="4000" required placeholder="อธิบายรายการ" enterkeyhint="next"></label>
+<label>หมายเหตุ (ถ้ามี)<textarea id="note" maxlength="1000"></textarea></label>
+<div class="file"><div><b>หลักฐาน / ใบเสร็จ</b> <em>* บังคับ</em></div><small>JPG, PNG, WebP หรือ PDF · ไม่เกิน 10 MB</small>
+<div class="file-btns"><label class="secondary" for="evidenceCam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>ถ่ายรูป</label><label class="secondary" for="evidence"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>เลือกไฟล์</label></div>
+<input id="evidenceCam" type="file" accept="image/*" capture="environment"><input id="evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+<div id="preview" class="preview hidden"></div></div>
+</div>
+<button class="cta" type="submit" id="saveBtn">บันทึกรายการ</button><div id="txStatus" role="status" class="status"></div>
+</div>
+</form>
+</section>
+
+<section id="page-donation" class="page hidden">
+<div id="donMain">
+<div class="hero-panel slim"><div class="lbl">ยอดบริจาครวม</div><div class="bal" id="donTotal">฿0.00</div><div class="pn-row" id="donPills"></div><button class="cta inline" onclick="toggleDonForm(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> บันทึกการบริจาค</button></div>
+<div class="chips" id="donChips"><button class="chip on" data-v="">ทั้งหมด</button><button class="chip" data-v="cash">เงินสด</button><button class="chip" data-v="promptpay">PromptPay</button></div>
+<div class="searchbar"><input id="donSearch" type="search" placeholder="ค้นหาชื่อผู้บริจาค" aria-label="ค้นหา"></div>
+<div id="donList"></div>
+</div>
+<form id="donForm" class="hidden">
+<div id="donStep1">
+<div class="seg" role="group" aria-label="ช่องทางบริจาค"><button type="button" data-method="cash" class="on">เงินสด</button><button type="button" data-method="promptpay">PromptPay</button></div>
+<input type="hidden" id="donMethod" value="cash"><input type="hidden" id="donAmount">
+<div class="amount-card"><div id="donDisp" class="disp"></div><div class="hint">ใส่จำนวนเงินบริจาค</div></div>
+<div id="donQuick" class="quick"></div>
+<div id="donPad" class="pad"></div>
+<button type="button" class="cta" id="donNext" disabled>ถัดไป</button>
+</div>
+<div id="donStep2" class="hidden">
+<div class="recap"><div><small id="donRecapM">เงินสด</small><b id="donRecap">฿0.00</b></div><button type="button" class="secondary small" onclick="goDon(1)">แก้ไข</button></div>
+<div class="form-grid">
+<label>ชื่อผู้บริจาค<input id="donName" maxlength="200" required placeholder="ชื่อ-นามสกุล / ชื่อหน่วยงาน" autocomplete="off"></label>
+<label class="check-row"><input id="donAnon" type="checkbox"><span>ไม่ประสงค์ออกนาม</span></label>
+<label>ช่องทางติดต่อ (ถ้ามี)<input id="donContact" maxlength="200" placeholder="เบอร์โทร / อีเมล" autocomplete="off"></label>
+<label>วันที่บริจาค<input id="donDate" type="date" required></label>
+<label>เข้าบัญชี<select id="donAccount" required></select></label>
+<label>หมายเหตุ (ถ้ามี)<textarea id="donNote" maxlength="1000"></textarea></label>
+<div class="file"><div><b>สลิปโอนเงิน / หลักฐาน</b> <em id="donReq">(ไม่บังคับสำหรับเงินสด)</em></div><small>JPG, PNG, WebP หรือ PDF · ไม่เกิน 10 MB</small>
+<div class="file-btns"><label class="secondary" for="donCam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>ถ่ายรูป</label><label class="secondary" for="donFile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>เลือกไฟล์</label></div>
+<input id="donCam" type="file" accept="image/*" capture="environment"><input id="donFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+<div id="donPreview" class="preview hidden"></div></div>
+</div>
+<button class="cta" type="submit" id="donSave">บันทึกการบริจาค</button><div id="donStatus" role="status" class="status"></div>
+</div>
+</form>
+</section>
+
+<section id="page-audit" class="page hidden">
+<div class="chips" id="repChips"><button class="chip on" data-v="">ทั้งหมด</button><button class="chip" data-v="income">เงินเข้า</button><button class="chip" data-v="expense">เงินออก</button><button class="chip" data-v="donation">บริจาค</button></div>
+<div class="searchbar"><input id="repSearch" type="search" placeholder="ค้นหารายการ" aria-label="ค้นหา"><button type="button" id="filtBtn" class="round" aria-label="ตัวกรอง"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button></div>
+<div id="filterPanel" class="panel hidden"><div class="two"><label>ตั้งแต่<input id="from" type="date"></label><label>ถึง<input id="to" type="date"></label></div><label>บัญชี<select id="filterAccount"></select></label><button class="cta small-cta" onclick="loadReport()">ค้นหา</button></div>
+<div class="list-bar"><small id="repCount"></small><div class="actions"><button class="secondary small" onclick="exportExcel()">Excel</button><button class="secondary small" onclick="exportPdf()">PDF</button></div></div>
+<div id="reportCards"></div>
+</section>
+
+<section id="page-admin" class="page hidden">
+<form id="accountForm" class="panel"><h2>เพิ่มบัญชี</h2><input id="newAccount" required placeholder="ชื่อบัญชี"><input id="accountDesc" placeholder="รายละเอียด"><button class="cta small-cta">เพิ่มบัญชี</button></form>
+<form id="categoryForm" class="panel"><h2>เพิ่มหมวดหมู่</h2><input id="newCategory" required placeholder="ชื่อหมวดหมู่"><select id="newCategoryType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select><button class="cta small-cta">เพิ่มหมวดหมู่</button></form>
+<form id="userForm" class="panel"><h2>เปิดสิทธิ์ผู้ใช้</h2><input id="newUserEmail" type="email" inputmode="email" required placeholder="อีเมล"><input id="newStudentId" inputmode="numeric" placeholder="รหัสนักศึกษา"><input id="newUserName" placeholder="ชื่อ"><div class="field"><small>บัญชีที่เข้าถึงได้</small><div id="newUserAccount" class="account-opts"></div></div><button class="cta small-cta">เปิดสิทธิ์</button></form>
+<div class="panel"><h2>ผู้ใช้ที่เปิดสิทธิ์</h2><div id="users"></div></div>
+</section>
+</main>
+<button id="fab" class="fab" onclick="showPage('transaction')" aria-label="บันทึกรายการ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>บันทึก</span></button>
+<nav aria-label="เมนูหลัก">
+<button data-page="dashboard" class="active" onclick="showPage('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>หน้าหลัก</span></button>
+<button data-page="audit" onclick="showPage('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>ธุรกรรม</span></button>
+<button data-page="donation" onclick="showPage('donation')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg><span>บริจาค</span></button>
+<button id="adminNav" data-page="admin" onclick="showPage('admin')" class="hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>ตั้งค่า</span></button>
+</nav>
+</div>
+
+<div id="receipt" class="modal hidden" onclick="if(event.target===this)closeReceipt()"><div class="modal-card"><button class="close" onclick="closeReceipt()" aria-label="ปิด">×</button><div class="check">✓</div><h2>บันทึกรายการสำเร็จ</h2><div id="receiptBody"></div><canvas id="qr"></canvas><p class="muted">สแกน QR เพื่อตรวจสอบรายการ</p><div class="modal-actions"><button class="secondary" onclick="window.print()">พิมพ์</button><button class="cta" onclick="closeReceipt();showPage('dashboard')">เสร็จสิ้น</button></div></div></div>
+<div id="detail" class="modal hidden" onclick="if(event.target===this)closeDetail()"><div class="modal-card sheet"><button class="close" onclick="closeDetail()" aria-label="ปิด">×</button><div id="detailBody"></div></div></div>
+<div id="menu" class="modal hidden" onclick="if(event.target===this)closeMenu()"><div class="modal-card sheet"><button class="close" onclick="closeMenu()" aria-label="ปิด">×</button><div class="me"><span class="av big" id="menuAv">?</span><div><b id="userName"></b><small id="menuEmail"></small><span class="role" id="menuRole"></span></div></div><button class="secondary block" onclick="logout()">ออกจากระบบ</button></div></div>
+<div id="notif" class="modal hidden" onclick="if(event.target===this)closeNotifs()"><div class="modal-card sheet"><button class="close" onclick="closeNotifs()" aria-label="ปิด">×</button><h2>การแจ้งเตือน</h2><div id="pushBox" class="push-box"></div><div id="notifList" class="notif-list"></div></div></div>
+<div id="toast" class="hidden" role="status"></div>
+<script src="/assets/budget-v2.js"></script>
 </body></html>
