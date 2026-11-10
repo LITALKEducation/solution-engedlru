@@ -100,7 +100,8 @@ async function meta(request,env,auth) {
     env.DB.prepare("SELECT uuid,name,description,currency FROM budget_accounts WHERE active=1 ORDER BY name").all(),
     env.DB.prepare("SELECT uuid,name,type FROM budget_categories WHERE active=1 ORDER BY name").all()
   ]);
-  return json(request,env,{accounts:accounts.results||[],categories:categories.results||[],isAdmin:auth.isAdmin,roles:auth.roles});
+  const visibleAccounts=(accounts.results||[]).filter(x=>auth.isAdmin||auth.accessibleAccounts.includes(x.uuid));
+  return json(request,env,{accounts:visibleAccounts,categories:categories.results||[],isAdmin:auth.isAdmin,roles:auth.roles});
 }
 
 async function verify(request,env,url) {
