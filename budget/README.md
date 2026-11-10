@@ -43,3 +43,12 @@ Transaction receipts point to:
 `https://enged.sorasukt.com/verify/?id=TRANSACTION_ID`
 
 The verification page calls the Budget API and does not expose private evidence files or user email addresses.
+
+## Mobile web app (PWA)
+
+The frontend is mobile-first and installable:
+
+- Bottom tab bar, large touch targets, card-style transaction list, safe-area support.
+- Camera capture for receipts; Excel/PDF libraries load only when exporting.
+- `manifest.webmanifest`, `sw.js` (app-shell offline cache) and `icons/`. Bump `VERSION` in `sw.js` to force clients to refresh.
+- Installs from Chrome/Android ("ติดตั้ง" banner) or iOS Safari (Share → Add to Home Screen).
