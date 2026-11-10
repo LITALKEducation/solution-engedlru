@@ -1,7 +1,7 @@
 import { getAuth0UserFromRequest, getAuth0Roles } from "./auth0.js";
 import { json } from "./cors.js";
 export async function requireBudgetAuth(request,env){
- const auth=await getAuth0UserFromRequest(request,env); if(!auth.user)return {ok:false,response:auth.response};
+ const auth=await getAuth0UserFromRequest(request,env); if(!auth.user)return {ok:false,response:json(request,env,{error:auth.response?.status===401?"Unauthorized":"Authentication failed"},auth.response?.status||401)};
  const user=auth.user,roles=await getAuth0Roles(env,user.sub),email=(user.email||"").toLowerCase();
  let row=await env.DB.prepare("SELECT * FROM budget_users WHERE auth0_user_id=? AND enabled=1").bind(user.sub).first();
  if(!row&&email)row=await env.DB.prepare("SELECT * FROM budget_users WHERE email=? AND enabled=1").bind(email).first();
