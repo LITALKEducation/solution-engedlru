@@ -1,6 +1,6 @@
 import { json } from "../lib/cors.js";
 import { requireBudgetAuth, canAccessAccount } from "../lib/budget-auth.js";
-import { decodeDataUrl, putFile } from "../lib/files.js";
+import { putFile } from "../lib/files.js";
 
 const MAX_FILE = 10 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg","image/png","image/webp","application/pdf"]);
@@ -68,22 +68,24 @@ async function listTransactions(request, env, auth, url) {
 }
 
 async function createTransaction(request, env, auth) {
-  const body=await request.json().catch(()=>null);
-  if(!body)return fail(request,env,"Invalid JSON");
-  const accountUuid=clean(body.accountUuid,100), categoryUuid=clean(body.categoryUuid,100), type=clean(body.type,20);
-  const details=clean(body.details,4000), note=clean(body.note,1000);
-  const value=amount(body.amount);
+  const body=await request.formData().catch(()=>null);
+  if(!body)return fail(request,env,"Invalid form data");
+  const accountUuid=clean(body.get("accountUuid"),100), categoryUuid=clean(body.get("categoryUuid"),100), type=clean(body.get("type"),20);
+  const details=clean(body.get("details"),4000), note=clean(body.get("note"),1000);
+  const value=amount(body.get("amount"));
   if(!accountUuid||!categoryUuid||!["income","expense"].includes(type)||!details||!value)return fail(request,env,"กรุณากรอกข้อมูลรายการให้ครบ");
   if(!canAccessAccount(auth,accountUuid))return fail(request,env,"ไม่มีสิทธิ์เข้าถึงบัญชีนี้",403);
   const account=await env.DB.prepare("SELECT * FROM budget_accounts WHERE uuid=? AND active=1").bind(accountUuid).first();
   const category=await env.DB.prepare("SELECT * FROM budget_categories WHERE uuid=? AND active=1 AND (type=? OR type='both')").bind(categoryUuid,type).first();
   if(!account||!category)return fail(request,env,"บัญชีหรือหมวดหมู่ไม่ถูกต้อง",400);
-  if(!body.fileBase64||!body.fileName||!body.fileMimeType)return fail(request,env,"หลักฐานการชำระเงินเป็นข้อมูลบังคับ",400);
-  if(!ALLOWED_MIME.has(body.fileMimeType))return fail(request,env,"รองรับเฉพาะ JPG, PNG, WebP และ PDF",400);
-  const {bytes,mime}=decodeDataUrl(body.fileBase64,body.fileMimeType);
-  if(bytes.byteLength>MAX_FILE)return fail(request,env,"ไฟล์ต้องไม่เกิน 10 MB",400);
+  const file=body.get("evidence");
+  if(!(file instanceof File))return fail(request,env,"หลักฐานการชำระเงินเป็นข้อมูลบังคับ",400);
+  const mime=String(file.type||"").toLowerCase();
+  if(!ALLOWED_MIME.has(mime))return fail(request,env,"รองรับเฉพาะ JPG, PNG, WebP และ PDF",400);
+  if(file.size>MAX_FILE)return fail(request,env,"ไฟล์ต้องไม่เกิน 10 MB",400);
+  const bytes=await file.arrayBuffer();
 
-  const uuid=crypto.randomUUID(), id=txId(), key=`budget/evidence/${uuid}/${crypto.randomUUID()}-${String(body.fileName).replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+  const uuid=crypto.randomUUID(), id=txId(), safeName=String(file.name||"evidence").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,255), key=`budget/evidence/${uuid}/${crypto.randomUUID()}-${safeName}`;
   const now=new Date().toISOString();
   await putFile(env,key,bytes,mime);
   try {
@@ -92,11 +94,11 @@ async function createTransaction(request, env, auth) {
       env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
         .bind(uuid,id,accountUuid,type,categoryUuid,value,details,note,auth.user.sub,auth.user.email||auth.row.email,now),
       env.DB.prepare("INSERT INTO budget_transaction_files (uuid,transaction_uuid,r2_key,file_name,mime_type,file_size,uploaded_by_auth0_id) VALUES (?,?,?,?,?,?,?)")
-        .bind(fileUuid,uuid,key,clean(body.fileName,255),mime,bytes.byteLength,auth.user.sub),
+        .bind(fileUuid,uuid,key,safeName,mime,bytes.byteLength,auth.user.sub),
       env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
         .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"TRANSACTION_CREATED","transaction",uuid,JSON.stringify({transaction_id:id,account_uuid:accountUuid,type,amount:value})),
       env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
-        .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"FILE_UPLOADED","transaction",uuid,JSON.stringify({file_name:body.fileName}))
+        .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"FILE_UPLOADED","transaction",uuid,JSON.stringify({file_name:safeName}))
     ]);
   } catch (e) {
     await env.FILES.delete(key).catch(()=>{});
@@ -133,7 +135,7 @@ async function getEvidence(request,env,auth,uuid) {
 async function adminOnly(request,env,auth){if(!auth.isAdmin)return fail(request,env,"ต้องใช้สิทธิ์ budget_admin",403);}
 
 async function adminAccounts(request,env,auth){
- await adminOnly(request,env,auth);
+ const denied=await adminOnly(request,env,auth); if(denied)return denied;
  if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,name,description,currency,active,created_at,updated_at FROM budget_accounts ORDER BY name").all();return json(request,env,{accounts:x.results||[]});}
  const b=await request.json().catch(()=>null); if(!b?.name)return fail(request,env,"กรุณาระบุชื่อบัญชี");
  const uuid=crypto.randomUUID();
@@ -141,7 +143,7 @@ async function adminAccounts(request,env,auth){
 }
 
 async function adminCategories(request,env,auth){
- await adminOnly(request,env,auth);
+ const denied=await adminOnly(request,env,auth); if(denied)return denied;
  if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,name,type,active FROM budget_categories ORDER BY name").all();return json(request,env,{categories:x.results||[]});}
  const b=await request.json().catch(()=>null); if(!b?.name||!["income","expense","both"].includes(b.type))return fail(request,env,"ข้อมูลหมวดหมู่ไม่ถูกต้อง");
  const uuid=crypto.randomUUID();
@@ -149,7 +151,7 @@ async function adminCategories(request,env,auth){
 }
 
 async function adminUsers(request,env,auth){
- await adminOnly(request,env,auth);
+ const denied=await adminOnly(request,env,auth); if(denied)return denied;
  if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,auth0_user_id,email,student_id,display_name,enabled FROM budget_users ORDER BY email").all();return json(request,env,{users:x.results||[]});}
  const b=await request.json().catch(()=>null); if(!b?.email)return fail(request,env,"กรุณาระบุอีเมล");
  const email=String(b.email).trim().toLowerCase();
