@@ -85,13 +85,23 @@ async function createTransaction(request, env, auth) {
 
   const uuid=crypto.randomUUID(), id=txId(), key=`budget/evidence/${uuid}/${crypto.randomUUID()}-${String(body.fileName).replace(/[^a-zA-Z0-9._-]/g,"_")}`;
   const now=new Date().toISOString();
-  await env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-    .bind(uuid,id,accountUuid,type,categoryUuid,value,details,note,auth.user.sub,auth.user.email||auth.row.email,now).run();
   await putFile(env,key,bytes,mime);
-  await env.DB.prepare("INSERT INTO budget_transaction_files (uuid,transaction_uuid,r2_key,file_name,mime_type,file_size,uploaded_by_auth0_id) VALUES (?,?,?,?,?,?,?)")
-    .bind(crypto.randomUUID(),uuid,key,clean(body.fileName,255),mime,bytes.byteLength,auth.user.sub).run();
-  await audit(env,auth,"TRANSACTION_CREATED","transaction",uuid,{transaction_id:id,account_uuid:accountUuid,type,amount:value});
-  await audit(env,auth,"FILE_UPLOADED","transaction",uuid,{file_name:body.fileName});
+  try {
+    const fileUuid=crypto.randomUUID();
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO budget_transactions (uuid,transaction_id,account_uuid,type,category_uuid,amount,details,note,created_by_auth0_id,created_by_email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        .bind(uuid,id,accountUuid,type,categoryUuid,value,details,note,auth.user.sub,auth.user.email||auth.row.email,now),
+      env.DB.prepare("INSERT INTO budget_transaction_files (uuid,transaction_uuid,r2_key,file_name,mime_type,file_size,uploaded_by_auth0_id) VALUES (?,?,?,?,?,?,?)")
+        .bind(fileUuid,uuid,key,clean(body.fileName,255),mime,bytes.byteLength,auth.user.sub),
+      env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
+        .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"TRANSACTION_CREATED","transaction",uuid,JSON.stringify({transaction_id:id,account_uuid:accountUuid,type,amount:value})),
+      env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
+        .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"FILE_UPLOADED","transaction",uuid,JSON.stringify({file_name:body.fileName}))
+    ]);
+  } catch (e) {
+    await env.FILES.delete(key).catch(()=>{});
+    throw e;
+  }
   return json(request,env,{ok:true,transaction:{uuid,transactionId:id,accountUuid,type,category:category.name,amount:value,details,note,createdAt:now},verificationUrl:`https://solution.litalkeducation.com/budget/verify/${id}`},201);
 }
 
@@ -116,7 +126,7 @@ async function getEvidence(request,env,auth,uuid) {
   if(!row)return fail(request,env,"ไม่พบหลักฐาน",404);
   if(!canAccessAccount(auth,(await env.DB.prepare("SELECT account_uuid FROM budget_transactions WHERE uuid=?").bind(uuid).first())?.account_uuid))return fail(request,env,"Forbidden",403);
   const obj=await env.FILES.get(row.r2_key); if(!obj)return fail(request,env,"ไม่พบไฟล์",404);
-  return new Response(obj.body,{headers:{"Content-Type":row.mime_type,"Content-Disposition:`inline; filename="${row.file_name}"`","Cache-Control":"private, no-store"}});
+  return new Response(obj.body,{headers:{"Content-Type":row.mime_type,"Content-Disposition":`inline; filename="${row.file_name.replace(/["\\\r\n]/g, "_")}"`,"Cache-Control":"private, no-store"}});
 }
 
 
