@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/budget-v2.css?v=10">
+<link rel="stylesheet" href="/assets/budget-v2.css?v=12">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
 </head>
@@ -34,8 +34,14 @@
 <li><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><div><b>แจ้งเตือนผู้ดูแล</b><small>รู้ทันทีเมื่อมีรายการใหม่</small></div></li></ul>
 <div id="loginMsg" class="w-msg hidden"></div>
 <button class="cta" onclick="login()">เข้าสู่ระบบ</button>
-<a class="w-link" href="?test=true">ลองใช้โหมดทดสอบ (ข้อมูลจำลอง)</a>
 <small class="w-foot">เข้าสู่ระบบด้วยบัญชี Auth0 ที่ได้รับอนุญาตเท่านั้น</small></div></div>
+<div id="gate" class="welcome hidden">
+<div class="w-hero short"><i class="w-orb o1"></i><i class="w-orb o2"></i><img class="w-logo" src="/icons/icon-192.png" alt=""></div>
+<div class="w-body"><div class="eyebrow">English Education · LRU</div><h1>ติดตั้งแอปก่อนเริ่มใช้งาน</h1><p id="gateLead">Budget ใช้งานบนมือถือผ่านแอปเท่านั้น เพิ่มแอปไว้ที่หน้าจอโฮมเพียงไม่กี่ขั้นตอน</p>
+<ol id="gateSteps" class="steps"></ol>
+<button id="gateInstall" class="cta hidden" type="button">ติดตั้งแอป</button>
+<button id="gateCopy" class="secondary block hidden" type="button">คัดลอกลิงก์</button>
+<small class="w-foot">ติดตั้งแล้ว? ให้เปิดแอป Budget จากไอคอนบนหน้าจอโฮม แล้วเข้าสู่ระบบ</small></div></div>
 <div id="denied" class="center hidden"><div class="card auth-card"><div class="eyebrow">Access denied</div><h1>ไม่มีสิทธิ์เข้าใช้งาน</h1><p id="deniedText">บัญชีนี้ไม่ได้รับสิทธิ์ในระบบ Budget</p><button class="secondary" onclick="logout()">ออกจากระบบ</button></div></div>
 
 <div id="app" class="hidden">
@@ -143,5 +149,5 @@
 <div id="menu" class="modal hidden" onclick="if(event.target===this)closeMenu()"><div class="modal-card sheet"><button class="close" onclick="closeMenu()" aria-label="ปิด">×</button><div class="me"><span class="av big" id="menuAv">?</span><div><b id="userName"></b><small id="menuEmail"></small><span class="role" id="menuRole"></span></div></div><button class="secondary block" onclick="logout()">ออกจากระบบ</button></div></div>
 <div id="notif" class="modal hidden" onclick="if(event.target===this)closeNotifs()"><div class="modal-card sheet"><button class="close" onclick="closeNotifs()" aria-label="ปิด">×</button><h2>การแจ้งเตือน</h2><div id="pushBox" class="push-box"></div><div id="notifList" class="notif-list"></div></div></div>
 <div id="toast" class="hidden" role="status"></div>
-<script src="/assets/budget-v2.js?v=10"></script>
+<script src="/assets/budget-v2.js?v=12"></script>
 </body></html>

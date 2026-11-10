@@ -55,7 +55,7 @@ The frontend is mobile-first and installable:
 
 ## Test mode
 
-Open `/?test=true` (optionally `&page=transaction`) to try the UI without logging in. It runs entirely on local fake data in the browser: no Auth0 login, no Budget API calls, nothing is saved. It does not grant access to real data.
+Not linked anywhere in the UI. Open `/?test=true` (optionally `&page=transaction`) to try the UI without logging in. It runs entirely on local fake data in the browser: no Auth0 login, no Budget API calls, nothing is saved. It does not grant access to real data.
 
 ## Donations (บริจาค)
 
@@ -79,3 +79,7 @@ Optional phone push (works with the app closed; on iPhone only after "Add to Hom
 4. Each admin opens the bell and taps "เปิด" to turn on notifications for their device.
 
 Without VAPID keys the bell still works; the panel says push is not configured.
+
+## Phone install requirement
+
+On phones and tablets the app only runs as an installed web app (home-screen app). In a normal mobile browser tab users see an install guide (iPhone: Share → Add to Home Screen; Android: install button or browser menu; LINE/Facebook in-app browsers: open in Safari/Chrome). Desktop browsers are not restricted. `?test=true` demo mode and the public `/verify/` page are not gated.

@@ -319,7 +319,7 @@ async function pushUnsubscribe(request,env,auth){
   return json(request,env,{ok:true});
 }
 
-export async function budgetV2(request,env,url,ctx){
+async function budgetV2Inner(request,env,url,ctx){
   if(request.method==="GET" && url.pathname.match(/^\/budget\/verify\/[^/]+$/)) return verify(request,env,url);
   const auth=await requireBudgetAuth(request,env); if(!auth.ok)return auth.response;
   if(request.method==="GET" && url.pathname==="/budget/me") return json(request,env,{email:auth.user.email,name:auth.user.name,roles:auth.roles,isAdmin:auth.isAdmin});
@@ -339,4 +339,18 @@ export async function budgetV2(request,env,url,ctx){
   if(url.pathname==="/budget/donations" && request.method==="GET") return listDonations(request,env,auth,url);
   if(url.pathname==="/budget/donations" && request.method==="POST") return createDonation(request,env,auth,ctx);
   return json(request,env,{error:"Not Found"},404);
+}
+
+// Wrapper: turn unexpected errors into JSON (with CORS headers) so the app can show a readable message
+// instead of an opaque network/CORS failure.
+export async function budgetV2(request,env,url,ctx){
+  try{
+    return await budgetV2Inner(request,env,url,ctx);
+  }catch(e){
+    const msg=String(e?.message||e);
+    console.error("[budget] unhandled error:",msg);
+    if(/no such (table|column)/i.test(msg))
+      return json(request,env,{error:"ฐานข้อมูลยังไม่ได้อัปเดต กรุณา apply migration 0003–0005 (wrangler d1 migrations apply) แล้วลองใหม่",code:"MIGRATION_REQUIRED",detail:msg},503);
+    return json(request,env,{error:"เซิร์ฟเวอร์ผิดพลาด กรุณาลองใหม่อีกครั้ง",code:"SERVER_ERROR"},500);
+  }
 }

@@ -256,3 +256,19 @@ nav button.active{color:var(--brand);font-weight:700}
 .w-msg{background:var(--brand-l);color:var(--brand-d);border-radius:16px;padding:10px 14px;font-size:13px;margin-bottom:6px;word-break:break-word}
 .w-link{text-align:center;color:var(--brand-d);font-weight:600;font-size:14px;padding:16px 0 6px;text-decoration:none}
 .w-foot{text-align:center;margin-top:auto;padding-top:10px;font-size:12px}
+
+/* install gate */
+.w-hero.short{height:26vh;min-height:200px;max-height:260px}
+.w-hero.short .w-logo{margin-top:0}
+.steps{list-style:none;counter-reset:s;margin:4px 0 18px;padding:0;display:flex;flex-direction:column;gap:12px}
+.steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;font-size:15px;line-height:1.5}
+.steps li::before{content:counter(s);flex:none;width:32px;height:32px;border-radius:50%;background:var(--brand-l);color:var(--brand-d);font-weight:800;display:grid;place-items:center;font-size:15px}
+.steps li b{white-space:nowrap}
+.steps li svg{display:inline-block;width:18px;height:18px;vertical-align:-3px;color:var(--brand)}
+#gate .secondary.block{margin-top:10px}
+.steps li>span{flex:1;padding-top:4px}
+
+.failbox{background:var(--panel);border-radius:22px;padding:20px;text-align:center;margin:12px 0}
+.failbox b{display:block;font-size:16px}
+.failbox p{margin:6px 0 10px;color:var(--brand-d);font-size:13px;word-break:break-word}
+.failbox .cta{margin-top:4px;width:auto;padding:0 28px;display:inline-flex}

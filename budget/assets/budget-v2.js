@@ -38,8 +38,32 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
   if(u==='/budget/transactions'&&post){const f=opt.body,acc=accs.find(a=>a.uuid===f.get('accountUuid')),cat=cats.find(c=>c.uuid===f.get('categoryUuid'));n++;const id='DEMO-'+String(n).padStart(4,'0');txs.unshift({transaction_id:id,transaction_uuid:'t'+n,account_uuid:acc.uuid,account_name:acc.name,type:f.get('type'),category:cat.name,amount:Number(f.get('amount')),details:f.get('details'),created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date().toISOString(),status:'active'});return res({transaction:{transactionId:id,uuid:'demo-'+n,accountUuid:acc.uuid,type:f.get('type'),amount:Number(f.get('amount')),details:f.get('details')},verificationUrl:location.origin+'/verify/?id='+id})}
   if(u.endsWith('/evidence'))return res({});
   return res({ok:true})}})();
+
+// ---- phone install gate: phones/tablets must use the installed web app (desktop is exempt) ----
+const UA=navigator.userAgent;
+const IS_IOS=/iPhone|iPad|iPod/i.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const IS_MOBILE=IS_IOS||/Android|Mobile|Windows Phone|webOS|BlackBerry/i.test(UA);
+const IN_APP_BROWSER=/Line\/|FBAN|FBAV|Instagram|MicroMessenger|TikTok|; wv\)/i.test(UA);
+const isStandalone=()=>['standalone','fullscreen','minimal-ui'].some(m=>matchMedia('(display-mode: '+m+')').matches)||navigator.standalone===true;
+const needsInstall=()=>!TEST&&IS_MOBILE&&!isStandalone();
+const icoShare=()=>svgI('<path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),icoDots=()=>svgI('<circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/>');
+function updateGate(){gateRender();const st=$('gateSteps');st.innerHTML=st.innerHTML.replace(/<li>/g,'<li><span>').replace(/<\/li>/g,'</span></li>')}
+function gateRender(){
+ const steps=$('gateSteps'),inst=$('gateInstall'),copy=$('gateCopy');
+ copy.classList.add('hidden');inst.classList.add('hidden');
+ if(IN_APP_BROWSER){
+  $('gateLead').textContent='เบราว์เซอร์ในแอป (เช่น LINE/Facebook) ติดตั้งแอปไม่ได้';
+  steps.innerHTML='<li>เปิดลิงก์นี้ใน <b>'+(IS_IOS?'Safari':'Chrome')+'</b> (แตะเมนู แล้วเลือก “เปิดในเบราว์เซอร์”)</li><li>ทำตามขั้นตอนติดตั้งแอปที่แสดงในเบราว์เซอร์</li>';
+  copy.classList.remove('hidden');return}
+ if(IS_IOS){
+  steps.innerHTML='<li>แตะปุ่มแชร์ '+icoShare()+' ใน Safari</li><li>เลือก <b>“เพิ่มไปยังหน้าจอโฮม”</b></li><li>แตะ <b>“เพิ่ม”</b> แล้วเปิดแอป Budget จากหน้าจอโฮม</li>';return}
+ if(deferredInstall){inst.classList.remove('hidden');steps.innerHTML='<li>แตะปุ่ม <b>“ติดตั้งแอป”</b> ด้านล่าง</li><li>เปิดแอป Budget จากหน้าจอหลัก</li>';return}
+ steps.innerHTML='<li>แตะเมนู '+icoDots()+' ของ Chrome</li><li>เลือก <b>“ติดตั้งแอป”</b> หรือ <b>“เพิ่มลงในหน้าจอหลัก”</b></li><li>เปิดแอป Budget จากหน้าจอหลัก</li>'}
+$('gateInstall').addEventListener('click',async()=>{if(!deferredInstall)return;deferredInstall.prompt();const r=await deferredInstall.userChoice;deferredInstall=null;if(r.outcome==='accepted')toast('ติดตั้งแล้ว เปิดแอป Budget จากหน้าจอหลักได้เลย');updateGate()});
+$('gateCopy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.origin+'/');toast('คัดลอกลิงก์แล้ว')}catch(e){toast(location.origin+'/')}});
 async function init(){
  updateOnline();
+ if(needsInstall()){updateGate();show('gate');return}
  if(TEST){me={name:'โหมดทดสอบ',email:'demo@example.com',isAdmin:true};$('userName').textContent=me.name;$('adminNav').classList.remove('hidden');startNotifs();$('testBanner').classList.remove('hidden');show('app');await loadMeta();const q=new URLSearchParams(location.search).get('page');if(q)showPage(q);await loadDashboard();return}
  const T=12000;
  try{
@@ -57,7 +81,7 @@ async function init(){
  try{await loadMeta();const q=new URLSearchParams(location.search).get('page');if(['transaction','donation','audit'].includes(q))showPage(q);await loadDashboard()}catch(e){console.error(e);toast('โหลดข้อมูลไม่สำเร็จ',1)}
 }
 function loginMsg(t){const b=$('loginMsg');b.textContent=t;b.classList.toggle('hidden',!t)}
-function show(id){['loading','login','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 async function login(){try{loginMsg('');if(!auth0Client)throw new Error('ระบบเข้าสู่ระบบยังไม่พร้อม กรุณารีเฟรชหน้า');await auth0Client.loginWithRedirect()}catch(e){loginMsg(e.message)}}
 async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
 async function token(){return auth0Client.getTokenSilently()}
@@ -82,6 +106,8 @@ const IC={
  caret:svgI('<path d="M6 9l6 6 6-6"/>'),del:svgI('<path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM18 9l-6 6M12 9l6 6"/>')};
 function money(n){return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})}
 const lists={recent:[],rep:[],don:[]};
+async function errMsg(r){try{const d=await r.json();return d.error||('เกิดข้อผิดพลาด ('+r.status+')')}catch(e){return 'เกิดข้อผิดพลาด ('+r.status+')'}}
+function failBox(msg,retry){return '<div class="failbox"><b>โหลดข้อมูลไม่สำเร็จ</b><p>'+esc(msg)+'</p><button class="cta small-cta" onclick="'+retry+'">ลองใหม่</button></div>'}
 function rowHtml(t,src,i){
  const don=src==='don',k=don?'donation':(t.is_donation?'donation':t.type),inc=don||t.type==='income';
  const title=don?t.donor_name:t.details;
@@ -110,7 +136,7 @@ function openMenu(){const n=me?.name||me?.email||'';$('userName').textContent=n;
 function closeMenu(){$('menu').classList.add('hidden')}
 
 async function loadMeta(){
- const r=await api('/budget/meta');meta=await r.json();
+ const r=await api('/budget/meta');if(!r.ok){toast(await errMsg(r),1);return}meta=await r.json();
  const accounts=meta.accounts||[],cats=meta.categories||[];
  $('account').innerHTML=accounts.map(x=>'<option value="'+esc(x.uuid)+'">'+esc(x.name)+'</option>').join('');
  $('filterAccount').innerHTML='<option value="">ทุกบัญชี</option>'+accounts.map(x=>'<option value="'+esc(x.uuid)+'">'+esc(x.name)+'</option>').join('');
@@ -148,7 +174,8 @@ function Pad(o){
 let dash=null,acctSel='';
 async function loadDashboard(){
  if(!dash)$('summary').innerHTML='<div class="skeleton" style="height:270px;border-radius:0 0 32px 32px;margin:0 -16px"></div>';
- let r;try{r=await api('/budget/dashboard')}catch(e){toast('โหลดข้อมูลไม่สำเร็จ',1);return}if(!r.ok){toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ let r;try{r=await api('/budget/dashboard')}catch(e){if(!dash)$('summary').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadDashboard()');else toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ if(!r.ok){const m=await errMsg(r);if(!dash)$('summary').innerHTML=failBox(m,'loadDashboard()');else toast(m,1);return}
  dash=await r.json();lastDash=Date.now();renderDash()}
 function pickAcct(u){acctSel=acctSel===u?'':u;renderDash()}
 function renderDash(){
@@ -203,7 +230,7 @@ let repType='',repQ='';
 async function loadReport(){
  const p=new URLSearchParams();if($('from').value)p.set('from',$('from').value);if($('to').value)p.set('to',$('to').value);
  if(!reportRows.length)$('reportCards').innerHTML='<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
- let r;try{r=await api('/budget/report?'+p)}catch(e){toast('โหลดข้อมูลไม่สำเร็จ',1);return}if(!r.ok){toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ let r;try{r=await api('/budget/report?'+p)}catch(e){$('reportCards').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadReport()');return}if(!r.ok){$('reportCards').innerHTML=failBox(await errMsg(r),'loadReport()');return}
  const d=await r.json();reportRows=d.transactions||[];renderReport()}
 function renderReport(){const af=$('filterAccount').value;let rows=reportRows;
  if(af)rows=rows.filter(x=>x.account_uuid===af);
@@ -230,10 +257,10 @@ async function exportPdf(){try{await needPdf()}catch(e){return toast(e.message,1
  doc.setFontSize(18);doc.setFont('Sarabun','bold');doc.text('รายงานรายการงบประมาณ (Budget)',14,15);doc.setFont('Sarabun','normal');doc.setFontSize(11);doc.text('พิมพ์เมื่อ '+dt(new Date()),14,22);
  doc.autoTable({startY:28,head:[['Transaction ID','บัญชี','ประเภท','หมวดหมู่','จำนวนเงิน','รายละเอียด','ผู้บันทึก','วันที่']],body:reportRows.map(x=>[x.transaction_id,x.account_name,tl(x),x.category,money(x.amount),x.details,x.created_by_name||x.created_by_email,dt(x.created_at)]),styles:{font:'Sarabun',fontSize:9,cellPadding:2},headStyles:{font:'Sarabun',fontStyle:'bold',fillColor:[15,118,110]},columnStyles:{4:{halign:'right'}}});
  doc.save('budget-report-'+new Date().toISOString().slice(0,10)+'.pdf')}
-async function loadAdmin(){if(!me.isAdmin)return;const r=await api('/budget/admin/users');const d=await r.json();$('users').innerHTML=(d.users||[]).map(x=>'<div class="kv-row"><span>'+esc(x.email)+'<br><small>'+esc(x.student_id||'ไม่ได้ผูกรหัสนักศึกษา')+'</small></span><b>'+(x.enabled?'Enabled':'Disabled')+'</b></div>').join('')||'<p>ยังไม่มีผู้ใช้</p>'}
-$('accountForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newAccount').value,description:$('accountDesc').value})});if(!r.ok)return toast((await r.json()).error,1);e.target.reset();await loadMeta();toast('เพิ่มบัญชีแล้ว')});
-$('categoryForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newCategory').value,type:$('newCategoryType').value})});if(!r.ok)return toast((await r.json()).error,1);e.target.reset();await loadMeta();toast('เพิ่มหมวดหมู่แล้ว')});
-$('userForm').addEventListener('submit',async e=>{e.preventDefault();const accounts=[...$('newUserAccount').querySelectorAll('input:checked')].map(x=>x.value);const r=await api('/budget/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('newUserEmail').value,studentId:$('newStudentId').value,displayName:$('newUserName').value,accountUuids:accounts})});if(!r.ok)return toast((await r.json()).error,1);e.target.reset();await loadAdmin();toast('เปิดสิทธิ์แล้ว')});
+async function loadAdmin(){if(!me.isAdmin)return;const r=await api('/budget/admin/users');if(!r.ok){$('users').innerHTML=failBox(await errMsg(r),'loadAdmin()');return}const d=await r.json();$('users').innerHTML=(d.users||[]).map(x=>'<div class="kv-row"><span>'+esc(x.email)+'<br><small>'+esc(x.student_id||'ไม่ได้ผูกรหัสนักศึกษา')+'</small></span><b>'+(x.enabled?'Enabled':'Disabled')+'</b></div>').join('')||'<p>ยังไม่มีผู้ใช้</p>'}
+$('accountForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newAccount').value,description:$('accountDesc').value})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadMeta();toast('เพิ่มบัญชีแล้ว')});
+$('categoryForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newCategory').value,type:$('newCategoryType').value})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadMeta();toast('เพิ่มหมวดหมู่แล้ว')});
+$('userForm').addEventListener('submit',async e=>{e.preventDefault();const accounts=[...$('newUserAccount').querySelectorAll('input:checked')].map(x=>x.value);const r=await api('/budget/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('newUserEmail').value,studentId:$('newStudentId').value,displayName:$('newUserName').value,accountUuids:accounts})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadAdmin();toast('เปิดสิทธิ์แล้ว')});
 window.addEventListener('DOMContentLoaded',init);
 
 // ---- Donations ----
@@ -267,7 +294,7 @@ $('donForm').addEventListener('submit',async e=>{
   loadDonations();lastDash=0;loadDashboard()}catch(err){st.textContent=err.message}finally{$('donSave').disabled=false}});
 async function loadDonations(){
  if(!donRows.length)$('donList').innerHTML='<div class="skeleton"></div><div class="skeleton"></div>';
- let r;try{r=await api('/budget/donations')}catch(e){toast('โหลดข้อมูลไม่สำเร็จ',1);return}if(!r.ok){toast('โหลดข้อมูลไม่สำเร็จ',1);return}
+ let r;try{r=await api('/budget/donations')}catch(e){$('donList').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadDonations()');return}if(!r.ok){$('donList').innerHTML=failBox(await errMsg(r),'loadDonations()');return}
  const d=await r.json();donRows=d.donations||[];const t=d.totals||{};
  $('donTotal').textContent='฿'+money(t.all);
  $('donPills').innerHTML='<span class="pn don">เงินสด ฿'+money(t.cash)+'</span><span class="pn don">PromptPay ฿'+money(t.promptpay)+'</span>';
@@ -320,7 +347,6 @@ async function disablePush(){
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 let deferredInstall;
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;if(!standalone)$('installBox').classList.remove('hidden')});
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;if(!standalone&&!IS_MOBILE)$('installBox').classList.remove('hidden');if(!$('gate').classList.contains('hidden'))updateGate()});
 $('installBtn').addEventListener('click',async()=>{if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null}$('installBox').classList.add('hidden')});
 addEventListener('appinstalled',()=>$('installBox').classList.add('hidden'));
-if(!standalone&&/iphone|ipad|ipod/i.test(navigator.userAgent)){$('installText').textContent='iPhone: แตะปุ่มแชร์ แล้วเลือก “เพิ่มไปยังหน้าจอโฮม”';$('installBtn').classList.add('hidden');$('installBox').classList.remove('hidden')}
