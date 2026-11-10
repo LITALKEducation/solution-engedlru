@@ -83,3 +83,7 @@ Without VAPID keys the bell still works; the panel says push is not configured.
 ## Phone install requirement
 
 On phones and tablets the app only runs as an installed web app (home-screen app). In a normal mobile browser tab users see an install guide (iPhone: Share → Add to Home Screen; Android: install button or browser menu; LINE/Facebook in-app browsers: open in Safari/Chrome). Desktop browsers are not restricted. `?test=true` demo mode and the public `/verify/` page are not gated.
+
+## Settings page & motion
+
+Settings is split into three sliding tabs (บัญชี / หมวดหมู่ / ผู้ใช้). Add forms open as sheets; categories are grouped in accordions with on/off switches (hide/show); validation errors shake the field. Motion patterns (modal, toast, tabs sliding, accordion, toggle, success check, error shake, page slide) follow the transitions.dev snippets; tokens live at the end of `assets/budget-v2.css` and all of it is disabled under `prefers-reduced-motion`.
