@@ -25,6 +25,10 @@ export async function getAuth0UserFromRequest(request, env) {
 
 export async function getManagementToken(env) {
   const domain = auth0Domain(env);
+  const audience = String(env.AUTH0_MANAGEMENT_API_AUDIENCE || "").trim();
+  if (!audience) {
+    throw new Error("AUTH0_MANAGEMENT_API_AUDIENCE is not configured; use the canonical Auth0 tenant Management API identifier");
+  }
   if (!env.AUTH0_M2M_CLIENT_ID || !env.AUTH0_M2M_CLIENT_SECRET) {
     throw new Error("Auth0 M2M credentials are missing (AUTH0_M2M_CLIENT_ID / AUTH0_M2M_CLIENT_SECRET)");
   }
@@ -36,7 +40,7 @@ export async function getManagementToken(env) {
       grant_type: 'client_credentials',
       client_id: env.AUTH0_M2M_CLIENT_ID,
       client_secret: env.AUTH0_M2M_CLIENT_SECRET,
-      audience: `https://${domain}/api/v2/`,
+      audience,
       scope: 'read:users read:roles update:users'
     })
   });
