@@ -15,6 +15,7 @@ AUTH0_DOMAIN = "litalkeducation.us.auth0.com"
 binding = "DB"
 database_name = "engedlru-db"
 database_id = "84500795-65d7-4333-aa3b-fc38e2466daf"
+migrations_dir = "migrations"
 
 # ── R2 Bucket (ไฟล์แนบ: ใบเสร็จงบประมาณ, รูปโปรไฟล์) ──
 # สร้างด้วย: wrangler r2 bucket create engedlru-files
