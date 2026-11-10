@@ -32,12 +32,11 @@ async function dashboard(request, env, auth) {
     WHERE a.active=1
     GROUP BY a.uuid ORDER BY a.name
   `).all();
-  const recent = await env.DB.prepare(`
-    SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status
-    FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid
-    ORDER BY t.created_at DESC LIMIT 5
-  `).all();
-  const all = accounts.results || [];
+  const recentSql = auth.isAdmin
+    ? `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid ORDER BY t.created_at DESC LIMIT 5`
+    : `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?) ORDER BY t.created_at DESC LIMIT 5`;
+  const recent = auth.isAdmin ? await env.DB.prepare(recentSql).all() : await env.DB.prepare(recentSql).bind(auth.row.uuid).all();
+  const all = (accounts.results || []).filter(x => auth.isAdmin || auth.accessibleAccounts.includes(x.uuid));
   return json(request, env, {
     accounts: all, recent: recent.results || [],
     totals: { income: all.reduce((s,x)=>s+Number(x.income||0),0), expense: all.reduce((s,x)=>s+Number(x.expense||0),0), balance: all.reduce((s,x)=>s+Number(x.balance||0),0) },
