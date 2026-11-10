@@ -15,9 +15,9 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/budget-v2.css?v=12">
+<link rel="stylesheet" href="/assets/budget-v2.css?v=13">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
+<script src="/assets/vendor/qrcode.js?v=13" defer></script>
 </head>
 <body>
 <div id="loading" class="splash"><img class="pulse" src="/icons/icon-192.png" alt=""><b>Budget</b><div class="bar"><i></i></div><small>กำลังตรวจสอบสิทธิ์…</small>
@@ -144,10 +144,10 @@
 </nav>
 </div>
 
-<div id="receipt" class="modal hidden" onclick="if(event.target===this)closeReceipt()"><div class="modal-card"><button class="close" onclick="closeReceipt()" aria-label="ปิด">×</button><div class="check">✓</div><h2>บันทึกรายการสำเร็จ</h2><div id="receiptBody"></div><canvas id="qr"></canvas><p class="muted">สแกน QR เพื่อตรวจสอบรายการ</p><div class="modal-actions"><button class="secondary" onclick="window.print()">พิมพ์</button><button class="cta" onclick="closeReceipt();showPage('dashboard')">เสร็จสิ้น</button></div></div></div>
+<div id="receipt" class="modal hidden" onclick="if(event.target===this)closeReceipt()"><div class="modal-card"><button class="close" onclick="closeReceipt()" aria-label="ปิด">×</button><div class="check">✓</div><h2>บันทึกรายการสำเร็จ</h2><div id="receiptBody"></div><canvas id="qr"></canvas><p class="muted">สแกน QR เพื่อตรวจสอบรายการ</p><div class="modal-actions"><button class="secondary" onclick="saveReceiptImage()">บันทึกภาพ</button><button class="cta" onclick="closeReceipt();showPage('dashboard')">เสร็จสิ้น</button></div></div></div>
 <div id="detail" class="modal hidden" onclick="if(event.target===this)closeDetail()"><div class="modal-card sheet"><button class="close" onclick="closeDetail()" aria-label="ปิด">×</button><div id="detailBody"></div></div></div>
 <div id="menu" class="modal hidden" onclick="if(event.target===this)closeMenu()"><div class="modal-card sheet"><button class="close" onclick="closeMenu()" aria-label="ปิด">×</button><div class="me"><span class="av big" id="menuAv">?</span><div><b id="userName"></b><small id="menuEmail"></small><span class="role" id="menuRole"></span></div></div><button class="secondary block" onclick="logout()">ออกจากระบบ</button></div></div>
 <div id="notif" class="modal hidden" onclick="if(event.target===this)closeNotifs()"><div class="modal-card sheet"><button class="close" onclick="closeNotifs()" aria-label="ปิด">×</button><h2>การแจ้งเตือน</h2><div id="pushBox" class="push-box"></div><div id="notifList" class="notif-list"></div></div></div>
 <div id="toast" class="hidden" role="status"></div>
-<script src="/assets/budget-v2.js?v=12"></script>
+<script src="/assets/budget-v2.js?v=13"></script>
 </body></html>
