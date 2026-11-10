@@ -1,3 +1,9 @@
+// Safety net: shown if the app takes too long to start (stale cache, blocked CDN, hung login).
+(function(){const g=id=>document.getElementById(id);
+ window.__startErr='';addEventListener('error',e=>{window.__startErr=e.message||''});addEventListener('unhandledrejection',e=>{window.__startErr=(e.reason&&e.reason.message)||String(e.reason||'')});
+ setTimeout(()=>{const l=g('loading');if(l&&!l.classList.contains('hidden')){g('slowBox').classList.remove('hidden');g('slowMsg').textContent=window.__startErr?' ('+window.__startErr+')':''}},8000)})();
+async function resetApp(){try{const r=await navigator.serviceWorker.getRegistrations();await Promise.all(r.map(x=>x.unregister()));const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)))}catch(e){}location.href=location.pathname}
+const withTimeout=(p,ms,msg)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error(msg)),ms))]);
 const API=window.BUDGET_API||'https://engedlru-api.stnetworld.workers.dev',AUTH_DOMAIN=window.BUDGET_AUTH0_DOMAIN||'auth.litalkeducation.com',CLIENT_ID=window.BUDGET_AUTH0_CLIENT_ID||'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
 let auth0Client,me,meta,reportRows=[];
 const $=id=>document.getElementById(id);
@@ -35,17 +41,24 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
 async function init(){
  updateOnline();
  if(TEST){me={name:'โหมดทดสอบ',email:'demo@example.com',isAdmin:true};$('userName').textContent=me.name;$('adminNav').classList.remove('hidden');startNotifs();$('testBanner').classList.remove('hidden');show('app');await loadMeta();const q=new URLSearchParams(location.search).get('page');if(q)showPage(q);await loadDashboard();return}
+ const T=12000;
  try{
-  auth0Client=await auth0.createAuth0Client({domain:AUTH_DOMAIN,clientId:CLIENT_ID,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:location.origin+location.pathname}});
-  if(location.search.includes('code=')||location.search.includes('error=')){await auth0Client.handleRedirectCallback();history.replaceState({},document.title,location.pathname);}
-  if(!await auth0Client.isAuthenticated()){show('login');return}
-  const token=await auth0Client.getTokenSilently(); const r=await fetch(API+'/budget/me',{headers:{Authorization:'Bearer '+token}});
+  if(!window.auth0)throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+  auth0Client=await withTimeout(auth0.createAuth0Client({domain:AUTH_DOMAIN,clientId:CLIENT_ID,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:location.origin+location.pathname}}),T,'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
+  if(location.search.includes('code=')||location.search.includes('error=')){await withTimeout(auth0Client.handleRedirectCallback(),T,'ยืนยันการเข้าสู่ระบบไม่ทัน');history.replaceState({},document.title,location.pathname);}
+  if(!await withTimeout(auth0Client.isAuthenticated(),T,'ตรวจสอบสถานะไม่ทัน')){show('login');return}
+  const token=await withTimeout(auth0Client.getTokenSilently(),T,'ขอสิทธิ์เข้าใช้งานไม่ทัน');
+  const r=await withTimeout(fetch(API+'/budget/me',{headers:{Authorization:'Bearer '+token}}),15000,'เชื่อมต่อเซิร์ฟเวอร์ไม่ทัน');
   if(!r.ok){show('denied');return}
-  me=await r.json(); $('userName').textContent=me.name||me.email||''; if(me.isAdmin){$('adminNav').classList.remove('hidden');startNotifs()} show('app'); await loadMeta(); const q=new URLSearchParams(location.search).get('page'); if(['transaction','donation','audit'].includes(q))showPage(q); await loadDashboard();
- }catch(e){console.error(e);show('login')}
+  me=await r.json();
+ }catch(e){console.error(e);loginMsg(e.message||'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง');show('login');return}
+ $('userName').textContent=me.name||me.email||'';if(me.isAdmin){$('adminNav').classList.remove('hidden');startNotifs()}
+ show('app');
+ try{await loadMeta();const q=new URLSearchParams(location.search).get('page');if(['transaction','donation','audit'].includes(q))showPage(q);await loadDashboard()}catch(e){console.error(e);toast('โหลดข้อมูลไม่สำเร็จ',1)}
 }
+function loginMsg(t){const b=$('loginMsg');b.textContent=t;b.classList.toggle('hidden',!t)}
 function show(id){['loading','login','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
-async function login(){await auth0Client.loginWithRedirect()}
+async function login(){try{loginMsg('');if(!auth0Client)throw new Error('ระบบเข้าสู่ระบบยังไม่พร้อม กรุณารีเฟรชหน้า');await auth0Client.loginWithRedirect()}catch(e){loginMsg(e.message)}}
 async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
 async function token(){return auth0Client.getTokenSilently()}
 async function api(path,opt={}){if(TEST)return mock(path,opt);const t=await token();opt.headers={...(opt.headers||{}),Authorization:'Bearer '+t};return fetch(API+path,opt)}

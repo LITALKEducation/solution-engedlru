@@ -15,13 +15,27 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/budget-v2.css">
+<link rel="stylesheet" href="/assets/budget-v2.css?v=10">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
 </head>
 <body>
-<div id="loading" class="center"><div class="spinner"></div><b>กำลังตรวจสอบสิทธิ์…</b></div>
-<div id="login" class="center hidden"><div class="card auth-card"><img class="logo" src="/icons/icon-192.png" alt=""><div class="eyebrow">Budget Management</div><h1>บริหารงบประมาณ</h1><p>เข้าสู่ระบบด้วยบัญชี Auth0 ที่ได้รับอนุญาต</p><button class="cta" onclick="login()">เข้าสู่ระบบ</button></div></div>
+<div id="loading" class="splash"><img class="pulse" src="/icons/icon-192.png" alt=""><b>Budget</b><div class="bar"><i></i></div><small>กำลังตรวจสอบสิทธิ์…</small>
+<div id="slowBox" class="slow hidden"><p>ใช้เวลานานกว่าปกติ<span id="slowMsg"></span></p><button class="cta small-cta" onclick="location.reload()">ลองใหม่</button><button class="secondary block" onclick="resetApp()">ล้างแคชแล้วโหลดใหม่</button></div></div>
+<div id="login" class="welcome hidden">
+<div class="w-hero"><i class="w-orb o1"></i><i class="w-orb o2"></i><i class="w-orb o3"></i>
+<div class="w-cards"><div class="wc c1"></div><div class="wc c2"><span class="wc-dot"></span><span class="wc-line"></span><span class="wc-line s"></span></div></div>
+<span class="w-badge b1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7L7 17M7 8v9h9"/></svg></span><span class="w-badge b2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg></span><span class="w-badge b3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+<img class="w-logo" src="/icons/icon-192.png" alt=""></div>
+<div class="w-body"><div class="eyebrow">English Education · LRU</div><h1>ยินดีต้อนรับสู่ Budget</h1><p>ระบบบริหารงบประมาณและรับบริจาคของโครงการ ใช้งานง่ายบนมือถือ</p>
+<ul class="w-feats">
+<li><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><div><b>บันทึกรายรับ-รายจ่าย</b><small>แนบใบเสร็จ พร้อม QR ตรวจสอบรายการ</small></div></li>
+<li><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></span><div><b>ทะเบียนเงินบริจาค</b><small>เงินสด และ PromptPay แยกดูได้ง่าย</small></div></li>
+<li><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><div><b>แจ้งเตือนผู้ดูแล</b><small>รู้ทันทีเมื่อมีรายการใหม่</small></div></li></ul>
+<div id="loginMsg" class="w-msg hidden"></div>
+<button class="cta" onclick="login()">เข้าสู่ระบบ</button>
+<a class="w-link" href="?test=true">ลองใช้โหมดทดสอบ (ข้อมูลจำลอง)</a>
+<small class="w-foot">เข้าสู่ระบบด้วยบัญชี Auth0 ที่ได้รับอนุญาตเท่านั้น</small></div></div>
 <div id="denied" class="center hidden"><div class="card auth-card"><div class="eyebrow">Access denied</div><h1>ไม่มีสิทธิ์เข้าใช้งาน</h1><p id="deniedText">บัญชีนี้ไม่ได้รับสิทธิ์ในระบบ Budget</p><button class="secondary" onclick="logout()">ออกจากระบบ</button></div></div>
 
 <div id="app" class="hidden">
@@ -129,5 +143,5 @@
 <div id="menu" class="modal hidden" onclick="if(event.target===this)closeMenu()"><div class="modal-card sheet"><button class="close" onclick="closeMenu()" aria-label="ปิด">×</button><div class="me"><span class="av big" id="menuAv">?</span><div><b id="userName"></b><small id="menuEmail"></small><span class="role" id="menuRole"></span></div></div><button class="secondary block" onclick="logout()">ออกจากระบบ</button></div></div>
 <div id="notif" class="modal hidden" onclick="if(event.target===this)closeNotifs()"><div class="modal-card sheet"><button class="close" onclick="closeNotifs()" aria-label="ปิด">×</button><h2>การแจ้งเตือน</h2><div id="pushBox" class="push-box"></div><div id="notifList" class="notif-list"></div></div></div>
 <div id="toast" class="hidden" role="status"></div>
-<script src="/assets/budget-v2.js"></script>
+<script src="/assets/budget-v2.js?v=10"></script>
 </body></html>
