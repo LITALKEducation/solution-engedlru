@@ -174,10 +174,38 @@ async function adminAccounts(request,env,auth){
  try{await env.DB.prepare("INSERT INTO budget_accounts (uuid,name,description,currency) VALUES (?,?,?,?)").bind(uuid,clean(b.name,120),clean(b.description,500),clean(b.currency||"THB",3)).run();await audit(env,auth,"ACCOUNT_CREATED","account",uuid,{name:b.name});return json(request,env,{ok:true,uuid},201);}catch(e){return fail(request,env,"ไม่สามารถสร้างบัญชีได้: "+e.message,400);}
 }
 
+const RESERVED_CATEGORY="เงินบริจาค"; // used by the donation flow; cannot be renamed, retyped or hidden
+async function adminCategoryUpdate(request,env,auth,uuid){
+ const denied=await adminOnly(request,env,auth); if(denied)return denied;
+ const b=await request.json().catch(()=>null); if(!b||typeof b!=="object")return fail(request,env,"ข้อมูลไม่ถูกต้อง");
+ const cur=await env.DB.prepare("SELECT uuid,name,type,active FROM budget_categories WHERE uuid=?").bind(uuid).first();
+ if(!cur)return fail(request,env,"ไม่พบหมวดหมู่",404);
+ if(cur.name===RESERVED_CATEGORY)return fail(request,env,"หมวดหมู่ระบบ (เงินบริจาค) แก้ไขหรือซ่อนไม่ได้");
+ const name=b.name!==undefined?clean(b.name,120):cur.name;
+ const type=b.type!==undefined?String(b.type):cur.type;
+ const active=b.active!==undefined?(b.active?1:0):cur.active;
+ if(!name)return fail(request,env,"กรุณาระบุชื่อหมวดหมู่");
+ if(name===RESERVED_CATEGORY)return fail(request,env,"ชื่อหมวดหมู่นี้สงวนไว้สำหรับระบบ");
+ if(!["income","expense","both"].includes(type))return fail(request,env,"ประเภทหมวดหมู่ไม่ถูกต้อง");
+ if(type!==cur.type&&type!=="both"){
+  const used=await env.DB.prepare("SELECT DISTINCT type FROM budget_transactions WHERE category_uuid=?").bind(uuid).all();
+  if((used.results||[]).some(r=>r.type!==type))return fail(request,env,"เปลี่ยนประเภทไม่ได้ เพราะมีรายการเดิมที่ใช้หมวดหมู่นี้คนละประเภท (เลือก “ทั้งสองประเภท” แทนได้)");
+ }
+ try{
+  await env.DB.prepare("UPDATE budget_categories SET name=?,type=?,active=?,updated_at=datetime('now') WHERE uuid=?").bind(name,type,active,uuid).run();
+ }catch(e){
+  if(/unique/i.test(String(e?.message)))return fail(request,env,"มีหมวดหมู่ชื่อนี้ในประเภทนี้อยู่แล้ว");
+  throw e;
+ }
+ await audit(env,auth,"CATEGORY_UPDATED","category",uuid,{from:{name:cur.name,type:cur.type,active:cur.active},to:{name,type,active}});
+ return json(request,env,{ok:true});
+}
+
 async function adminCategories(request,env,auth){
  const denied=await adminOnly(request,env,auth); if(denied)return denied;
- if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,name,type,active FROM budget_categories ORDER BY name").all();return json(request,env,{categories:x.results||[]});}
+ if(request.method==="GET"){const x=await env.DB.prepare("SELECT c.uuid,c.name,c.type,c.active,(SELECT COUNT(*) FROM budget_transactions t WHERE t.category_uuid=c.uuid) uses FROM budget_categories c ORDER BY c.active DESC,c.name").all();return json(request,env,{categories:x.results||[]});}
  const b=await request.json().catch(()=>null); if(!b?.name||!["income","expense","both"].includes(b.type))return fail(request,env,"ข้อมูลหมวดหมู่ไม่ถูกต้อง");
+ if(clean(b.name,120)===RESERVED_CATEGORY)return fail(request,env,"ชื่อหมวดหมู่นี้สงวนไว้สำหรับระบบ");
  const uuid=crypto.randomUUID();
  try{await env.DB.prepare("INSERT INTO budget_categories (uuid,name,type) VALUES (?,?,?)").bind(uuid,clean(b.name,120),b.type).run();await audit(env,auth,"CATEGORY_CREATED","category",uuid,{name:b.name,type:b.type});return json(request,env,{ok:true,uuid},201);}catch(e){return fail(request,env,"ไม่สามารถสร้างหมวดหมู่ได้: "+e.message,400);}
 }
@@ -329,6 +357,7 @@ async function budgetV2Inner(request,env,url,ctx){
   if(url.pathname==="/budget/report" && request.method==="GET") return report(request,env,auth,url);
   if(url.pathname==="/budget/admin/accounts" && (request.method==="GET"||request.method==="POST")) return adminAccounts(request,env,auth);
   if(url.pathname==="/budget/admin/categories" && (request.method==="GET"||request.method==="POST")) return adminCategories(request,env,auth);
+  const catU=url.pathname.match(/^\/budget\/admin\/categories\/([^/]+)$/); if(catU&&request.method==="PATCH") return adminCategoryUpdate(request,env,auth,decodeURIComponent(catU[1]));
   if(url.pathname==="/budget/admin/users" && (request.method==="GET"||request.method==="POST")) return adminUsers(request,env,auth);
   const ev=url.pathname.match(/^\/budget\/transactions\/([^/]+)\/evidence$/); if(ev&&request.method==="GET")return getEvidence(request,env,auth,ev[1]);
   if(request.method==="POST" && url.pathname==="/budget/transactions") return createTransaction(request,env,auth,ctx);

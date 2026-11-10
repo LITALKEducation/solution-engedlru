@@ -15,9 +15,9 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/budget-v2.css?v=13">
+<link rel="stylesheet" href="/assets/budget-v2.css?v=14">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
-<script src="/assets/vendor/qrcode.js?v=13" defer></script>
+<script src="/assets/vendor/qrcode.js?v=14" defer></script>
 </head>
 <body>
 <div id="loading" class="splash"><img class="pulse" src="/icons/icon-192.png" alt=""><b>Budget</b><div class="bar"><i></i></div><small>กำลังตรวจสอบสิทธิ์…</small>
@@ -131,6 +131,7 @@
 <section id="page-admin" class="page hidden">
 <form id="accountForm" class="panel"><h2>เพิ่มบัญชี</h2><input id="newAccount" required placeholder="ชื่อบัญชี"><input id="accountDesc" placeholder="รายละเอียด"><button class="cta small-cta">เพิ่มบัญชี</button></form>
 <form id="categoryForm" class="panel"><h2>เพิ่มหมวดหมู่</h2><input id="newCategory" required placeholder="ชื่อหมวดหมู่"><select id="newCategoryType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select><button class="cta small-cta">เพิ่มหมวดหมู่</button></form>
+<div class="panel"><h2>หมวดหมู่ทั้งหมด</h2><div id="catList"><div class="skeleton"></div></div></div>
 <form id="userForm" class="panel"><h2>เปิดสิทธิ์ผู้ใช้</h2><input id="newUserEmail" type="email" inputmode="email" required placeholder="อีเมล"><input id="newStudentId" inputmode="numeric" placeholder="รหัสนักศึกษา"><input id="newUserName" placeholder="ชื่อ"><div class="field"><small>บัญชีที่เข้าถึงได้</small><div id="newUserAccount" class="account-opts"></div></div><button class="cta small-cta">เปิดสิทธิ์</button></form>
 <div class="panel"><h2>ผู้ใช้ที่เปิดสิทธิ์</h2><div id="users"></div></div>
 </section>
@@ -148,6 +149,8 @@
 <div id="detail" class="modal hidden" onclick="if(event.target===this)closeDetail()"><div class="modal-card sheet"><button class="close" onclick="closeDetail()" aria-label="ปิด">×</button><div id="detailBody"></div></div></div>
 <div id="menu" class="modal hidden" onclick="if(event.target===this)closeMenu()"><div class="modal-card sheet"><button class="close" onclick="closeMenu()" aria-label="ปิด">×</button><div class="me"><span class="av big" id="menuAv">?</span><div><b id="userName"></b><small id="menuEmail"></small><span class="role" id="menuRole"></span></div></div><button class="secondary block" onclick="logout()">ออกจากระบบ</button></div></div>
 <div id="notif" class="modal hidden" onclick="if(event.target===this)closeNotifs()"><div class="modal-card sheet"><button class="close" onclick="closeNotifs()" aria-label="ปิด">×</button><h2>การแจ้งเตือน</h2><div id="pushBox" class="push-box"></div><div id="notifList" class="notif-list"></div></div></div>
+<div id="catEdit" class="modal hidden" onclick="if(event.target===this)hideModal('catEdit')"><div class="modal-card sheet"><button class="close" onclick="hideModal('catEdit')" aria-label="ปิด">×</button><h2>แก้ไขหมวดหมู่</h2>
+<form id="catEditForm" class="form-grid"><input type="hidden" id="catEditId"><label>ชื่อหมวดหมู่<input id="catEditName" required maxlength="120"></label><label>ประเภท<select id="catEditType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select></label><small>รายการเดิมจะแสดงชื่อใหม่ทันที ประเภทเปลี่ยนไม่ได้ถ้ามีรายการเดิมคนละประเภท</small><button class="cta" type="submit" id="catEditSave">บันทึก</button></form></div></div>
 <div id="toast" class="hidden" role="status"></div>
-<script src="/assets/budget-v2.js?v=13"></script>
+<script src="/assets/budget-v2.js?v=14"></script>
 </body></html>

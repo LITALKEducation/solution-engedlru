@@ -215,7 +215,6 @@ nav button.active{color:var(--brand);font-weight:700}
 #toast.err{background:var(--brand-d)}
 
 @media print{.topbar,nav,.fab,main,#toast,.modal-actions,.close,#offline,#testBanner{display:none!important}#app{box-shadow:none}.modal{position:static;background:#fff;display:block}.modal-card{box-shadow:none;width:100%;animation:none;max-height:none}}
-@media(prefers-reduced-motion:reduce){*{animation:none!important}}
 
 /* splash + welcome */
 .splash{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;background:#fff;text-align:center}
@@ -272,3 +271,57 @@ nav button.active{color:var(--brand);font-weight:700}
 .failbox b{display:block;font-size:16px}
 .failbox p{margin:6px 0 10px;color:var(--brand-d);font-size:13px;word-break:break-word}
 .failbox .cta{margin-top:4px;width:auto;padding:0 28px;display:inline-flex}
+
+/* admin: categories */
+.cat-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.cat-row:last-child{border:0}
+.cat-row .cm{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.cat-row .cm b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-row .cm small{font-size:12px}
+.cat-row.off{opacity:.55}
+.round.sm{width:40px;height:40px;background:#fff;border:1px solid var(--line)}
+.round.sm svg{width:18px;height:18px}
+.pill-t{display:inline-block;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700;background:#eee}
+.pill-t.income{background:#dcfce7;color:var(--in)}.pill-t.expense{background:var(--brand-l);color:var(--brand-d)}.pill-t.both{background:#e0e7ff;color:#3730a3}
+
+/* ===== motion ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes slideInR{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@keyframes slideInL{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes sheetDown{to{transform:translateY(48px);opacity:0}}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes ring{0%{box-shadow:0 0 0 0 #15803d55}100%{box-shadow:0 0 0 22px #15803d00}}
+.page.enter{animation:fadeUp .3s cubic-bezier(.2,.8,.2,1)}
+.step-fwd{animation:slideInR .26s cubic-bezier(.2,.8,.2,1)}
+.step-back{animation:slideInL .26s cubic-bezier(.2,.8,.2,1)}
+.stagger .row,.stagger .acct-card,.stagger .cat-row,.stagger .notif,.stagger .kv-row{animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both}
+.stagger .row:nth-child(2),.stagger .acct-card:nth-child(2){animation-delay:.04s}
+.stagger .row:nth-child(3),.stagger .acct-card:nth-child(3){animation-delay:.08s}
+.stagger .row:nth-child(4),.stagger .acct-card:nth-child(4){animation-delay:.12s}
+.stagger .row:nth-child(5),.stagger .acct-card:nth-child(5){animation-delay:.16s}
+.stagger .row:nth-child(6){animation-delay:.2s}.stagger .row:nth-child(7){animation-delay:.24s}.stagger .row:nth-child(n+8){animation-delay:.28s}
+.stagger .cat-row:nth-child(2){animation-delay:.04s}.stagger .cat-row:nth-child(3){animation-delay:.08s}.stagger .cat-row:nth-child(n+4){animation-delay:.12s}
+.modal{animation:fadeIn .2s ease}
+.modal.closing{animation:fadeOut .19s ease forwards}
+.modal.closing .modal-card{animation:sheetDown .19s ease forwards}
+.modal-card .check{animation:pop .5s .12s cubic-bezier(.2,.8,.2,1) both,ring .9s .45s ease-out}
+.fab{animation:pop .45s .15s cubic-bezier(.2,.8,.2,1) both}
+.disp.bump .num{display:inline-block;animation:bump .16s ease}
+#toast{animation:toastIn .25s cubic-bezier(.2,.8,.2,1)}
+.hero-panel .acts .act{animation:fadeUp .45s cubic-bezier(.2,.8,.2,1) both}
+.hero-panel .acts .act:nth-child(2){animation-delay:.05s}.hero-panel .acts .act:nth-child(3){animation-delay:.1s}.hero-panel .acts .act:nth-child(4){animation-delay:.15s}
+.pn{animation:fadeUp .4s ease both}.pn:nth-child(2){animation-delay:.06s}.pn:nth-child(3){animation-delay:.12s}
+nav button svg{transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+nav button.active svg{transform:translateY(-2px) scale(1.12)}
+nav button span{transition:color .2s}
+.chip,.seg button,.cta,.primary,.secondary,.k,.round,.act .ab,.acct-card,.row{transition:background-color .18s,color .18s,border-color .18s,transform .12s,box-shadow .18s}
+.chip:active,.seg button:active{transform:scale(.96)}
+.cta:active:not(:disabled),.primary:active,.secondary:active{transform:scale(.97)}
+.k:active{transform:scale(.93)}
+.acct-card:active{transform:scale(.98)}
+input,select,textarea{transition:border-color .18s,box-shadow .18s}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}

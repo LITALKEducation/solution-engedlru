@@ -24,7 +24,10 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
  const notifs=[{uuid:'n2',kind:'donation',transaction_id:'DEMO-0003',type:'income',amount:20000,account_name:'บัญชีธนาคาร',title:'บริจาคใหม่ ฿20,000.00',body:'ผู้ช่วย · บัญชีธนาคาร · บริจาคโดย คุณสมชาย ใจดี (PromptPay)',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-36e5).toISOString(),unread:true},{uuid:'n1',kind:'transaction',transaction_id:'DEMO-0002',type:'expense',amount:850.5,account_name:'เงินสดชมรม',title:'เงินออก ฿850.50',body:'ผู้ช่วย · เงินสดชมรม · ซื้อกระดาษ A4 และปากกา',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-2*864e5).toISOString(),unread:true}];
  const res=o=>({ok:true,status:200,json:async()=>o,blob:async()=>new Blob(['demo evidence'],{type:'text/plain'})});
  return async(path,opt={})=>{const u=path.split('?')[0],post=(opt.method||'GET')==='POST';
-  if(u==='/budget/meta')return res({accounts:accs,categories:cats});
+  if(u==='/budget/meta')return res({accounts:accs,categories:cats.filter(c=>c.active!==0)});
+   if(u==='/budget/admin/categories'&&!post)return res({categories:cats.map(c=>({...c,active:c.active===0?0:1,uses:txs.filter(t=>t.category===c.name).length}))});
+   if(u==='/budget/admin/categories'&&post){const b=JSON.parse(opt.body);cats.push({uuid:'c'+(cats.length+1),name:b.name,type:b.type});return res({ok:true})}
+   if(/^\/budget\/admin\/categories\//.test(u)&&(opt.method||'')==='PATCH'){const c=cats.find(x=>x.uuid===decodeURIComponent(u.split('/').pop()));const b=JSON.parse(opt.body);if(!c)return {ok:false,status:404,json:async()=>({error:'ไม่พบหมวดหมู่'})};if(b.name!==undefined)c.name=b.name;if(b.type!==undefined)c.type=b.type;if(b.active!==undefined)c.active=b.active?1:0;return res({ok:true})}
   if(u==='/budget/dashboard'){const t=(x)=>txs.filter(y=>y.type===x).reduce((a,y)=>a+y.amount,0);return res({totals:{income:txs.filter(y=>y.type==='income'&&!y.is_donation).reduce((a,y)=>a+y.amount,0),donation:txs.filter(y=>y.is_donation).reduce((a,y)=>a+y.amount,0),expense:t('expense'),balance:t('income')-t('expense')},accounts:accs.map(a=>{const mine=txs.filter(y=>y.account_uuid===a.uuid),sum=f=>mine.filter(f).reduce((s,y)=>s+y.amount,0);return {...a,income:sum(y=>y.type==='income'&&!y.is_donation),donation:sum(y=>y.is_donation),expense:sum(y=>y.type==='expense'),balance:sum(y=>y.type==='income')-sum(y=>y.type==='expense')}}),recent:txs.slice(0,5)})}
   if(u==='/budget/report')return res({transactions:txs});
   if(u==='/budget/notifications')return res({notifications:notifs,unread:notifs.filter(x=>x.unread).length,push:{configured:false,subscribed:false}});
@@ -88,6 +91,11 @@ async function token(){return auth0Client.getTokenSilently()}
 async function api(path,opt={}){if(TEST)return mock(path,opt);const t=await token();opt.headers={...(opt.headers||{}),Authorization:'Bearer '+t};return fetch(API+path,opt)}
 
 // ---- helpers ----
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function hideModal(id){const m=$(id);if(!m||m.classList.contains('hidden'))return;if(REDUCED){m.classList.add('hidden');return}m.classList.add('closing');setTimeout(()=>{m.classList.add('hidden');m.classList.remove('closing')},190)}
+function openModal(id){const m=$(id);m.classList.remove('closing','hidden')}
+function replay(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls)}
+function countUp(el,from,to,ms=650){if(REDUCED||from===to){el.textContent='฿'+money(to);return}const t0=performance.now(),d=to-from;const f=t=>{const k=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-k,3);el.textContent='฿'+money(from+d*e);if(k<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
 const pad2=n=>String(n).padStart(2,'0');
 const ymdOf=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
 const todayStr=()=>ymdOf(new Date());
@@ -120,7 +128,7 @@ function groupedHtml(rows,src,key){let out='',last='';rows.forEach((t,i)=>{const
 const TITLES={dashboard:'บัญชีของฉัน',transaction:'บันทึกรายการ',donation:'บริจาค',audit:'ธุรกรรม',admin:'ตั้งค่าระบบ'};
 let curPage='dashboard',lastDash=0;
 function showPage(p){
- curPage=p;document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$('page-'+p).classList.remove('hidden');
+ curPage=p;document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const pg=$('page-'+p);pg.classList.remove('hidden');replay(pg,'enter');pg.classList.add('stagger');clearTimeout(pg._st);pg._st=setTimeout(()=>pg.classList.remove('stagger'),1300);
  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
  $('pageTitle').textContent=TITLES[p]||'';$('topLeft').innerHTML=p==='dashboard'?IC.menu:IC.back;$('topLeft').setAttribute('aria-label',p==='dashboard'?'เมนู':'ย้อนกลับ');
  $('fab').classList.toggle('gone',p==='transaction'||(p==='donation'&&!$('donForm').classList.contains('hidden')));
@@ -133,7 +141,7 @@ function topLeft(){
  if(curPage==='donation'&&!$('donForm').classList.contains('hidden')){if(!$('donStep2').classList.contains('hidden'))return goDon(1);return toggleDonForm(false)}
  showPage('dashboard')}
 function openMenu(){const n=me?.name||me?.email||'';$('userName').textContent=n;$('menuEmail').textContent=me?.email||'';$('menuAv').textContent=(n.trim()[0]||'?').toUpperCase();$('menuRole').textContent=me?.isAdmin?'ผู้ดูแล (budget_admin)':'ผู้ใช้';$('menu').classList.remove('hidden')}
-function closeMenu(){$('menu').classList.add('hidden')}
+function closeMenu(){hideModal('menu')}
 
 async function loadMeta(){
  const r=await api('/budget/meta');if(!r.ok){toast(await errMsg(r),1);return}meta=await r.json();
@@ -158,20 +166,21 @@ function Pad(o){
  o.quick.innerHTML=[100,500,1000,2000,5000].map(n=>'<button type="button" class="chip" data-q="'+n+'">฿'+n.toLocaleString('th-TH')+'</button>').join('');
  function render(){const [i,f]=v.split('.');const ii=(i||'0').replace(/\B(?=(\d{3})+(?!\d))/g,',');
   o.disp.innerHTML='<span class="cur">฿</span><span class="num">'+ii+(v.includes('.')?'.'+(f||''):'')+'</span>';o.disp.classList.toggle('empty',!v);o.hidden.value=v;o.next.disabled=!(Number(v)>0)}
+ function bump(){if(!REDUCED)replay(o.disp,'bump')}
  function press(k){
   if(k==='del')v=v.slice(0,-1);
   else if(k==='.'){if(!v.includes('.'))v=(v||'0')+'.'}
   else{if(v.includes('.')&&v.split('.')[1].length>=2)return;if(v.replace('.','').length>=9)return;v=(v==='0')?k:v+k}
-  render()}
+  render();bump()}
  o.pad.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(b)press(b.dataset.k)});
- o.quick.addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(b){v=b.dataset.q;render()}});
+ o.quick.addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(b){v=b.dataset.q;render();bump()}});
  document.addEventListener('keydown',e=>{if(!o.visible()||/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||'')))return;
   if(/^[0-9.]$/.test(e.key))press(e.key);else if(e.key==='Backspace')press('del');else if(e.key==='Enter'&&!o.next.disabled)o.next.click()});
  render();
  return {reset(){v='';render()},get:()=>v}}
 
 // ---- dashboard ----
-let dash=null,acctSel='';
+let dash=null,acctSel='',lastBal=0;
 async function loadDashboard(){
  if(!dash)$('summary').innerHTML='<div class="skeleton" style="height:270px;border-radius:0 0 32px 32px;margin:0 -16px"></div>';
  let r;try{r=await api('/budget/dashboard')}catch(e){if(!dash)$('summary').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadDashboard()');else toast('โหลดข้อมูลไม่สำเร็จ',1);return}
@@ -183,10 +192,11 @@ function renderDash(){
  const t=a?{balance:a.balance,income:a.income,donation:a.donation,expense:a.expense}:d.totals;
  const act=(ic,label,fn,prim)=>'<div class="act"><button class="ab'+(prim?' primary':'')+'" onclick="'+fn+'" aria-label="'+label+'">'+ic+'</button><span>'+label+'</span></div>';
  $('summary').innerHTML='<div class="hero-panel"><label class="chip-sel"><i class="cardico"></i><span>'+esc(a?a.name:'ทุกบัญชี')+'</span>'+IC.caret+'<select id="acctSelect" aria-label="เลือกบัญชี"><option value="">ทุกบัญชี</option>'+accs.map(x=>'<option value="'+esc(x.uuid)+'"'+(x.uuid===acctSel?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label>'
-  +'<div class="lbl">ยอดคงเหลือ</div><div class="bal">฿'+money(t.balance)+'</div>'
+  +'<div class="lbl">ยอดคงเหลือ</div><div class="bal" id="balNum">฿'+money(t.balance)+'</div>'
   +'<div class="pn-row"><span class="pn in">เงินเข้า ฿'+money(t.income)+'</span><span class="pn don">บริจาค ฿'+money(t.donation)+'</span><span class="pn out">เงินออก ฿'+money(t.expense)+'</span></div>'
   +'<div class="acts">'+act(IC.plus,'บันทึก',"showPage('transaction')",1)+act(IC.donation,'บริจาค',"showPage('donation')")+act(IC.list,'ธุรกรรม',"showPage('audit')")+act(IC.refresh,'รีเฟรช','loadDashboard()')+'</div></div>';
  $('acctSelect').onchange=e=>{acctSel=e.target.value;renderDash()};
+ countUp($('balNum'),lastBal,Number(t.balance||0));lastBal=Number(t.balance||0);
  $('accounts').innerHTML=accs.map(x=>'<button class="acct-card'+(x.uuid===acctSel?' on':'')+'" onclick="pickAcct(\''+esc(x.uuid)+'\')"><i class="cardico"></i><b>'+esc(x.name)+'</b><small>'+esc(x.currency||'THB')+'</small><div class="ab">฿'+money(x.balance)+'</div></button>').join('')||'<div class="empty">ยังไม่มีบัญชี</div>';
  lists.recent=(d.recent||[]).filter(x=>!acctSel||x.account_uuid===acctSel);
  $('recent').innerHTML=groupedHtml(lists.recent,'recent','created_at')||'<div class="empty">ยังไม่มีรายการ</div>'}
@@ -200,11 +210,11 @@ function openDetail(src,i){const t=lists[src][i];if(!t)return;
  $('detailBody').innerHTML='<div class="dt-amt '+k+'">'+(inc?'+':'-')+'฿'+money(t.amount)+'</div><div class="dt-title">'+esc(don?t.donor_name:t.details)+'</div>'+rows.filter(r=>r[1]).map(r=>'<div class="kv"><span>'+r[0]+'</span><b>'+esc(r[1])+'</b></div>').join('')
   +(ev?'<button class="cta" onclick="openEvidence(\''+esc(t.transaction_uuid||t.uuid)+'\')">ดูหลักฐาน / สลิป</button>':'');
  $('detail').classList.remove('hidden')}
-function closeDetail(){$('detail').classList.add('hidden')}
+function closeDetail(){hideModal('detail')}
 
 // ---- record transaction (2 steps) ----
 const txPad=Pad({disp:$('txDisp'),hidden:$('amount'),pad:$('txPad'),quick:$('txQuick'),next:$('txNext'),visible:()=>curPage==='transaction'&&!$('txStep1').classList.contains('hidden')});
-function goTx(n){$('txStep1').classList.toggle('hidden',n!==1);$('txStep2').classList.toggle('hidden',n!==2);if(n===2)$('txRecap').textContent='฿'+money($('amount').value);window.scrollTo(0,0)}
+function goTx(n){$('txStep1').classList.toggle('hidden',n!==1);$('txStep2').classList.toggle('hidden',n!==2);replay($('txStep'+n),n===2?'step-fwd':'step-back');if(n===2)$('txRecap').textContent='฿'+money($('amount').value);window.scrollTo(0,0)}
 $('txNext').onclick=()=>{if(Number($('amount').value)>0)goTx(2)};
 $('txForm').addEventListener('submit',async e=>{
  e.preventDefault();if(!(Number($('amount').value)>0)){goTx(1);return}
@@ -267,7 +277,7 @@ async function saveReceiptImage(){
  if(IS_IOS&&canShare){try{await navigator.share({files:[file],title:'ใบรับรายการ '+r.id});return}catch(e){if(e&&e.name==='AbortError')return}}
  try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('บันทึกภาพแล้ว');return}catch(e){}
  if(canShare){try{await navigator.share({files:[file]})}catch(e){}}}
-function closeReceipt(){$('receipt').classList.add('hidden')}
+function closeReceipt(){hideModal('receipt')}
 
 // ---- transactions list ----
 let repType='',repQ='';
@@ -301,11 +311,31 @@ async function exportPdf(){try{await needPdf()}catch(e){return toast(e.message,1
  doc.setFontSize(18);doc.setFont('Sarabun','bold');doc.text('รายงานรายการงบประมาณ (Budget)',14,15);doc.setFont('Sarabun','normal');doc.setFontSize(11);doc.text('พิมพ์เมื่อ '+dt(new Date()),14,22);
  doc.autoTable({startY:28,head:[['Transaction ID','บัญชี','ประเภท','หมวดหมู่','จำนวนเงิน','รายละเอียด','ผู้บันทึก','วันที่']],body:reportRows.map(x=>[x.transaction_id,x.account_name,tl(x),x.category,money(x.amount),x.details,x.created_by_name||x.created_by_email,dt(x.created_at)]),styles:{font:'Sarabun',fontSize:9,cellPadding:2},headStyles:{font:'Sarabun',fontStyle:'bold',fillColor:[15,118,110]},columnStyles:{4:{halign:'right'}}});
  doc.save('budget-report-'+new Date().toISOString().slice(0,10)+'.pdf')}
-async function loadAdmin(){if(!me.isAdmin)return;const r=await api('/budget/admin/users');if(!r.ok){$('users').innerHTML=failBox(await errMsg(r),'loadAdmin()');return}const d=await r.json();$('users').innerHTML=(d.users||[]).map(x=>'<div class="kv-row"><span>'+esc(x.email)+'<br><small>'+esc(x.student_id||'ไม่ได้ผูกรหัสนักศึกษา')+'</small></span><b>'+(x.enabled?'Enabled':'Disabled')+'</b></div>').join('')||'<p>ยังไม่มีผู้ใช้</p>'}
+async function loadAdmin(){if(!me.isAdmin)return;loadCats();const r=await api('/budget/admin/users');if(!r.ok){$('users').innerHTML=failBox(await errMsg(r),'loadAdmin()');return}const d=await r.json();$('users').innerHTML=(d.users||[]).map(x=>'<div class="kv-row"><span>'+esc(x.email)+'<br><small>'+esc(x.student_id||'ไม่ได้ผูกรหัสนักศึกษา')+'</small></span><b>'+(x.enabled?'Enabled':'Disabled')+'</b></div>').join('')||'<p>ยังไม่มีผู้ใช้</p>'}
 $('accountForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newAccount').value,description:$('accountDesc').value})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadMeta();toast('เพิ่มบัญชีแล้ว')});
-$('categoryForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newCategory').value,type:$('newCategoryType').value})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadMeta();toast('เพิ่มหมวดหมู่แล้ว')});
+$('categoryForm').addEventListener('submit',async e=>{e.preventDefault();const r=await api('/budget/admin/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('newCategory').value,type:$('newCategoryType').value})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await Promise.all([loadMeta(),loadCats()]);toast('เพิ่มหมวดหมู่แล้ว')});
 $('userForm').addEventListener('submit',async e=>{e.preventDefault();const accounts=[...$('newUserAccount').querySelectorAll('input:checked')].map(x=>x.value);const r=await api('/budget/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('newUserEmail').value,studentId:$('newStudentId').value,displayName:$('newUserName').value,accountUuids:accounts})});if(!r.ok)return toast(await errMsg(r),1);e.target.reset();await loadAdmin();toast('เปิดสิทธิ์แล้ว')});
 window.addEventListener('DOMContentLoaded',init);
+// ---- admin: categories (list / rename / change type / hide) ----
+let cats=[];
+const TYPE_LABEL={income:'เงินเข้า',expense:'เงินออก',both:'ทั้งสองประเภท'},RESERVED_CAT='เงินบริจาค';
+async function loadCats(){
+ let r;try{r=await api('/budget/admin/categories')}catch(e){$('catList').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadCats()');return}
+ if(!r.ok){$('catList').innerHTML=failBox(await errMsg(r),'loadCats()');return}
+ cats=(await r.json()).categories||[];renderCats()}
+function renderCats(){
+ $('catList').innerHTML=cats.map((c,i)=>{const sys=c.name===RESERVED_CAT,off=!c.active;
+  return '<div class="cat-row'+(off?' off':'')+'"><div class="cm"><b>'+esc(c.name)+'</b><small><span class="pill-t '+esc(c.type)+'">'+TYPE_LABEL[c.type]+'</span> · ใช้ '+Number(c.uses||0)+' รายการ'+(off?' · ซ่อนอยู่':'')+(sys?' · หมวดหมู่ระบบ':'')+'</small></div>'
+  +(sys?'':'<button class="round sm" onclick="editCat('+i+')" aria-label="แก้ไข">'+'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'+'</button><button class="secondary small" onclick="toggleCat('+i+')">'+(off?'แสดง':'ซ่อน')+'</button>')+'</div>'}).join('')||'<div class="empty">ยังไม่มีหมวดหมู่</div>'}
+function editCat(i){const c=cats[i];if(!c)return;$('catEditId').value=c.uuid;$('catEditName').value=c.name;$('catEditType').value=c.type;openModal('catEdit');setTimeout(()=>$('catEditName').focus(),250)}
+async function patchCat(uuid,body){
+ const r=await api('/budget/admin/categories/'+encodeURIComponent(uuid),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ if(!r.ok){toast(await errMsg(r),1);return false}
+ await Promise.all([loadCats(),loadMeta()]);return true}
+async function toggleCat(i){const c=cats[i];if(!c)return;if(await patchCat(c.uuid,{active:c.active?0:1}))toast(c.active?'ซ่อนหมวดหมู่แล้ว':'แสดงหมวดหมู่แล้ว')}
+$('catEditForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('catEditSave');b.disabled=true;
+ try{if(await patchCat($('catEditId').value,{name:$('catEditName').value,type:$('catEditType').value})){hideModal('catEdit');toast('บันทึกหมวดหมู่แล้ว')}}finally{b.disabled=false}});
+
 
 // ---- Donations ----
 let donRows=[],donM='',donQ='';
@@ -313,7 +343,7 @@ const donPad=Pad({disp:$('donDisp'),hidden:$('donAmount'),pad:$('donPad'),quick:
 function toggleDonForm(force){const f=$('donForm'),show=force===undefined?f.classList.contains('hidden'):force;
  f.classList.toggle('hidden',!show);$('donMain').classList.toggle('hidden',show);$('fab').classList.toggle('gone',show);
  if(show){goDon(1);if(!$('donDate').value)$('donDate').value=todayStr()}window.scrollTo(0,0)}
-function goDon(n){$('donStep1').classList.toggle('hidden',n!==1);$('donStep2').classList.toggle('hidden',n!==2);
+function goDon(n){$('donStep1').classList.toggle('hidden',n!==1);$('donStep2').classList.toggle('hidden',n!==2);replay($('donStep'+n),n===2?'step-fwd':'step-back');
  if(n===2){$('donRecap').textContent='฿'+money($('donAmount').value);$('donRecapM').textContent=mLabel($('donMethod').value)}window.scrollTo(0,0)}
 $('donNext').onclick=()=>{if(Number($('donAmount').value)>0)goDon(2)};
 function setDonMethod(m){$('donMethod').value=m;document.querySelectorAll('[data-method]').forEach(x=>x.classList.toggle('on',x.dataset.method===m));$('donReq').textContent=m==='promptpay'?'* บังคับ':'(ไม่บังคับสำหรับเงินสด)'}
@@ -363,7 +393,7 @@ function renderNotifs(){const d=notifData||{notifications:[]};
  renderPushBox()}
 async function openNotifs(){$('notif').classList.remove('hidden');await loadNotifs();renderNotifs();
  if((notifData?.unread||0)>0){try{await api('/budget/notifications/read',{method:'POST'})}catch(e){}notifUnread=0;setBadge(0)}}
-function closeNotifs(){$('notif').classList.add('hidden');if(notifData){(notifData.notifications||[]).forEach(n=>n.unread=false)}}
+function closeNotifs(){hideModal('notif');if(notifData){(notifData.notifications||[]).forEach(n=>n.unread=false)}}
 const b64uBytes=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');const p='='.repeat((4-s.length%4)%4),bin=atob(s+p);return Uint8Array.from(bin,c=>c.charCodeAt(0))};
 async function renderPushBox(){const box=$('pushBox'),p=notifData?.push||{};
  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
