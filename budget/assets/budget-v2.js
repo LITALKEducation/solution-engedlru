@@ -47,7 +47,7 @@ async function login(){await auth0Client.loginWithRedirect()}
 async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
 async function token(){return auth0Client.getTokenSilently()}
 async function api(path,opt={}){if(TEST)return mock(path,opt);const t=await token();opt.headers={...(opt.headers||{}),Authorization:'Bearer '+t};return fetch(API+path,opt)}
-function showPage(p){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$('page-'+p).classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===p));window.scrollTo(0,0);if(p==='donation')loadDonations();if(p==='audit')loadReport();if(p==='admin')loadAdmin()}
+function showPage(p){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$('page-'+p).classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===p));$('fab').classList.toggle('gone',p==='transaction');window.scrollTo(0,0);if(p==='donation')loadDonations();if(p==='audit')loadReport();if(p==='admin')loadAdmin()}
 async function loadMeta(){
  const r=await api('/budget/meta');meta=await r.json();
  const accounts=meta.accounts||[],cats=meta.categories||[];
