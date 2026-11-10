@@ -11,8 +11,22 @@ async function needPdf(){await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.
 const fmtDate=d=>{try{return new Date(d).toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}catch(e){return d}};
 function updateOnline(){$('offline').classList.toggle('hidden',navigator.onLine)}
 addEventListener('online',updateOnline);addEventListener('offline',updateOnline);
+// ?test=true : demo mode with local fake data. No Auth0 login and no API calls are made.
+const TEST=new URLSearchParams(location.search).get('test')==='true';
+const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',currency:'THB'},{uuid:'a2',name:'บัญชีธนาคาร',currency:'THB'}],cats=[{uuid:'c1',name:'อุปกรณ์',type:'expense'},{uuid:'c2',name:'ค่ากิจกรรม',type:'expense'},{uuid:'c3',name:'เงินสนับสนุน',type:'income'},{uuid:'c4',name:'อื่น ๆ',type:'both'}];
+ let n=3;const txs=[{transaction_id:'DEMO-0003',transaction_uuid:'t3',account_uuid:'a2',account_name:'บัญชีธนาคาร',type:'income',category:'เงินสนับสนุน',amount:20000,details:'เงินสนับสนุนจากคณะ',created_by_email:'demo@example.com',created_at:new Date(Date.now()-864e5).toISOString(),status:'active'},{transaction_id:'DEMO-0002',transaction_uuid:'t2',account_uuid:'a1',account_name:'เงินสดชมรม',type:'expense',category:'อุปกรณ์',amount:850.5,details:'ซื้อกระดาษ A4 และปากกา',created_by_email:'demo@example.com',created_at:new Date(Date.now()-2*864e5).toISOString(),status:'active'},{transaction_id:'DEMO-0001',transaction_uuid:'t1',account_uuid:'a1',account_name:'เงินสดชมรม',type:'income',category:'อื่น ๆ',amount:5000,details:'ยอดยกมา',created_by_email:'demo@example.com',created_at:new Date(Date.now()-5*864e5).toISOString(),status:'active'}];
+ const res=o=>({ok:true,status:200,json:async()=>o,blob:async()=>new Blob(['demo evidence'],{type:'text/plain'})});
+ return async(path,opt={})=>{const u=path.split('?')[0],post=(opt.method||'GET')==='POST';
+  if(u==='/budget/meta')return res({accounts:accs,categories:cats});
+  if(u==='/budget/dashboard'){const t=(x)=>txs.filter(y=>y.type===x).reduce((a,y)=>a+y.amount,0);return res({totals:{income:t('income'),expense:t('expense'),balance:t('income')-t('expense')},accounts:accs.map(a=>({...a,balance:txs.filter(y=>y.account_uuid===a.uuid).reduce((s,y)=>s+(y.type==='income'?y.amount:-y.amount),0)})),recent:txs.slice(0,5)})}
+  if(u==='/budget/report')return res({transactions:txs});
+  if(u==='/budget/admin/users'&&!post)return res({users:[{email:'demo@example.com',student_id:'0000000',enabled:true}]});
+  if(u==='/budget/transactions'&&post){const f=opt.body,acc=accs.find(a=>a.uuid===f.get('accountUuid')),cat=cats.find(c=>c.uuid===f.get('categoryUuid'));n++;const id='DEMO-'+String(n).padStart(4,'0');txs.unshift({transaction_id:id,transaction_uuid:'t'+n,account_uuid:acc.uuid,account_name:acc.name,type:f.get('type'),category:cat.name,amount:Number(f.get('amount')),details:f.get('details'),created_by_email:'demo@example.com',created_at:new Date().toISOString(),status:'active'});return res({transaction:{transactionId:id,uuid:'demo-'+n,accountUuid:acc.uuid,type:f.get('type'),amount:Number(f.get('amount')),details:f.get('details')},verificationUrl:location.origin+'/verify/?id='+id})}
+  if(u.endsWith('/evidence'))return res({});
+  return res({ok:true})}})();
 async function init(){
  updateOnline();
+ if(TEST){me={name:'โหมดทดสอบ',email:'demo@example.com',isAdmin:true};$('userName').textContent=me.name;$('adminNav').classList.remove('hidden');$('testBanner').classList.remove('hidden');show('app');await loadMeta();const q=new URLSearchParams(location.search).get('page');if(q)showPage(q);await loadDashboard();return}
  try{
   auth0Client=await auth0.createAuth0Client({domain:AUTH_DOMAIN,clientId:CLIENT_ID,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:location.origin+location.pathname}});
   if(location.search.includes('code=')||location.search.includes('error=')){await auth0Client.handleRedirectCallback();history.replaceState({},document.title,location.pathname);}
@@ -24,9 +38,9 @@ async function init(){
 }
 function show(id){['loading','login','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 async function login(){await auth0Client.loginWithRedirect()}
-async function logout(){await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
+async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
 async function token(){return auth0Client.getTokenSilently()}
-async function api(path,opt={}){const t=await token();opt.headers={...(opt.headers||{}),Authorization:'Bearer '+t};return fetch(API+path,opt)}
+async function api(path,opt={}){if(TEST)return mock(path,opt);const t=await token();opt.headers={...(opt.headers||{}),Authorization:'Bearer '+t};return fetch(API+path,opt)}
 function showPage(p){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$('page-'+p).classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===p));window.scrollTo(0,0);if(p==='audit')loadReport();if(p==='admin')loadAdmin()}
 async function loadMeta(){
  const r=await api('/budget/meta');meta=await r.json();
