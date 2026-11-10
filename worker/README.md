@@ -68,7 +68,6 @@ npx wrangler r2 bucket create engedlru-files
 ```bash
 npx wrangler secret put AUTH0_M2M_CLIENT_ID
 npx wrangler secret put AUTH0_M2M_CLIENT_SECRET
-npx wrangler secret put AUTH0_MANAGEMENT_API_AUDIENCE
 ```
 
 ค่าเหล่านี้มาจาก Auth0 Application ประเภท **Machine to Machine** ที่ Authorize กับ **Auth0 Management API** โดยต้องเปิด API permissions ให้ครบดังนี้:
@@ -79,7 +78,7 @@ npx wrangler secret put AUTH0_MANAGEMENT_API_AUDIENCE
 
 Worker จะส่ง scope ทั้งสามรายการในคำขอ M2M token โดยตรง หากขาด scope หรือ M2M credentials ไม่ถูกต้อง ระบบ Budget จะแจ้ง `AUTH0_ROLE_LOOKUP_FAILED` แทนการแสดง Role ว่างโดยไม่บอกสาเหตุ
 
-ตั้งค่า `AUTH0_DOMAIN` เป็น Custom Domain ที่ใช้ล็อกอิน (ในระบบนี้คือ `auth.litalkeducation.com`) และตั้งค่า Worker setting `AUTH0_MANAGEMENT_API_AUDIENCE` (จัดเก็บผ่าน Wrangler Secret เพื่อให้คงอยู่เมื่อ deploy ด้วย GitHub Actions) เป็น **Identifier ของ Auth0 Management API จากโดเมนหลัก (Canonical Tenant Domain)** ในหน้า Auth0 Dashboard → Applications → APIs → Auth0 Management API. รูปแบบจะเป็น `https://<canonical-tenant-domain>/api/v2/` ไม่ใช่ `https://auth.litalkeducation.com/api/v2/` หาก Custom Domain ไม่ใช่โดเมนหลักของ Tenant. ให้ใส่ค่า Identifier จริงเมื่อ Wrangler ถามในคำสั่ง `wrangler secret put AUTH0_MANAGEMENT_API_AUDIENCE` (ค่านี้ไม่ใช่ความลับ แต่จัดเก็บเป็น Worker Secret เพื่อให้ deployment ผ่าน Wrangler คงค่าไว้).
+ตั้งค่า `AUTH0_DOMAIN=auth.litalkeducation.com` สำหรับ Custom Domain ที่ใช้ล็อกอิน และตั้งค่า `AUTH0_MANAGEMENT_API_DOMAIN=litalkeducation.us.auth0.com` กับ `AUTH0_MANAGEMENT_API_AUDIENCE=https://litalkeducation.us.auth0.com/api/v2/` สำหรับ Management API. โค้ดจะใช้ Tenant Domain สำหรับขอ M2M Token, อ่าน Role และอัปเดตโปรไฟล์ ส่วน `/userinfo` ยังคงใช้ Custom Domain.
 
 Role สำหรับผู้ดูแล Budget ต้องใช้ชื่อ **`budget_admin`** ตรงตามตัวพิมพ์เล็ก/ใหญ่ใน Auth0 และต้อง Assign ให้ผู้ใช้ในแท็บ Roles ของหน้า User (ไม่ใช่เพียงสร้าง Role ไว้เฉย ๆ).
 
