@@ -193,3 +193,7 @@ th{background:#fafafa;color:var(--mute);font-size:11px}
 .tx-list.show-all{display:flex!important}
 .pill.cash{background:#fef3c7;color:#92400e}.pill.promptpay{background:#dbeafe;color:#1e40af}
 @media(min-width:760px){.stats.three{grid-template-columns:repeat(3,1fr)}.filters.donf{display:grid}}
+.stat.don b{color:#7c3aed}.stat.don .dot{background:#7c3aed}
+.badge-don{font-style:normal;font-size:11px;font-weight:700;background:#ede9fe;color:#6d28d9;border-radius:999px;padding:1px 8px;vertical-align:middle}
+.stats{grid-template-columns:1fr 1fr}.stats .stat.out{grid-column:1/-1}
+@media(min-width:760px){.stats{grid-template-columns:repeat(3,1fr)}.stats .stat.out{grid-column:auto}}

@@ -25,21 +25,23 @@ async function dashboard(request, env, auth) {
   const accounts = await env.DB.prepare(`
     SELECT a.uuid, a.name, a.description, a.currency,
       COALESCE(SUM(CASE WHEN t.type='income' AND t.status='completed' THEN t.amount WHEN t.type='expense' AND t.status='completed' THEN -t.amount ELSE 0 END),0) balance,
-      COALESCE(SUM(CASE WHEN t.type='income' AND t.status='completed' THEN t.amount ELSE 0 END),0) income,
+      COALESCE(SUM(CASE WHEN t.type='income' AND t.status='completed' AND d.uuid IS NULL THEN t.amount ELSE 0 END),0) income,
+      COALESCE(SUM(CASE WHEN t.type='income' AND t.status='completed' AND d.uuid IS NOT NULL THEN t.amount ELSE 0 END),0) donation,
       COALESCE(SUM(CASE WHEN t.type='expense' AND t.status='completed' THEN t.amount ELSE 0 END),0) expense
     FROM budget_accounts a
     LEFT JOIN budget_transactions t ON t.account_uuid=a.uuid
+    LEFT JOIN budget_donations d ON d.transaction_uuid=t.uuid
     WHERE a.active=1
     GROUP BY a.uuid ORDER BY a.name
   `).all();
   const recentSql = auth.isAdmin
-    ? `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid ORDER BY t.created_at DESC LIMIT 5`
-    : `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?) ORDER BY t.created_at DESC LIMIT 5`;
+    ? `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid ORDER BY t.created_at DESC LIMIT 5`
+    : `SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.created_by_email,t.created_at,t.status,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?) ORDER BY t.created_at DESC LIMIT 5`;
   const recent = auth.isAdmin ? await env.DB.prepare(recentSql).all() : await env.DB.prepare(recentSql).bind(auth.row.uuid).all();
   const all = (accounts.results || []).filter(x => auth.isAdmin || auth.accessibleAccounts.includes(x.uuid));
   return json(request, env, {
     accounts: all, recent: recent.results || [],
-    totals: { income: all.reduce((s,x)=>s+Number(x.income||0),0), expense: all.reduce((s,x)=>s+Number(x.expense||0),0), balance: all.reduce((s,x)=>s+Number(x.balance||0),0) },
+    totals: { income: all.reduce((s,x)=>s+Number(x.income||0),0), donation: all.reduce((s,x)=>s+Number(x.donation||0),0), expense: all.reduce((s,x)=>s+Number(x.expense||0),0), balance: all.reduce((s,x)=>s+Number(x.balance||0),0) },
     user:{email:auth.user.email,name:auth.user.name,roles:auth.roles,isAdmin:auth.isAdmin}
   });
 }
@@ -58,7 +60,7 @@ async function listTransactions(request, env, auth, url) {
   if(to){where.push("date(t.created_at)<=date(?)");params.push(to);}
   const allowed=auth.isAdmin ? "" : " AND t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?)";
   if(!auth.isAdmin) params.push(auth.row.uuid);
-  const sql=`SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.created_at,t.status,t.reversal_of_uuid,
+  const sql=`SELECT t.uuid,t.transaction_id,t.account_uuid,a.name account_name,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.created_at,t.status,t.reversal_of_uuid,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation,
     (SELECT f.uuid FROM budget_transaction_files f WHERE f.transaction_uuid=t.uuid LIMIT 1) evidence_uuid
     FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid
     WHERE ${where.join(" AND ")} ${allowed} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`;
@@ -167,7 +169,7 @@ async function adminUsers(request,env,auth){
 async function report(request,env,auth,url){
  const from=url.searchParams.get("from"),to=url.searchParams.get("to");
  const p=[];const w=["1=1"];if(from){w.push("date(t.created_at)>=date(?)");p.push(from);}if(to){w.push("date(t.created_at)<=date(?)");p.push(to);}if(!auth.isAdmin){w.push("t.account_uuid IN (SELECT account_uuid FROM budget_account_access WHERE user_uuid=?)");p.push(auth.row.uuid);}
- const x=await env.DB.prepare(`SELECT t.transaction_id,t.uuid transaction_uuid,t.account_uuid,a.name account_name,t.created_at,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.status,t.reversal_of_uuid FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE ${w.join(" AND ")} ORDER BY t.created_at DESC LIMIT 5000`).bind(...p).all();
+ const x=await env.DB.prepare(`SELECT t.transaction_id,t.uuid transaction_uuid,t.account_uuid,a.name account_name,t.created_at,t.type,c.name category,t.amount,t.details,t.note,t.created_by_email,t.status,t.reversal_of_uuid,EXISTS(SELECT 1 FROM budget_donations dd WHERE dd.transaction_uuid=t.uuid) is_donation FROM budget_transactions t JOIN budget_accounts a ON a.uuid=t.account_uuid JOIN budget_categories c ON c.uuid=t.category_uuid WHERE ${w.join(" AND ")} ORDER BY t.created_at DESC LIMIT 5000`).bind(...p).all();
  await audit(env,auth,"REPORT_EXPORTED","report",null,{count:(x.results||[]).length,from,to});
  return json(request,env,{transactions:x.results||[]});
 }
