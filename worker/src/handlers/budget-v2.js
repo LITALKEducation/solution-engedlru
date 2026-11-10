@@ -1,6 +1,7 @@
 import { json } from "../lib/cors.js";
 import { requireBudgetAuth, canAccessAccount } from "../lib/budget-auth.js";
 import { putFile } from "../lib/files.js";
+import { sendPush, pushConfigured } from "../lib/webpush.js";
 
 const MAX_FILE = 10 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg","image/png","image/webp","application/pdf"]);
@@ -16,6 +17,31 @@ async function audit(env, auth, action, entityType, entityUuid, metadata={}) {
 }
 
 function who(auth){return clean(auth.user.name||auth.user.nickname||auth.user.email||auth.row.email,200);}
+
+const baht=n=>"฿"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function notifInsert(env,n){
+  return env.DB.prepare("INSERT INTO budget_notifications (uuid,kind,transaction_uuid,transaction_id,type,amount,account_name,title,body,actor_email,actor_name) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(crypto.randomUUID(),n.kind,n.transactionUuid,n.transactionId,n.type,n.amount,n.accountName,n.title,n.body,n.actorEmail,n.actorName);
+}
+function buildNotif(auth,{kind,type,amount,accountName,details,transactionUuid,transactionId}){
+  const title=kind==="donation"?`บริจาคใหม่ ${baht(amount)}`:`${type==="income"?"เงินเข้า":"เงินออก"} ${baht(amount)}`;
+  const actorName=who(auth);
+  return {kind,type,amount,accountName,transactionUuid,transactionId,title,body:`${actorName} · ${accountName} · ${clean(details,120)}`,actorEmail:auth.user.email||auth.row.email,actorName};
+}
+// Push to every subscribed admin except the person who recorded the entry. Never throws.
+async function pushAdmins(env,auth,n){
+  try{
+    if(!pushConfigured(env))return;
+    const subs=await env.DB.prepare("SELECT uuid,endpoint,p256dh,auth FROM budget_push_subscriptions WHERE user_uuid<>?").bind(auth.row.uuid).all();
+    await Promise.all((subs.results||[]).map(async sub=>{
+      try{
+        const status=await sendPush(env,sub,{title:n.title,body:n.body,tag:n.transactionId||"budget",url:"/?page=audit"});
+        if(status===404||status===410)await env.DB.prepare("DELETE FROM budget_push_subscriptions WHERE uuid=?").bind(sub.uuid).run();
+      }catch(e){console.error("[push] send failed:",e?.message||e)}
+    }));
+  }catch(e){console.error("[push] failed:",e?.message||e)}
+}
+function runBackground(ctx,p){ if(ctx&&ctx.waitUntil)ctx.waitUntil(p); }
 
 function txId() {
   const d = new Date();
@@ -71,7 +97,7 @@ async function listTransactions(request, env, auth, url) {
   return json(request,env,{transactions:result.results||[],page,limit});
 }
 
-async function createTransaction(request, env, auth) {
+async function createTransaction(request, env, auth, ctx) {
   const body=await request.formData().catch(()=>null);
   if(!body)return fail(request,env,"Invalid form data");
   const accountUuid=clean(body.get("accountUuid"),100), categoryUuid=clean(body.get("categoryUuid"),100), type=clean(body.get("type"),20);
@@ -89,7 +115,7 @@ async function createTransaction(request, env, auth) {
   if(file.size>MAX_FILE)return fail(request,env,"ไฟล์ต้องไม่เกิน 10 MB",400);
   const bytes=await file.arrayBuffer();
 
-  const uuid=crypto.randomUUID(), id=txId(), safeName=String(file.name||"evidence").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,255), key=`budget/evidence/${uuid}/${crypto.randomUUID()}-${safeName}`;
+  const uuid=crypto.randomUUID(), id=txId(), notif=buildNotif(auth,{kind:"transaction",type,amount:value,accountName:account.name,details,transactionUuid:uuid,transactionId:id}), safeName=String(file.name||"evidence").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,255), key=`budget/evidence/${uuid}/${crypto.randomUUID()}-${safeName}`;
   const now=new Date().toISOString();
   await putFile(env,key,bytes,mime);
   try {
@@ -102,12 +128,14 @@ async function createTransaction(request, env, auth) {
       env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
         .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"TRANSACTION_CREATED","transaction",uuid,JSON.stringify({transaction_id:id,account_uuid:accountUuid,type,amount:value})),
       env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
-        .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"FILE_UPLOADED","transaction",uuid,JSON.stringify({file_name:safeName}))
+        .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"FILE_UPLOADED","transaction",uuid,JSON.stringify({file_name:safeName})),
+      notifInsert(env,notif)
     ]);
   } catch (e) {
     await env.FILES.delete(key).catch(()=>{});
     throw e;
   }
+  runBackground(ctx,pushAdmins(env,auth,notif));
   return json(request,env,{ok:true,transaction:{uuid,transactionId:id,accountUuid,type,category:category.name,amount:value,details,note,createdAt:now},verificationUrl:`https://enged.sorasukt.com/verify/?id=${encodeURIComponent(id)}`},201);
 }
 
@@ -202,7 +230,7 @@ async function listDonations(request,env,auth,url){
   return json(request,env,{donations:rows,totals:{all:sum(),cash:sum("cash"),promptpay:sum("promptpay"),count:rows.length}});
 }
 
-async function createDonation(request,env,auth){
+async function createDonation(request,env,auth,ctx){
   const body=await request.formData().catch(()=>null);
   if(!body)return fail(request,env,"Invalid form data");
   const accountUuid=clean(body.get("accountUuid"),100),method=clean(body.get("method"),20);
@@ -230,6 +258,7 @@ async function createDonation(request,env,auth){
   const category=await donationCategory(env);
   const txUuid=crypto.randomUUID(),donationUuid=crypto.randomUUID(),id=txId(),now=new Date().toISOString(),email=auth.user.email||auth.row.email;
   const details=`บริจาคโดย ${donorName} (${METHOD_LABEL[method]})`;
+  const notif=buildNotif(auth,{kind:"donation",type:"income",amount:value,accountName:account.name,details,transactionUuid:txUuid,transactionId:id});
   const key=hasFile?`budget/evidence/${txUuid}/${crypto.randomUUID()}-${safeName}`:null;
   if(hasFile)await putFile(env,key,bytes,mime);
   try{
@@ -241,6 +270,7 @@ async function createDonation(request,env,auth){
       env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
         .bind(crypto.randomUUID(),auth.user.sub,email,"DONATION_CREATED","donation",donationUuid,JSON.stringify({transaction_id:id,account_uuid:accountUuid,method,amount:value}))
     ];
+    stmts.push(notifInsert(env,notif));
     if(hasFile)stmts.push(env.DB.prepare("INSERT INTO budget_transaction_files (uuid,transaction_uuid,r2_key,file_name,mime_type,file_size,uploaded_by_auth0_id) VALUES (?,?,?,?,?,?,?)")
       .bind(crypto.randomUUID(),txUuid,key,safeName,mime,bytes.byteLength,auth.user.sub));
     await env.DB.batch(stmts);
@@ -248,10 +278,48 @@ async function createDonation(request,env,auth){
     if(key)await env.FILES.delete(key).catch(()=>{});
     throw e;
   }
+  runBackground(ctx,pushAdmins(env,auth,notif));
   return json(request,env,{ok:true,donation:{uuid:donationUuid,transactionUuid:txUuid,transactionId:id,accountUuid,donorName,method,amount:value,donatedAt,note},verificationUrl:`https://enged.sorasukt.com/verify/?id=${encodeURIComponent(id)}`},201);
 }
 
-export async function budgetV2(request,env,url){
+// ---- Admin notifications & push ----
+async function notificationsList(request,env,auth){
+  const denied=await adminOnly(request,env,auth); if(denied)return denied;
+  const now=new Date().toISOString();
+  let st=await env.DB.prepare("SELECT last_read_at FROM budget_notification_state WHERE user_uuid=?").bind(auth.row.uuid).first();
+  if(!st){await env.DB.prepare("INSERT OR IGNORE INTO budget_notification_state (user_uuid,last_read_at) VALUES (?,?)").bind(auth.row.uuid,now).run();st={last_read_at:now};}
+  const me=auth.user.email||auth.row.email;
+  const [list,cnt,sub]=await Promise.all([
+    env.DB.prepare("SELECT uuid,kind,transaction_uuid,transaction_id,type,amount,account_name,title,body,actor_email,actor_name,created_at FROM budget_notifications ORDER BY created_at DESC LIMIT 50").all(),
+    env.DB.prepare("SELECT COUNT(*) c FROM budget_notifications WHERE created_at>? AND actor_email<>?").bind(st.last_read_at,me).first(),
+    env.DB.prepare("SELECT COUNT(*) c FROM budget_push_subscriptions WHERE user_uuid=?").bind(auth.row.uuid).first()
+  ]);
+  const rows=(list.results||[]).map(n=>({...n,unread:n.created_at>st.last_read_at&&n.actor_email!==me}));
+  return json(request,env,{notifications:rows,unread:Number(cnt?.c||0),lastReadAt:st.last_read_at,push:{configured:pushConfigured(env),publicKey:pushConfigured(env)?env.VAPID_PUBLIC_KEY:null,subscribed:Number(sub?.c||0)>0}});
+}
+async function notificationsRead(request,env,auth){
+  const denied=await adminOnly(request,env,auth); if(denied)return denied;
+  await env.DB.prepare("INSERT INTO budget_notification_state (user_uuid,last_read_at) VALUES (?,?) ON CONFLICT(user_uuid) DO UPDATE SET last_read_at=excluded.last_read_at").bind(auth.row.uuid,new Date().toISOString()).run();
+  return json(request,env,{ok:true});
+}
+async function pushSubscribe(request,env,auth){
+  const denied=await adminOnly(request,env,auth); if(denied)return denied;
+  if(!pushConfigured(env))return fail(request,env,"ยังไม่ได้ตั้งค่า VAPID keys บนเซิร์ฟเวอร์",503);
+  const b=await request.json().catch(()=>null);
+  const endpoint=String(b?.endpoint||""),p256dh=String(b?.keys?.p256dh||""),a=String(b?.keys?.auth||"");
+  if(!/^https:\/\//.test(endpoint)||endpoint.length>2000||!p256dh||!a)return fail(request,env,"ข้อมูล subscription ไม่ถูกต้อง");
+  await env.DB.prepare("INSERT INTO budget_push_subscriptions (uuid,user_uuid,user_email,endpoint,p256dh,auth) VALUES (?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_uuid=excluded.user_uuid,user_email=excluded.user_email,p256dh=excluded.p256dh,auth=excluded.auth")
+    .bind(crypto.randomUUID(),auth.row.uuid,auth.user.email||auth.row.email,endpoint,p256dh,a).run();
+  return json(request,env,{ok:true},201);
+}
+async function pushUnsubscribe(request,env,auth){
+  const b=await request.json().catch(()=>null);
+  const endpoint=String(b?.endpoint||"");
+  if(endpoint)await env.DB.prepare("DELETE FROM budget_push_subscriptions WHERE endpoint=? AND user_uuid=?").bind(endpoint,auth.row.uuid).run();
+  return json(request,env,{ok:true});
+}
+
+export async function budgetV2(request,env,url,ctx){
   if(request.method==="GET" && url.pathname.match(/^\/budget\/verify\/[^/]+$/)) return verify(request,env,url);
   const auth=await requireBudgetAuth(request,env); if(!auth.ok)return auth.response;
   if(request.method==="GET" && url.pathname==="/budget/me") return json(request,env,{email:auth.user.email,name:auth.user.name,roles:auth.roles,isAdmin:auth.isAdmin});
@@ -263,8 +331,12 @@ export async function budgetV2(request,env,url){
   if(url.pathname==="/budget/admin/categories" && (request.method==="GET"||request.method==="POST")) return adminCategories(request,env,auth);
   if(url.pathname==="/budget/admin/users" && (request.method==="GET"||request.method==="POST")) return adminUsers(request,env,auth);
   const ev=url.pathname.match(/^\/budget\/transactions\/([^/]+)\/evidence$/); if(ev&&request.method==="GET")return getEvidence(request,env,auth,ev[1]);
-  if(request.method==="POST" && url.pathname==="/budget/transactions") return createTransaction(request,env,auth);
+  if(request.method==="POST" && url.pathname==="/budget/transactions") return createTransaction(request,env,auth,ctx);
+  if(url.pathname==="/budget/notifications" && request.method==="GET") return notificationsList(request,env,auth);
+  if(url.pathname==="/budget/notifications/read" && request.method==="POST") return notificationsRead(request,env,auth);
+  if(url.pathname==="/budget/push/subscribe" && request.method==="POST") return pushSubscribe(request,env,auth);
+  if(url.pathname==="/budget/push/unsubscribe" && request.method==="POST") return pushUnsubscribe(request,env,auth);
   if(url.pathname==="/budget/donations" && request.method==="GET") return listDonations(request,env,auth,url);
-  if(url.pathname==="/budget/donations" && request.method==="POST") return createDonation(request,env,auth);
+  if(url.pathname==="/budget/donations" && request.method==="POST") return createDonation(request,env,auth,ctx);
   return json(request,env,{error:"Not Found"},404);
 }

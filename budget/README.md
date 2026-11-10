@@ -66,3 +66,16 @@ Before deploying the Worker, apply the D1 migration `worker/migrations/0003_budg
 ## Recorder name
 
 "ผู้บันทึก" shows the Auth0 display name (stored when the entry is created). Apply `worker/migrations/0004_budget_created_by_name.sql` before deploying the Worker. Entries made earlier fall back to the name set for that user in Admin, then to their email.
+
+## Admin notifications
+
+Admins (`budget_admin`) get a bell icon in the header with an unread count. Every new transaction or donation recorded by someone else creates a notification (the person who recorded it is not notified of their own entry). Tapping a notification opens the transactions or donations page.
+
+Optional phone push (works with the app closed; on iPhone only after "Add to Home Screen"):
+
+1. `node worker/scripts/generate-vapid.mjs`
+2. Put the public key in `worker/wrangler.toml` as `VAPID_PUBLIC_KEY` and run `npx wrangler secret put VAPID_PRIVATE_KEY` with the private key.
+3. Apply `worker/migrations/0005_budget_notifications.sql` and deploy the Worker.
+4. Each admin opens the bell and taps "เปิด" to turn on notifications for their device.
+
+Without VAPID keys the bell still works; the panel says push is not configured.

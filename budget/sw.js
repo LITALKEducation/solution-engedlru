@@ -1,5 +1,5 @@
 // Budget PWA service worker. Bump VERSION to force clients to refresh the shell.
-const VERSION = 'budget-v7';
+const VERSION = 'budget-v8';
 const SHELL = ['/', '/assets/budget-v2.css', '/assets/budget-v2.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -21,5 +21,22 @@ self.addEventListener('fetch', e => {
   e.respondWith(caches.match(req).then(hit => {
     const net = fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(VERSION).then(c => c.put(req, copy)); } return r; }).catch(() => hit);
     return hit || net;
+  }));
+});
+
+// Web Push: payload is JSON {title, body, tag, url}
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'Budget', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Budget', {
+    body: d.body || '', tag: d.tag || 'budget', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', data: { url: d.url || '/' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) if ('focus' in c) { c.navigate && c.navigate(url).catch(() => {}); return c.focus(); }
+    return self.clients.openWindow(url);
   }));
 });
