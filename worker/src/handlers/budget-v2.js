@@ -104,7 +104,7 @@ async function createTransaction(request, env, auth) {
     await env.FILES.delete(key).catch(()=>{});
     throw e;
   }
-  return json(request,env,{ok:true,transaction:{uuid,transactionId:id,accountUuid,type,category:category.name,amount:value,details,note,createdAt:now},verificationUrl:`https://solution.litalkeducation.com/budget/verify/${id}`},201);
+  return json(request,env,{ok:true,transaction:{uuid,transactionId:id,accountUuid,type,category:category.name,amount:value,details,note,createdAt:now},verificationUrl:`https://enged.sorasukt.com/verify/?id=${encodeURIComponent(id)}`},201);
 }
 
 async function meta(request,env,auth) {
