@@ -70,8 +70,15 @@ npx wrangler secret put AUTH0_M2M_CLIENT_ID
 npx wrangler secret put AUTH0_M2M_CLIENT_SECRET
 ```
 
-ค่าเหล่านี้มาจาก Auth0 Application ประเภท **Machine to Machine** ที่ได้รับสิทธิ์ `update:users`
-บน Auth0 Management API (เดิมตั้งค่าไว้ใน `api/auth0_m2m.gs`)
+ค่าเหล่านี้มาจาก Auth0 Application ประเภท **Machine to Machine** ที่ Authorize กับ **Auth0 Management API** โดยต้องเปิด API permissions ให้ครบดังนี้:
+
+- `read:users` — อ่านข้อมูลผู้ใช้
+- `read:roles` — อ่าน Role ที่กำหนดให้ผู้ใช้
+- `update:users` — อัปเดตโปรไฟล์ผู้ใช้
+
+Worker จะส่ง scope ทั้งสามรายการในคำขอ M2M token โดยตรง หากขาด scope หรือ M2M credentials ไม่ถูกต้อง ระบบ Budget จะแจ้ง `AUTH0_ROLE_LOOKUP_FAILED` แทนการแสดง Role ว่างโดยไม่บอกสาเหตุ
+
+ตั้งค่า `AUTH0_DOMAIN` เป็นโดเมน Auth0 ที่ใช้งานจริง (ในระบบนี้คือ `auth.litalkeducation.com`) และ Role สำหรับผู้ดูแล Budget ต้องใช้ชื่อ **`budget_admin`** ตรงตามตัวพิมพ์เล็ก/ใหญ่ใน Auth0.
 
 ### 5. ตรวจสอบตัวแปรใน `wrangler.toml`
 
