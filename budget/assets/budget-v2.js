@@ -80,7 +80,8 @@ async function init(){
   if(!await withTimeout(auth0Client.isAuthenticated(),T,'ตรวจสอบสถานะไม่ทัน')){show('login');return}
   const token=await withTimeout(auth0Client.getTokenSilently(),T,'ขอสิทธิ์เข้าใช้งานไม่ทัน');
   const r=await withTimeout(fetch(API+'/budget/me',{headers:{Authorization:'Bearer '+token}}),15000,'เชื่อมต่อเซิร์ฟเวอร์ไม่ทัน');
-  if(!r.ok){show('denied');return}
+  if(r.status===403){let em='';try{em=(await auth0Client.getUser())?.email||''}catch(e){}const box=$('deniedEmail');box.textContent=em;box.classList.toggle('hidden',!em);show('denied');return}
+  if(!r.ok)throw new Error(await errMsg(r));
   me=await r.json();
  }catch(e){console.error(e);loginMsg(e.message||'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง');show('login');return}
  $('userName').textContent=me.name||me.email||'';if(me.isAdmin){$('adminNav').classList.remove('hidden');startNotifs()}
@@ -89,7 +90,19 @@ async function init(){
 }
 function loginMsg(t){const b=$('loginMsg');b.textContent=t;b.classList.toggle('hidden',!t)}
 function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
-async function login(){try{loginMsg('');if(!auth0Client)throw new Error('ระบบเข้าสู่ระบบยังไม่พร้อม กรุณารีเฟรชหน้า');await auth0Client.loginWithRedirect()}catch(e){loginMsg(e.message)}}
+// Google sign-in through Auth0's Google social connection (name can be overridden with window.BUDGET_AUTH0_CONNECTION)
+const AUTH_CONNECTION=window.BUDGET_AUTH0_CONNECTION||'google-oauth2';
+async function login(forceChoose){
+ const btns=document.querySelectorAll('.gbtn');
+ try{loginMsg('');if(!auth0Client)throw new Error('ระบบเข้าสู่ระบบยังไม่พร้อม กรุณารีเฟรชหน้า');
+  btns.forEach(b=>b.disabled=true);
+  const ap={connection:AUTH_CONNECTION};
+  let choose=forceChoose===true;try{if(sessionStorage.getItem('chooseGoogle')){choose=true;sessionStorage.removeItem('chooseGoogle')}}catch(e){}
+  if(choose)ap.prompt='select_account';
+  await auth0Client.loginWithRedirect({authorizationParams:ap})
+ }catch(e){btns.forEach(b=>b.disabled=false);loginMsg(e.message)}}
+// "use another Google account": sign out of Auth0, then ask Google to show its account chooser on the next login
+async function switchGoogle(){try{sessionStorage.setItem('chooseGoogle','1')}catch(e){}await logout()}
 async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
 async function token(){return auth0Client.getTokenSilently()}
 async function api(path,opt={}){
