@@ -87,3 +87,14 @@ On phones and tablets the app only runs as an installed web app (home-screen app
 ## Settings page & motion
 
 Settings is split into three sliding tabs (บัญชี / หมวดหมู่ / ผู้ใช้). Add forms open as sheets; categories are grouped in accordions with on/off switches (hide/show); validation errors shake the field. Motion patterns (modal, toast, tabs sliding, accordion, toggle, success check, error shake, page slide) follow the transitions.dev snippets; tokens live at the end of `assets/budget-v2.css` and all of it is disabled under `prefers-reduced-motion`.
+
+## Google sign-in
+
+The welcome page signs in with Google through Auth0's Google social connection (`google-oauth2`; override with `window.BUDGET_AUTH0_CONNECTION`). One-time Auth0 setup:
+
+1. Auth0 Dashboard → Authentication → Social → **Google**: use your own Google OAuth client ID/secret (Auth0 dev keys are not for production) and enable the connection for this application.
+2. A Google login is a **different Auth0 user** from the old username/password one (`google-oauth2|…`). Roles belong to the Auth0 user, so assign `budget_admin` to the Google user (or link the accounts) — otherwise an admin signs in as a normal user.
+3. Regular users: enable their **Google email** on the Admin → ผู้ใช้ tab. The app matches by email only when Google reports it as verified, then remembers the Google user id.
+4. Optional: turn off the database connection for this application so Google is the only option.
+
+If a Google account has no access, the app shows its email so the person can send it to an admin, and offers "ใช้บัญชี Google อื่น" (asks Google to show its account chooser).

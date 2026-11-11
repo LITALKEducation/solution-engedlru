@@ -27,7 +27,8 @@ export async function requireBudgetAuth(request,env){
  }
 
  let row=await env.DB.prepare("SELECT * FROM budget_users WHERE auth0_user_id=? AND enabled=1").bind(user.sub).first();
- if(!row&&email)row=await env.DB.prepare("SELECT * FROM budget_users WHERE email=? AND enabled=1").bind(email).first();
+ // Match by email only when the identity provider says the address is verified (Google always does).
+ if(!row&&email&&user.email_verified===true)row=await env.DB.prepare("SELECT * FROM budget_users WHERE email=? AND enabled=1").bind(email).first();
  if(row && row.auth0_user_id !== user.sub) await env.DB.prepare("UPDATE budget_users SET auth0_user_id=?,updated_at=datetime('now') WHERE uuid=?").bind(user.sub,row.uuid).run();
 
  const isAdmin=roles.includes("budget_admin");
