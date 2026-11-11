@@ -10,7 +10,7 @@ AUTH0_MANAGEMENT_API_DOMAIN = "litalkeducation.us.auth0.com"
 AUTH0_MANAGEMENT_API_AUDIENCE = "https://litalkeducation.us.auth0.com/api/v2/"
 # Web Push for admin notifications (generate keys: node scripts/generate-vapid.mjs)
 VAPID_PUBLIC_KEY = "BDIq-lFwawzx31tAZpAeIDVpih-pzO4hJ0eH69VxUlodom_d89rCyvXx7VMQdyZg5AikteBANHdIjlqNkLuWmg4"
-VAPID_SUBJECT = "mailto:admin@litalkeducation.com"
+VAPID_SUBJECT = "mailto:info@sorasukt.com"
 # Budget access is controlled by Auth0 role budget_admin and budget_users in D1.
 
 # ── D1 Database ──
