@@ -3,7 +3,10 @@ import { json } from "./cors.js";
 
 export async function requireBudgetAuth(request,env){
  const auth=await getAuth0UserFromRequest(request,env);
- if(!auth.user)return {ok:false,response:json(request,env,{error:auth.response?.status===401?"Unauthorized":"Authentication failed"},auth.response?.status||401)};
+ if(!auth.user){
+  if(auth.unavailable)return {ok:false,response:json(request,env,{error:"ระบบยืนยันตัวตน (Auth0) ไม่ว่างชั่วคราว กรุณาลองใหม่อีกครั้ง",code:"AUTH_UNAVAILABLE"},503)};
+  return {ok:false,response:json(request,env,{error:auth.response?.status===401?"Unauthorized":"Authentication failed"},auth.response?.status||401)};
+ }
 
  const user=auth.user,email=(user.email||"").toLowerCase();
  let roles;
