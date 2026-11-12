@@ -77,7 +77,7 @@ async function initAuth() {
       await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน');
       history.replaceState({}, document.title, HR_URL);
       let back = null; try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ }
-      if (back && (/^\/hr\/[\w\-/]*$/.test(back) || back === '/camps/lotto/') && back !== location.pathname) { location.replace(back); return 'redirect'; }
+      if (back && (/^\/hr\/[\w\-/]*$/.test(back) || (back === '/lotto/' || back === '/camps/lotto/')) && back !== location.pathname) { location.replace(back); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
