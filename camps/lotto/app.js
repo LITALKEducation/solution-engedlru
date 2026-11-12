@@ -1,7 +1,7 @@
 (() => {
 const API='https://engedlru-api.stnetworld.workers.dev', DOMAIN='auth.litalkeducation.com', CLIENT='PGqozL94LzOwstm4pD39W5kvalYRiK7w', REDIRECT=location.origin+location.pathname;
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let auth=null, scanner=null, rows=[];
+let auth=null, scanner=null, rows=[], isAdmin=false;
 function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
 async function token(){return auth.getTokenSilently()}
 async function api(path,opt={}){let t=await token(),r=await fetch(API+path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}});if(r.status===401){t=await auth.getTokenSilently({cacheMode:'off'});r=await fetch(API+path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}})}return r}
@@ -14,9 +14,10 @@ async function init(){
   if(location.search.includes('code=')||location.search.includes('error=')){await auth.handleRedirectCallback();history.replaceState({},document.title,REDIRECT)}
   if(!await auth.isAuthenticated()){$('login').classList.remove('hidden');$('account').textContent='ยังไม่ได้เข้าสู่ระบบ';return}
   const u=await auth.getUser();$('account').textContent=u.email||'เข้าสู่ระบบแล้ว';
-  await data('/camps/lotto/admin/overview');
+  const access=await data('/camps/lotto/scanner/me'); isAdmin=!!access.isAdmin;
   $('login').classList.add('hidden');$('app').classList.remove('hidden');
-  await refresh(); await refreshStats();
+  if(!isAdmin){document.querySelector('[data-tab="students"]').classList.add('hidden');document.querySelector('[data-tab="scanners"]').classList.add('hidden');$('stats').classList.add('hidden');}
+  else{await refresh();await refreshStats();}
  }catch(e){if(e.status===403){$('login').classList.remove('hidden');$('login').querySelector('p').textContent='บัญชีนี้ยังไม่มีสิทธิ์ camp_admin หรือ budget_admin';$('account').textContent='ไม่มีสิทธิ์'}else{$('login').classList.remove('hidden');$('login').querySelector('p').textContent=e.message||'ไม่สามารถเชื่อมต่อระบบได้';$('account').textContent='เกิดข้อผิดพลาด'}}
 }
 $('loginBtn').onclick=()=>auth.loginWithRedirect({authorizationParams:{connection:'google-oauth2'}});
@@ -36,11 +37,11 @@ $('studentForm').onsubmit=async e=>{e.preventDefault();try{const d=await post('/
 function parseCsv(s){return s.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map((line,i)=>{const c=line.split(/[;,\t]/).map(x=>x.trim().replace(/^"|"$/g,''));if(i===0&&/รหัส|student/i.test(c[0]))return null;return {studentId:c[0],name:c[1],drawNumber:c[2]}}).filter(Boolean)}
 $('importBtn').onclick=async()=>{try{const students=parseCsv($('csvInput').value);const d=await post('/camps/lotto/admin/students/import',{students});toast('นำเข้าสำเร็จ '+d.imported+' รายชื่อ'+(d.errors.length?' · ผิดพลาด '+d.errors.length+' แถว':''));$('csvInput').value='';await refresh();await refreshStats();if(d.errors.length)alert(d.errors.map(x=>(x.row||x.studentId||'')+': '+x.error).join('\n'))}catch(e){toast(e.message)}};
 async function handleScan(value){const id=String(value||'').trim();$('scanId').value=id;try{const d=await post('/camps/lotto/admin/scan',{studentId:id});showScanResult(d.student,false)}catch(e){if(e.status===409&&e.data?.student)showScanResult(e.data.student,true);else{$('scanResult').className='result error';$('scanResult').textContent=e.message;toast(e.message)}}}
-function showScanResult(x,duplicate){$('scanResult').className='result '+(duplicate?'duplicate':'success');$('scanResult').innerHTML='<b>'+(duplicate?'สแกนไปแล้ว · ตัดสิทธิ์แล้ว':'ตรวจสอบสำเร็จ · ตัดสิทธิ์แล้ว')+'</b>'+esc(x.student_name)+'<small>รหัส '+esc(x.student_id)+' · เลขจับสลาก '+esc(x.draw_number)+'</small><small>เวลา '+esc(fmt(x.checked_at))+' · เจ้าหน้าที่ '+esc(x.checked_by)+'</small>';refreshStats();refresh($('search').value)}
+function showScanResult(x,duplicate){$('scanResult').className='result '+(duplicate?'duplicate':'success');$('scanResult').innerHTML='<b>'+(duplicate?'สแกนไปแล้ว · ตัดสิทธิ์แล้ว':'ตรวจสอบสำเร็จ · ตัดสิทธิ์แล้ว')+'</b>'+esc(x.student_name)+'<small>รหัส '+esc(x.student_id)+' · เลขจับสลาก '+esc(x.draw_number)+'</small><small>เวลา '+esc(fmt(x.checked_at))+' · เจ้าหน้าที่ '+esc(x.checked_by)+'</small>';if(isAdmin){refreshStats();refresh($('search').value)}}
 $('manualScan').onclick=()=>handleScan($('scanId').value);$('scanId').addEventListener('keydown',e=>{if(e.key==='Enter')handleScan(e.target.value)});
 $('startScan').onclick=async()=>{if(!window.Html5Qrcode){toast('โหลดเครื่องมือสแกนไม่สำเร็จ กรุณารีเฟรช');return}try{scanner=new Html5Qrcode('reader');await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},async text=>{await scanner.stop();scanner=null;$('startScan').classList.remove('hidden');$('stopScan').classList.add('hidden');await handleScan(text)},()=>{});$('startScan').classList.add('hidden');$('stopScan').classList.remove('hidden')}catch(e){toast('เปิดกล้องไม่ได้ กรุณาอนุญาตการใช้กล้องหรือกรอกรหัสแทน')}}
 $('stopScan').onclick=async()=>{if(scanner){await scanner.stop();scanner=null}$('startScan').classList.remove('hidden');$('stopScan').classList.add('hidden')};
-$('refresh').onclick=()=>refresh($('search').value);$('search').oninput=()=>{clearTimeout(window.__searchTimer);window.__searchTimer=setTimeout(()=>refresh($('search').value),250)};$('verifyBtn').onclick=()=>refresh($('verifySearch').value);
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$('view-'+b.dataset.tab).classList.remove('hidden');if(b.dataset.tab==='verify')refresh($('verifySearch').value);if(b.dataset.tab==='scanners')refreshScanners()});
+$('refresh').onclick=()=>refresh($('search').value);$('search').oninput=()=>{clearTimeout(window.__searchTimer);window.__searchTimer=setTimeout(()=>refresh($('search').value),250)};$('verifyBtn').onclick=async()=>{if(isAdmin){await refresh($('verifySearch').value);return}try{const d=await data('/camps/lotto/scanner/lookup?q='+encodeURIComponent($('verifySearch').value));renderTable('verifyTable',d.students||[],false)}catch(e){toast(e.message)}};
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$('view-'+b.dataset.tab).classList.remove('hidden');if(b.dataset.tab==='verify'){if(isAdmin)refresh($('verifySearch').value);else $('verifyBtn').click()}if(b.dataset.tab==='scanners')refreshScanners()});
 init();
 })();
