@@ -114,7 +114,18 @@ const REASONS = {
   no_gender: () => 'ผู้ดูแลยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อผู้ดูแลเพื่อให้ระบุ',
   not_in_roster: (m) => 'ไม่พบรหัสนักศึกษา ' + esc(m.studentId || '') + ' ในรายชื่อของค่าย กรุณาติดต่อผู้ดูแลเพื่อให้เพิ่มรหัส ชั้นปี และเพศของคุณ'
 };
+// who is signed in, shown at the top of every HR page
+function renderUserChip(x) {
+  const el = $('userChip'); if (!el) return;
+  if ((x && x.error) || (!authReady && !me)) { el.innerHTML = ''; return; }
+  if (!me) { el.innerHTML = '<button class="chipbtn" onclick="login()">เข้าสู่ระบบ</button>'; return; }
+  const st = me.student, name = st ? st.name : (me.googleName || me.email);
+  const dep = me.selection && deps.find((d) => d.code === me.selection.department_code);
+  const sub = (st ? 'ปี ' + st.year + ' · ' + GL[st.gender] + ' · ' + st.student_id : me.email) + (dep ? ' · ' + dep.name : '');
+  el.innerHTML = '<div class="uc"><span class="avatar sm">' + esc((name || '?').trim()[0].toUpperCase()) + '</span><div class="ut"><b>' + esc(name) + (me.isAdmin ? ' <span class="pill admin">ผู้ดูแล</span>' : '') + '</b><small>' + esc(sub) + '</small></div><button class="chipbtn" onclick="logout()" aria-label="ออกจากระบบ">ออก</button></div>';
+}
 function renderAcct(x) {
+  renderUserChip(x);
   const box = $('acct');
   if (!box) { if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
@@ -150,14 +161,47 @@ const myYear = () => (me && me.student ? me.student.year : 0);
 const myGender = () => (me && me.student ? me.student.gender : '');
 const myDept = () => (me && me.selection ? me.selection.department_code : null);
 
-function deptCard(d) {
-  const my = myYear(), mg = myGender(), reg = myDept() === d.code, pk = picked === d.code;
-  const yrs = YEARS.map((y) => '<div class="yr' + (y === my ? ' mine' : '') + '"><span class="yl">ปี ' + y + (y === my ? ' (คุณ)' : '') + '</span>' + GENDERS.map((g) => {
+const headOf = (d) => (d.head && d.head.name) || '';
+function yrsHtml(d) {
+  const my = myYear(), mg = myGender();
+  return YEARS.map((y) => '<div class="yr' + (y === my ? ' mine' : '') + '"><span class="yl">ปี ' + y + (y === my ? ' (คุณ)' : '') + '</span>' + GENDERS.map((g) => {
     const q = d.quota[g][y], f = d.filled[g][y], st = slot(q, f);
     return '<div class="gr ' + st.c + (y === my && g === mg ? ' me' : '') + '"><span class="gn">' + GL[g] + '</span><b>' + (q ? f + '/' + q : '–') + '</b><span class="st ' + st.c + '" title="' + esc(st.note) + '">' + st.t + (st.c === 'off' && st.note !== 'ปิดลงทะเบียน' ? ' · ' + (q ? 'เต็ม' : 'ไม่รับ') : '') + '</span></div>';
   }).join('') + '</div>').join('');
+}
+function deptCard(d) {
+  const reg = myDept() === d.code, pk = picked === d.code;
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
-  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-pressed="' + pk + '" onclick="pick(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();pick(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p></div>' + tag + '</div><div class="yrs">' + yrs + '</div></div>';
+  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">หัวหน้าฝ่าย: <b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
+}
+// preview first: tap a department card -> details, head and slots; switch between departments with the chips; then "เลือกฝ่ายนี้"
+let pvDlg = null;
+function preview(code) {
+  if (pvDlg) pvDlg.remove();
+  pvDlg = openDlg('<div id="pvBody"></div>'); pvDlg.classList.add('pv');
+  const close = () => { if (pvDlg) { pvDlg.remove(); pvDlg = null; } document.removeEventListener('keydown', esc2); };
+  const esc2 = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', esc2);
+  pvDlg.addEventListener('mousedown', (e) => { if (e.target === pvDlg) close(); });
+  const draw = (c) => {
+    const d = deps.find((x) => x.code === c); if (!d) return;
+    const reg = myDept() === d.code, y = myYear(), g = myGender(), st = y ? slot(d.quota[g][y], d.filled[g][y]) : null;
+    const head = d.head || {};
+    $('pvBody').innerHTML = '<div class="pvchips" role="tablist">' + deps.map((x) => '<button type="button" role="tab" aria-selected="' + (x.code === c) + '" class="' + (x.code === c ? 'on' : '') + '" data-c="' + x.code + '">' + esc(x.name.replace(/^ฝ่าย/, '')) + '</button>').join('') + '</div>'
+      + '<div class="pvhead ' + (TONE[d.code] || '') + '"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div><h3>' + esc(d.name) + '</h3>' + (reg ? '<span class="tag ok">✓ คุณลงทะเบียนฝ่ายนี้แล้ว</span>' : '') + '</div></div>'
+      + '<div class="pvsec"><b>หน้าที่ของฝ่าย</b><p>' + esc(d.description) + '</p></div>'
+      + '<div class="pvsec"><b>หัวหน้าฝ่าย</b>' + (head.name ? '<p class="pvhd">' + esc(head.name) + '</p>' + (head.contact ? '<p class="muted">ติดต่อ: ' + esc(head.contact) + '</p>' : '') : '<p class="muted">ยังไม่ประกาศ</p>') + '</div>'
+      + '<div class="pvsec"><b>จำนวนที่รับ / ลงทะเบียนแล้ว</b><div class="yrs">' + yrsHtml(d) + '</div>' + (st ? '<p class="muted" style="margin-top:8px">ชั้นปี ' + y + ' ' + GL[g] + ' ของคุณ: ' + esc(st.note) + '</p>' : '') + '</div>'
+      + '<div class="btns"><button class="btn" data-x>ปิด</button>' + (reg ? '' : '<button class="btn primary" data-pick="' + d.code + '">' + (picked === d.code ? '✓ เลือกฝ่ายนี้อยู่' : 'เลือกฝ่ายนี้') + '</button>') + '</div>';
+    const act = $('pvBody').querySelector('.pvchips .on'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center' });
+  };
+  pvDlg.addEventListener('click', (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.c) draw(t.dataset.c);
+    else if (t.hasAttribute('data-x')) close();
+    else if (t.dataset.pick) { setPicked(t.dataset.pick); close(); renderDepts(); const d = deps.find((x) => x.code === t.dataset.pick); toast('เลือก' + (d ? d.name : 'ฝ่าย') + 'แล้ว กด "ลงทะเบียน" ด้านล่างเพื่อยืนยัน'); }
+  });
+  draw(code);
 }
 function renderSummary() {
   if (!deps.length || !$('sumBox')) return;
@@ -258,7 +302,7 @@ function renderOverview() {
   const a = adminData, sumG = (g) => YEARS.reduce((s, y) => s + (a.students[g][y] || 0), 0), total = sumG('M') + sumG('F');
   const rows = a.departments.map((d) => '<tr><td><b>' + esc(d.name) + '</b></td>' + YEARS.map((y) => '<td>' + GENDERS.map((g) => cell(d, g, y)).join('') + '</td>').join('') + '<td>' + GENDERS.map((g) => { const q = YEARS.reduce((s, y) => s + d.quota[g][y], 0), f = YEARS.reduce((s, y) => s + d.filled[g][y], 0); return '<div class="gc"><span>' + (g === 'M' ? 'ช' : 'ญ') + '</span> ' + f + '/' + q + '</div>'; }).join('') + '</td></tr>').join('');
   $('adminBody').innerHTML = '<div class="panel"><h3>ลงทะเบียนแล้ว / โควตา (ช = ชาย · ญ = หญิง)</h3><div class="tbl-wrap"><table><thead><tr><th>ฝ่าย</th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
-    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap"><table><thead><tr><th></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportCsv()">ดาวน์โหลด CSV (รายชื่อ + ฝ่าย)</button></div></div>'
+    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap"><table><thead><tr><th></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportXlsx()">ดาวน์โหลด Excel (รายชื่อ + ฝ่าย)</button> <button class="btn sm" onclick="exportCsv()">CSV</button></div></div>'
     + '<div class="panel" id="regList"><h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="skeleton"></div></div>';
   loadRegList();
 }
@@ -269,7 +313,7 @@ async function loadRegList() {
   let r; try { r = await api('/camps/admin/students'); } catch (e) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadRegList()'); return; }
   if (!r.ok) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox(await errMsg(r), 'loadRegList()'); return; }
   allStudents = (await r.json()).students || [];
-  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><p class="muted" style="margin:-4px 0 8px">ผู้ดูแลเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
+  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="filerow" style="margin:0 0 8px"><button class="btn sm primary" type="button" onclick="exportRegXlsx()">ส่งออก Excel (แยกฝ่าย)</button><button class="btn sm primary" type="button" onclick="exportRegPdf()">ส่งออก PDF (แยกฝ่าย)</button></div><p class="muted" style="margin:-4px 0 8px">ผู้ดูแลเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
     const mem = allStudents.filter((x) => x.department_code === d.code);
     return '<details class="reg" data-code="' + d.code + '"' + (openReg.has(d.code) ? ' open' : '') + ' ontoggle="regToggle(this)"><summary><b>' + esc(d.name) + '</b> <span class="muted">' + mem.length + ' คน</span></summary>' + (mem.length ? YEARS.map((y) => GENDERS.map((g) => {
       const m = mem.filter((x) => x.year === y && x.gender === g); return m.length ? '<div class="regy"><span class="pill">ปี ' + y + ' ' + GL[g] + ' · ' + m.length + '/' + d.quota[g][y] + '</span> ' + m.map((x) => '<span class="nm">' + esc(x.name) + '<button type="button" aria-label="นำ ' + esc(x.name) + ' ออก" title="นำออกจากฝ่าย" onclick="removeFrom(\'' + x.student_id + '\')">×</button></span>').join('') + '</div>' : '';
@@ -331,8 +375,8 @@ async function assignDialog(i) {
   $('asOk').onclick = async () => { $('asOk').disabled = true; const ok = await doAssign($('asDept').value, [s.student_id], $('asForce').checked); if (ok) { d.remove(); loadStudentList(); } else $('asOk').disabled = false; };
 }
 function renderQuota() {
-  $('adminBody').innerHTML = '<p class="muted" style="margin:0 4px 10px">กำหนดจำนวนที่รับของแต่ละฝ่าย แยก <b>ชาย / หญิง</b> และชั้นปี (0 = ไม่เปิดรับ) ตั้งต่ำกว่าจำนวนที่มีคนลงทะเบียนแล้วไม่ได้</p>' + adminData.departments.map((d) =>
-    '<div class="panel"><h3>' + esc(d.name) + '</h3><div class="qm"><div class="qh"></div>' + YEARS.map((y) => '<div class="qh">ปี ' + y + '</div>').join('') + GENDERS.map((g) => '<div class="qg">' + GL[g] + '</div>' + YEARS.map((y) => '<label class="qc"><input type="number" inputmode="numeric" min="0" max="9999" id="q-' + d.code + '-' + g + '-' + y + '" value="' + d.quota[g][y] + '"><span>ลงแล้ว ' + d.filled[g][y] + '</span></label>').join('')).join('') + '</div><div class="qact"><button class="btn primary sm" onclick="saveQuota(\'' + d.code + '\')">บันทึกโควตา</button><button class="btn sm" onclick="copyQuota(\'' + d.code + '\')">คัดลอกค่า ชาย → หญิง</button></div></div>').join('');
+  $('adminBody').innerHTML = '<p class="muted" style="margin:0 4px 10px">กำหนดจำนวนที่รับของแต่ละฝ่าย แยก <b>ชาย / หญิง</b> และชั้นปี (0 = ไม่เปิดรับ) ตั้งต่ำกว่าจำนวนที่มีคนลงทะเบียนแล้วไม่ได้</p><div class="qgrid">' + adminData.departments.map((d) =>
+    '<div class="panel"><h3>' + esc(d.name) + '</h3><div class="qm"><div class="qh"></div>' + YEARS.map((y) => '<div class="qh">ปี ' + y + '</div>').join('') + GENDERS.map((g) => '<div class="qg">' + GL[g] + '</div>' + YEARS.map((y) => '<label class="qc"><input type="number" inputmode="numeric" min="0" max="9999" id="q-' + d.code + '-' + g + '-' + y + '" value="' + d.quota[g][y] + '"><span>ลงแล้ว ' + d.filled[g][y] + '</span></label>').join('')).join('') + '</div><div class="qact"><button class="btn primary sm" onclick="saveQuota(\'' + d.code + '\')">บันทึกโควตา</button><button class="btn sm" onclick="copyQuota(\'' + d.code + '\')">คัดลอกค่า ชาย → หญิง</button></div></div>').join('') + '</div>';
 }
 function copyQuota(code) { for (const y of YEARS) $('q-' + code + '-F-' + y).value = $('q-' + code + '-M-' + y).value; toast('คัดลอกแล้ว กด "บันทึกโควตา" เพื่อยืนยัน'); }
 async function saveQuota(code) {
@@ -348,7 +392,20 @@ async function saveQuota(code) {
 function renderSettings() {
   const s = adminData.registration;
   const opts = [['pending', 'เร็วๆ นี้'], ['open', 'เปิดลงทะเบียน'], ['closed', 'ปิดลงทะเบียน']];
-  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p></div>';
+  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p></div>' + depInfoPanel();
+}
+function depInfoPanel() {
+  return '<div class="panel"><h3>หัวหน้าฝ่ายและหน้าที่ของแต่ละฝ่าย</h3><p class="muted" style="margin-bottom:6px">แสดงให้นักศึกษาเห็นในหน้าเลือกฝ่าย (ตัวอย่างก่อนลงทะเบียน)</p>' + adminData.departments.map((d) => {
+    const h = d.head || {};
+    return '<div class="depinfo"><h4>' + esc(d.name) + '</h4><label>หัวหน้าฝ่าย<input id="dh-' + d.code + '" maxlength="120" value="' + esc(h.name || '') + '" placeholder="ชื่อ-นามสกุล หัวหน้าฝ่าย"></label><label>ช่องทางติดต่อ (ไม่บังคับ)<input id="dc-' + d.code + '" maxlength="200" value="' + esc(h.contact || '') + '" placeholder="เบอร์โทร / LINE ID"></label><label class="full">หน้าที่ของฝ่าย<textarea id="dd-' + d.code + '" maxlength="400">' + esc(d.description || '') + '</textarea></label><div class="qact"><button class="btn primary sm" onclick="saveDepInfo(\'' + d.code + '\')">บันทึก</button></div></div>';
+  }).join('') + '</div>';
+}
+async function saveDepInfo(code) {
+  const body = { departmentCode: code, headName: $('dh-' + code).value, headContact: $('dc-' + code).value, description: $('dd-' + code).value };
+  const r = await post('/camps/admin/department', body);
+  if (!r.ok) return toast(await errMsg(r), true);
+  const d = adminData.departments.find((x) => x.code === code); if (d) { d.head = { name: body.headName.trim(), contact: body.headContact.trim() }; d.description = body.description.trim(); }
+  toast('บันทึกข้อมูลฝ่ายแล้ว');
 }
 async function setState(k) {
   if (k === adminData.registration) return;
@@ -370,8 +427,8 @@ const GENDER_OPTS = '<option value="">เลือก</option><option value="M">
 async function loadStudents() {
   const body = $('adminBody');
   body.innerHTML = '<div class="panel"><h3>เพิ่ม / แก้ไขนักศึกษา</h3><form id="stForm" class="form cols5"><label>รหัสนักศึกษา<input id="stId" required inputmode="numeric" placeholder="6740102220"></label><label>ชื่อ-นามสกุล<input id="stName" required maxlength="200" placeholder="ชื่อ นามสกุล"></label><label>ชั้นปี<select id="stYr" required><option value="">เลือก</option>' + YEARS.map((y) => '<option value="' + y + '">' + y + '</option>').join('') + '</select></label><label>เพศ<select id="stG" required>' + GENDER_OPTS + '</select></label><button class="btn primary" type="submit">บันทึก</button></form><div class="muted" style="margin-top:6px">พิมพ์รหัสแล้วระบบเดาชั้นปีให้จากเลขสองหลักแรก และเดาเพศจากคำนำหน้าชื่อ (นาย / นางสาว) แก้ได้</div></div>'
-    + '<div class="panel"><h3>นำเข้าจากไฟล์ CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ ถ้าบันทึกจาก Excel ให้เลือก "CSV UTF-8"</p>'
-    + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ CSV</label><input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง</button><span id="csvName" class="muted"></span></div>'
+    + '<div class="panel"><h3>นำเข้าจากไฟล์ Excel / CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ รองรับไฟล์ Excel (.xlsx) โดยอ่านจากชีตแรก</p>'
+    + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ Excel / CSV</label><input id="csvFile" type="file" accept=".xlsx,.xls,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง (Excel)</button><span id="csvName" class="muted"></span></div>'
     + '<textarea id="bulk" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย&#10;6840100001,สมหญิง รักเรียน,2,หญิง"></textarea><div style="margin-top:10px"><button class="btn primary sm" id="bulkBtn">นำเข้า</button></div><div id="bulkRes" class="result"></div></div>'
     + '<div class="panel"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><div class="form fl"><input id="stQ" type="search" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
   $('stId').addEventListener('input', () => { const y = suggestYear($('stId').value); if (y && !$('stYr').dataset.touched) $('stYr').value = y; });
@@ -414,19 +471,41 @@ async function clearSel(i) {
   if (!r.ok) return toast(await errMsg(r), true); toast('ล้างการลงทะเบียนแล้ว'); loadStudentList();
 }
 // read a CSV file in the browser (UTF-8, falling back to Thai Windows-874 for old Excel exports) and show it before importing
+let xlsxP = null;
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return xlsxP || (xlsxP = new Promise((res, rej) => { const el = document.createElement('script'); el.src = '/hr/vendor/xlsx.mini.min.js'; el.onload = () => res(window.XLSX); el.onerror = () => { xlsxP = null; rej(new Error('load')); }; document.head.appendChild(el); }));
+}
 async function readCsvFile(e) {
   const f = e.target.files && e.target.files[0]; if (!f) return;
-  if (f.size > 2 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 2 MB', true); e.target.value = ''; return; }
+  if (f.size > 5 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 5 MB', true); e.target.value = ''; return; }
   const buf = await f.arrayBuffer(); let text;
-  try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (err) { try { text = new TextDecoder('windows-874').decode(buf); } catch (e2) { text = new TextDecoder().decode(buf); } }
+  const isExcel = /\.(xlsx|xls)$/i.test(f.name) || (new Uint8Array(buf, 0, 2)[0] === 0x50 && new Uint8Array(buf, 0, 2)[1] === 0x4b) || (new Uint8Array(buf, 0, 4)[0] === 0xd0 && new Uint8Array(buf, 0, 4)[1] === 0xcf);
+  if (isExcel) {
+    try {
+      const X = await loadXlsx(), wb = X.read(buf, { type: 'array' }), ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) throw new Error('empty');
+      text = X.utils.sheet_to_csv(ws, { FS: ',', RS: '\n', blankrows: false });
+    } catch (err) { toast('อ่านไฟล์ Excel ไม่ได้ ลองบันทึกเป็น .xlsx หรือ CSV อีกครั้ง', true); e.target.value = ''; return; }
+  } else {
+    const u8 = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
+    if (u8[0] === 0xff && u8[1] === 0xfe) text = new TextDecoder('utf-16le').decode(buf);
+    else if (u8[0] === 0xfe && u8[1] === 0xff) text = new TextDecoder('utf-16be').decode(buf);
+    else try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (err) { try { text = new TextDecoder('windows-874').decode(buf); } catch (e2) { text = new TextDecoder().decode(buf); } }
+  }
   $('bulk').value = text; $('csvName').textContent = f.name + ' · ' + text.split(/\r?\n/).filter((l) => l.trim()).length + ' บรรทัด — ตรวจสอบแล้วกด "นำเข้า"'; e.target.value = '';
 }
+function saveXlsx(rows, name, widths) {
+  return loadXlsx().then((X) => {
+    const ws = X.utils.aoa_to_sheet(rows); ws['!cols'] = widths.map((w) => ({ wch: w }));
+    const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'นักศึกษา'); X.writeFile(wb, name);
+  }).catch(() => toast('สร้างไฟล์ Excel ไม่ได้', true));
+}
 function downloadTemplate() {
-  const csv = '\ufeffรหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ,ฝ่าย\r\n6740102220,สมชาย ใจดี,3,ชาย,ฝ่ายการสอน\r\n6840100001,สมหญิง รักเรียน,2,หญิง,\r\n';
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students-template.csv'; document.body.appendChild(a); a.click(); a.remove();
+  saveXlsx([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย'], ['6740102220', 'สมชาย ใจดี', 3, 'ชาย', 'ฝ่ายการสอน'], ['6840100001', 'สมหญิง รักเรียน', 2, 'หญิง', '']], 'camp-students-template.xlsx', [16, 26, 8, 8, 18]);
 }
 async function bulkImport() {
-  const text = $('bulk').value.trim(); if (!text) return toast('เลือกไฟล์ CSV หรือวางรายชื่อก่อน', true);
+  const text = $('bulk').value.trim(); if (!text) return toast('เลือกไฟล์ Excel/CSV หรือวางรายชื่อก่อน', true);
   const btn = $('bulkBtn'); btn.disabled = true;
   try {
     const r = await post('/camps/admin/students/bulk', { text });
@@ -437,12 +516,70 @@ async function bulkImport() {
     toast('นำเข้าเสร็จแล้ว'); loadStudentList();
   } finally { btn.disabled = false; }
 }
+async function exportXlsx() {
+  const r = await api('/camps/admin/students'); if (!r.ok) return toast(await errMsg(r), true);
+  const list = (await r.json()).students || [];
+  await saveXlsx([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย']].concat(list.map((s) => [String(s.student_id), s.name, s.year, GL[s.gender], s.department_name || ''])), 'camp-students.xlsx', [16, 26, 8, 8, 18]);
+}
 async function exportCsv() {
   const r = await api('/camps/admin/students'); if (!r.ok) return toast(await errMsg(r), true);
   const list = (await r.json()).students || [];
   const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const csv = '﻿' + ['รหัสนักศึกษา,ชื่อ,ชั้นปี,เพศ,ฝ่าย'].concat(list.map((s) => [q(s.student_id), q(s.name), s.year, q(GL[s.gender]), q(s.department_name || '')].join(','))).join('\r\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ---------- export registrations by department (Excel / PDF) ----------
+const loadJs = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(el); });
+async function regGroups() {
+  const r = await api('/camps/admin/students'); if (!r.ok) { toast(await errMsg(r), true); return null; }
+  if (!adminData) { const o = await api('/camps/admin/overview'); if (o.ok) adminData = await o.json(); }
+  const list = ((await r.json()).students || []).filter((s) => s.department_code);
+  const order = (adminData ? adminData.departments : []).map((d) => ({ code: d.code, name: d.name }));
+  for (const s of list) if (!order.some((d) => d.code === s.department_code)) order.push({ code: s.department_code, name: s.department_name || s.department_code });
+  const gi = (g) => (g === 'M' ? 0 : g === 'F' ? 1 : 2);
+  const groups = order.map((d) => ({ ...d, people: list.filter((s) => s.department_code === d.code).sort((a, b) => a.year - b.year || gi(a.gender) - gi(b.gender) || String(a.student_id).localeCompare(String(b.student_id))) }));
+  return { groups, total: list.length };
+}
+const regSummary = (groups) => groups.map((g) => { const n = (y, x) => g.people.filter((p) => p.year === y && (!x || p.gender === x)).length; return [g.name, g.people.length, g.people.filter((p) => p.gender === 'M').length, g.people.filter((p) => p.gender === 'F').length].concat(YEARS.map((y) => n(y))); });
+const SUM_HEAD = ['ฝ่าย', 'รวม', 'ชาย', 'หญิง'].concat(YEARS.map((y) => 'ปี ' + y));
+const stamp = () => new Date().toISOString().slice(0, 10);
+async function exportRegXlsx() {
+  const d = await regGroups(); if (!d) return;
+  if (!d.total) return toast('ยังไม่มีผู้ลงทะเบียน', true);
+  try {
+    const X = await loadXlsx(), wb = X.utils.book_new(), used = new Set(['สรุป', 'ทั้งหมด']);
+    const add = (name, rows, w) => { const ws = X.utils.aoa_to_sheet(rows); ws['!cols'] = w.map((x) => ({ wch: x })); X.utils.book_append_sheet(wb, ws, name); };
+    add('สรุป', [SUM_HEAD].concat(regSummary(d.groups), [['รวมทั้งหมด', d.total, d.groups.reduce((s, g) => s + g.people.filter((p) => p.gender === 'M').length, 0), d.groups.reduce((s, g) => s + g.people.filter((p) => p.gender === 'F').length, 0)].concat(YEARS.map((y) => d.groups.reduce((s, g) => s + g.people.filter((p) => p.year === y).length, 0)))]), [26, 8, 8, 8, 8, 8, 8, 8]);
+    const row = (p, i) => [i + 1, String(p.student_id), p.name, p.year, GL[p.gender]];
+    add('ทั้งหมด', [['ฝ่าย', 'ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']].concat(d.groups.flatMap((g) => g.people.map((p, i) => [g.name].concat(row(p, i))))), [26, 7, 16, 28, 8, 8]);
+    d.groups.forEach((g) => { let n = g.name.replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 28) || 'ฝ่าย', k = 2, base = n; while (used.has(n)) n = base.slice(0, 26) + ' ' + k++; used.add(n); add(n, [['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']].concat(g.people.map(row)), [7, 16, 28, 8, 8]); });
+    X.writeFile(wb, 'camp-registrations-' + stamp() + '.xlsx');
+  } catch (e) { toast('สร้างไฟล์ Excel ไม่ได้', true); }
+}
+let thFonts = null;
+async function exportRegPdf() {
+  const d = await regGroups(); if (!d) return;
+  if (!d.total) return toast('ยังไม่มีผู้ลงทะเบียน', true);
+  try {
+    if (!window.jspdf) { await loadJs('/hr/vendor/jspdf.umd.min.js'); await loadJs('/hr/vendor/jspdf.plugin.autotable.min.js'); }
+    const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
+    if (!thFonts) thFonts = { n: await b64('/budget/assets/fonts/Sarabun-Regular.ttf'), b: await b64('/budget/assets/fonts/Sarabun-Bold.ttf') };
+    const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.addFileToVFS('Sarabun-Regular.ttf', thFonts.n); doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
+    doc.addFileToVFS('Sarabun-Bold.ttf', thFonts.b); doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold'); doc.setFont('Sarabun', 'normal');
+    const styles = { font: 'Sarabun', fontSize: 11, cellPadding: 2 }, headStyles = { font: 'Sarabun', fontStyle: 'bold', fillColor: [211, 47, 47] };
+    doc.setFont('Sarabun', 'bold'); doc.setFontSize(20); doc.text('รายชื่อผู้ลงทะเบียนแต่ละฝ่าย', 14, 18);
+    doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียนทั้งหมด ' + d.total + ' คน · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH'), 14, 25);
+    doc.autoTable({ startY: 30, head: [SUM_HEAD], body: regSummary(d.groups), styles, headStyles, columnStyles: { 0: { cellWidth: 52 } } });
+    d.groups.forEach((g) => {
+      doc.addPage(); doc.setFont('Sarabun', 'bold'); doc.setFontSize(16); doc.text(g.name, 14, 18);
+      doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียน ' + g.people.length + ' คน (ชาย ' + g.people.filter((p) => p.gender === 'M').length + ' · หญิง ' + g.people.filter((p) => p.gender === 'F').length + ')', 14, 25);
+      doc.autoTable({ startY: 30, head: [['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']], body: g.people.length ? g.people.map((p, i) => [i + 1, String(p.student_id), p.name, p.year, GL[p.gender]]) : [[{ content: 'ยังไม่มีผู้ลงทะเบียน', colSpan: 5, styles: { halign: 'center' } }]], styles, headStyles, columnStyles: { 0: { cellWidth: 16 }, 3: { cellWidth: 16 }, 4: { cellWidth: 20 } } });
+    });
+    const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, 196, 290, { align: 'right' }); }
+    doc.save('camp-registrations-' + stamp() + '.pdf');
+  } catch (e) { toast('สร้างไฟล์ PDF ไม่ได้', true); }
 }
 
 // ---------- start ----------

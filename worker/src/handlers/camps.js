@@ -4,7 +4,10 @@ import { json } from "../lib/cors.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
 const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
-const clean = (s, max = 200) => String(s ?? "").trim().slice(0, max);
+// Thai-safe text: NFC, no zero-width marks, NBSP -> space, collapsed spaces; Thai digits (๐-๙) -> 0-9 for ids / years
+const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[\u200b-\u200d\u2060\ufeff]/g, "").replace(/[\u00a0\u2007\u202f\u3000]/g, " ").replace(/[ \t]+/g, " ").trim();
+const asciiDigits = (s) => String(s ?? "").replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50));
+const clean = (s, max = 200) => tidy(s).slice(0, max);
 const YEARS = [1, 2, 3, 4];
 const GENDERS = ["M", "F"]; // M = ชาย, F = หญิง
 const STATES = ["pending", "open", "closed"];
@@ -16,28 +19,28 @@ export function parseStudentEmail(email) {
 }
 // Accept "6740102220" or "sb6740102220@lru.ac.th" when an admin types a student.
 function normalizeStudentId(v) {
-  const s = String(v ?? "").trim();
+  const s = asciiDigits(tidy(v));
   const p = parseStudentEmail(s);
   if (p) return p.studentId;
   return /^\d{6,12}$/.test(s) ? s : null;
 }
 // ชาย/หญิง/M/F/male/female ... -> "M" | "F" | null
 export function normalizeGender(v) {
-  const s = String(v ?? "").trim().toLowerCase().replace(/\.$/, "");
-  if (["m", "male", "man", "boy", "ชาย", "ช", "นาย", "เด็กชาย"].includes(s)) return "M";
-  if (["f", "female", "woman", "girl", "หญิง", "ญ", "นาง", "นางสาว", "น.ส", "เด็กหญิง"].includes(s)) return "F";
+  const s = tidy(v).toLowerCase().replace(/\.$/, "");
+  if (["m", "male", "man", "boy", "ชาย", "ช", "นาย", "เด็กชาย", "ด.ช"].includes(s)) return "M";
+  if (["f", "female", "woman", "girl", "หญิง", "ญ", "นาง", "นางสาว", "น.ส", "นส", "เด็กหญิง", "ด.ญ"].includes(s)) return "F";
   return null;
 }
 // Fallback when a roster has no gender column: Thai titles in front of the name.
 export function genderFromName(name) {
-  const n = String(name ?? "").trim();
-  if (/^(นาย|เด็กชาย|ด\.ช\.)/.test(n)) return "M";
-  if (/^(นางสาว|นาง|น\.ส\.|เด็กหญิง|ด\.ญ\.)/.test(n)) return "F";
+  const n = tidy(name);
+  if (/^(นาย|เด็กชาย|ด\.\s?ช\.?)/.test(n)) return "M";
+  if (/^(นางสาว|นาง|น\.\s?ส\.?|นส\.|เด็กหญิง|ด\.\s?ญ\.?)/.test(n)) return "F";
   return null;
 }
 // "ปี 3" / "3" / "Y3" -> 3 (1-4) | null
 function parseYear(v) {
-  const m = /^(?:ชั้นปีที่|ชั้นปี|ปีที่|ปี|year|y)?\s*([1-4])$/i.exec(String(v ?? "").trim());
+  const m = /^(?:ชั้นปีที่|ชั้นปี|ปีที่|ปี|year|y)?\s*([1-4])$/i.exec(asciiDigits(tidy(v)));
   return m ? Number(m[1]) : null;
 }
 
@@ -48,7 +51,7 @@ export function parseCsv(text) {
   const count = (c) => first.split(c).length - 1;
   const delim = count("\t") >= Math.max(count(","), count(";")) && count("\t") > 0 ? "\t" : count(";") > count(",") ? ";" : ",";
   const rows = []; let row = [], cell = "", q = false, line = 1, rowLine = 1;
-  const endCell = () => { row.push(cell.trim()); cell = ""; };
+  const endCell = () => { row.push(tidy(cell)); cell = ""; };
   const endRow = () => { endCell(); if (row.some((c) => c !== "")) rows.push({ line: rowLine, cells: row }); row = []; rowLine = line + 1; };
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
@@ -65,9 +68,11 @@ export function parseCsv(text) {
   return rows;
 }
 const HEADER_KEYS = {
-  id: /^(รหัส|รหัสนักศึกษา|student[_ ]?id|studentid|id|code)$/i,
-  name: /^(ชื่อ|ชื่อ-?นามสกุล|ชื่อสกุล|name|fullname|full[_ ]name)$/i,
-  year: /^(ชั้นปี|ชั้น|ปี|ปีที่|year|level)$/i,
+  id: /^(รหัส|รหัสนักศึกษา|รหัสประจำตัว|รหัสประจำตัวนักศึกษา|เลขประจำตัว|เลขประจำตัวนักศึกษา|เลขที่นักศึกษา|student[_ ]?id|studentid|id|code)$/i,
+  name: /^(ชื่อ|ชื่อ\s*[-–—]?\s*(นามสกุล|สกุล)|ชื่อและนามสกุล|ชื่อสกุล|ชื่อจริง|name|fullname|full[_ ]name|first[_ ]?name)$/i,
+  last: /^(นามสกุล|สกุล|last[_ ]?name|surname|family[_ ]?name)$/i,
+  prefix: /^(คำนำหน้า|คำนำหน้าชื่อ|คำนำหน้านาม|title|prefix)$/i,
+  year: /^(ชั้นปี|ชั้นปีที่|ชั้น|ปี|ปีที่|ปีการศึกษา|year|level)$/i,
   gender: /^(เพศ|gender|sex)$/i,
   dept: /^(ฝ่าย|department|dept)$/i
 };
@@ -133,7 +138,7 @@ async function status(request, env) {
 const grid = () => ({ M: { 1: 0, 2: 0, 3: 0, 4: 0 }, F: { 1: 0, 2: 0, 3: 0, 4: 0 } });
 async function departmentsWithSlots(env) {
   const [deps, quotas, filled] = await Promise.all([
-    env.DB.prepare("SELECT code,name,description,sort_order FROM camp_departments ORDER BY sort_order").all(),
+    env.DB.prepare("SELECT code,name,description,sort_order,head_name,head_contact FROM camp_departments ORDER BY sort_order").all(),
     env.DB.prepare("SELECT department_code,gender,year,quota FROM camp_quotas").all(),
     env.DB.prepare("SELECT department_code,gender,year,COUNT(*) c FROM camp_selections GROUP BY department_code,gender,year").all()
   ]);
@@ -143,7 +148,7 @@ async function departmentsWithSlots(env) {
   return (deps.results || []).map((d) => {
     const quota = q[d.code] || grid(), fill = f[d.code] || grid(), remaining = grid();
     for (const g of GENDERS) for (const y of YEARS) remaining[g][y] = Math.max(0, quota[g][y] - fill[g][y]);
-    return { code: d.code, name: d.name, description: d.description, quota, filled: fill, remaining };
+    return { code: d.code, name: d.name, description: d.description, head: { name: d.head_name || "", contact: d.head_contact || "" }, quota, filled: fill, remaining };
   });
 }
 async function departments(request, env) {
@@ -237,6 +242,19 @@ async function adminSetState(request, env) {
 }
 
 // body: { departmentCode, quotas: { M: {1:n,2:n,3:n,4:n}, F: {...} } }
+// department info: head (หัวหน้าฝ่าย) name + contact, and the description shown in the student preview
+async function adminSetDepartment(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null);
+  const code = clean(b?.departmentCode, 40);
+  const dep = await env.DB.prepare("SELECT code,name,description FROM camp_departments WHERE code=?").bind(code).first();
+  if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
+  const headName = clean(b?.headName, 120), headContact = clean(b?.headContact, 200), description = clean(b?.description ?? dep.description, 400);
+  if (!description) return fail(request, env, "หน้าที่ของฝ่ายต้องไม่ว่าง");
+  await env.DB.prepare("UPDATE camp_departments SET head_name=?,head_contact=?,description=? WHERE code=?").bind(headName || null, headContact || null, description, code).run();
+  await audit(env, a, "CAMP_DEPARTMENT", code, { headName, headContact });
+  return json(request, env, { ok: true });
+}
 async function adminSetQuota(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
@@ -306,14 +324,17 @@ async function adminBulkStudents(request, env) {
   let col = { id: 0, name: 1, year: 2, gender: 3, dept: 4 };
   const head = rows[0].cells;
   const keyed = {};
-  head.forEach((c, i) => { for (const k of Object.keys(HEADER_KEYS)) if (HEADER_KEYS[k].test(c.trim()) && keyed[k] === undefined) keyed[k] = i; });
+  head.forEach((c, i) => { for (const k of Object.keys(HEADER_KEYS)) if (HEADER_KEYS[k].test(c.replace(/\s+/g, "")) && keyed[k] === undefined) keyed[k] = i; });
   let data = rows, hasHeader = false;
-  if (Object.keys(keyed).length >= 2 && !normalizeStudentId(head[keyed.id ?? 0])) { hasHeader = true; data = rows.slice(1); col = { id: keyed.id ?? -1, name: keyed.name ?? -1, year: keyed.year ?? -1, gender: keyed.gender ?? -1, dept: keyed.dept ?? -1 }; if (col.id < 0 || col.name < 0 || col.year < 0) return fail(request, env, "หัวตารางต้องมีคอลัมน์ รหัส, ชื่อ และชั้นปี (เพศไม่บังคับถ้าชื่อมีคำนำหน้า นาย/นางสาว)"); }
+  if (Object.keys(keyed).length >= 2 && !normalizeStudentId(head[keyed.id ?? 0])) { hasHeader = true; data = rows.slice(1); col = { id: keyed.id ?? -1, name: keyed.name ?? -1, last: keyed.last ?? -1, prefix: keyed.prefix ?? -1, year: keyed.year ?? -1, gender: keyed.gender ?? -1, dept: keyed.dept ?? -1 }; if (col.id < 0 || col.name < 0 || col.year < 0) return fail(request, env, "หัวตารางต้องมีคอลัมน์ รหัส, ชื่อ และชั้นปี (เพศไม่บังคับถ้าชื่อมีคำนำหน้า นาย/นางสาว)"); }
   const depList = (await env.DB.prepare("SELECT code,name FROM camp_departments").all()).results || [];
   const good = [], errors = [];
   for (const r of data) {
     const c = r.cells, text = c.join(", ");
-    const id = normalizeStudentId(c[col.id]), name = clean(c[col.name], 200), year = parseYear(c[col.year]);
+    const pre = col.prefix >= 0 ? clean(c[col.prefix], 40) : "", last = col.last >= 0 ? clean(c[col.last], 100) : "";
+    // separate คำนำหน้า / ชื่อ / นามสกุล columns are joined: "นาย" + "สมชาย" + "ใจดี" -> "นายสมชาย ใจดี"
+    const name = clean(((pre && !/[.]$/.test(pre) && pre.length > 4 ? pre + " " : pre) + (c[col.name] ?? "") + (last ? " " + last : "")), 200);
+    const id = normalizeStudentId(c[col.id]), year = parseYear(c[col.year]);
     const rawG = col.gender >= 0 ? c[col.gender] : "";
     const gender = rawG ? normalizeGender(rawG) : genderFromName(name);
     if (!id) { errors.push({ line: r.line, text, error: "รหัสนักศึกษาไม่ถูกต้อง" }); continue; }
@@ -424,6 +445,7 @@ export async function camps(request, env, url) {
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
     if (m === "POST" && p === "/camps/admin/state") return await adminSetState(request, env);
+    if (m === "POST" && p === "/camps/admin/department") return await adminSetDepartment(request, env);
     if (m === "POST" && p === "/camps/admin/quota") return await adminSetQuota(request, env);
     if (m === "GET" && p === "/camps/admin/students") return await adminStudents(request, env, url);
     if (m === "POST" && p === "/camps/admin/students") return await adminUpsertStudent(request, env);

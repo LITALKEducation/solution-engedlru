@@ -131,8 +131,9 @@ details.reg summary{cursor:pointer;font-size:15px}
 a.btn{text-decoration:none}
 
 /* gender-aware slots */
-.yrs{grid-template-columns:repeat(2,1fr)}
-@media(min-width:760px){.yrs{grid-template-columns:repeat(4,1fr)}}
+.yrs{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(min-width:760px){.yrs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.yr{min-width:0}.gr .st{font-size:11px}
 .yr{align-items:stretch;gap:5px;text-align:left;padding:10px}
 .yr .yl{font-size:13px;font-weight:800;text-align:left}
 .gr{display:flex;align-items:center;gap:6px;border-radius:10px;padding:4px 6px;background:#fff}
@@ -175,3 +176,49 @@ td{vertical-align:middle}
 .nm button{border:0;background:var(--panel);width:22px;height:22px;border-radius:50%;line-height:1;font-size:15px;color:var(--mute);padding:0}
 .nm button:hover{background:#fee2e2;color:#b91c1c}
 .srow .acts{flex-wrap:wrap;justify-content:flex-end}
+
+/* signed-in user shown at the top of the page */
+.herotop{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.herotop .back{margin-bottom:0}
+.userchip{margin-left:auto;max-width:100%;min-width:0}
+.uc{display:flex;align-items:center;gap:10px;background:#ffffff26;border-radius:999px;padding:5px 6px;max-width:100%}
+.avatar.sm{width:34px;height:34px;font-size:15px;background:#fff;color:var(--brand-d)}
+.ut{min-width:0;display:flex;flex-direction:column;line-height:1.25;color:#fff}
+.ut b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
+.ut small{font-size:11px;opacity:.92;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
+.ut .pill.admin{margin-left:4px;font-size:10px;padding:1px 7px}
+.chipbtn{border:0;border-radius:999px;background:#fff;color:var(--brand-d);font-weight:700;font-size:13px;padding:8px 16px;flex:none;cursor:pointer}
+.chipbtn:active{transform:scale(.97)}
+@media(min-width:760px){.ut b,.ut small{max-width:320px}}
+
+/* desktop */
+.qgrid{display:block}
+@media(min-width:1100px){.qgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.qgrid .panel{margin-bottom:0}
+ body[data-page=student] .depts{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-page=student] .dept:first-child{grid-column:auto}}
+
+/* department preview + head */
+.dept .hd{margin-top:6px;font-size:13px;color:var(--mute)}.dept .hd b{color:var(--ink)}
+.dept .more{margin-top:10px;font-size:13px;font-weight:700;color:var(--brand);text-align:right}
+.dlg.pv .box{width:min(640px,100%);max-height:90dvh;overflow:auto;padding:20px}
+.dlg.pv .box.wide{width:min(640px,100%)}
+.pvchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -4px 14px;padding:0 4px}
+.pvchips::-webkit-scrollbar{display:none}
+.pvchips button{flex:none;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;background:var(--panel);color:var(--mute);cursor:pointer;transition:background-color .18s,color .18s}
+.pvchips button.on{background:var(--brand);color:#fff}
+.pvhead{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.pvhead .icon{flex:none;width:56px;height:56px;border-radius:17px;display:grid;place-items:center}
+.pvhead .icon svg{width:28px;height:28px}
+.pvhead h3{font-size:22px;margin:0 0 4px}
+.pvsec{background:var(--panel);border-radius:18px;padding:12px 14px;margin-top:10px}
+.pvsec>b{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.pvsec p{color:var(--ink);font-size:15px;margin:0}.pvsec p.muted{color:var(--mute);font-size:14px}
+.pvsec .pvhd{font-weight:800;font-size:17px}
+.pvsec .yrs{margin-top:6px}
+@media(max-width:759px){.dlg.pv{align-items:flex-end;padding:0}.dlg.pv .box{border-radius:26px 26px 0 0;max-height:92dvh}}
+/* admin: department info editor */
+.depinfo{display:grid;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #fff}
+.depinfo:first-of-type{border-top:0;margin-top:4px;padding-top:0}
+.depinfo h4{margin:0;font-size:15px}
+.depinfo label{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--mute)}
+.depinfo textarea{min-height:60px}
+@media(min-width:900px){.depinfo{grid-template-columns:1fr 1fr}.depinfo h4,.depinfo .full,.depinfo .qact{grid-column:1/-1}}
