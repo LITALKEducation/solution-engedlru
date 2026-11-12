@@ -6,6 +6,7 @@ Cloudflare Pages project, root directory `camps`, no build command.
 | --- | --- |
 | `/` | Camps home: choose **งบประมาณ** (finance) or **ฝ่ายบุคคล** (coming soon). Plain web page. |
 | `/hr/` | ฝ่ายบุคคล · ภาพรวมฝ่าย: the 5 departments (duties, head with photo/contact, slots per year and gender). Plain web page (not a web app). |
+| `/hr/select` | ฝ่ายบุคคล · เลือกเลย: a single dropdown of the departments with a register button (shows the duties, head and your slot for the chosen one). |
 | `/hr/choose` | ฝ่ายบุคคล · เลือกฝ่าย: shows only the head of each department; tap one to preview, pick it and register (Google sign-in). |
 | `/hr/overview` `/hr/quota` `/hr/students` `/hr/settings` | ฝ่ายบุคคล · ผู้ดูแล: one page per admin function, each a menu item visible only to admins (`/hr/admin` redirects to `/hr/overview`). |
 | `/budget/` | Finance web app (Auth0 login, installable PWA, phone install required). See `budget/README.md`. |
@@ -29,3 +30,7 @@ Columns `รหัสนักศึกษา, ชื่อ-นามสกุ�
 
 ### Database migrations
 `worker/migrations/*.sql` are applied by the deploy workflow (`wrangler d1 migrations apply`) on every push to `main` that touches `worker/**`; it can also be started by hand from the Actions tab (Deploy LITALK Education Worker → Run workflow). Applied migrations are tracked by file name only, so **never edit an existing migration** — add a new numbered file (the `Check D1 migrations` workflow fails pull requests that change existing ones). `0007_camps_gender.sql` upgrades the ฝ่ายบุคคล tables that `0006` created without gender.
+
+
+### Sign-in first
+The student pages (`/hr/`, `/hr/choose`, `/hr/select`) show only a Google sign-in card until the visitor is signed in, and `GET /camps/departments` returns 401 without a token. Only `GET /camps/status` (registration open/closed, used by the home badge) and the head photo images stay public.

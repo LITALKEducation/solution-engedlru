@@ -11,6 +11,7 @@ const GENDERS = ['M', 'F'];
 const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k] || 'ไม่ระบุเพศ' });   // legacy rows may have no gender yet
 const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
 const TAB = document.body.dataset.tab || 'overview';
+const SELECT = PAGE === 'student' && TAB === 'select';      // /hr/select: quick pick from a dropdown
 const CHOOSE = PAGE === 'student' && TAB === 'choose';      // /hr/choose: pick a department (heads only)     // which admin page this is
 const ICON = {
   direction: '<path d="M4 22V3M4 4h14l-2 4 2 4H4"/>',
@@ -83,7 +84,7 @@ async function initAuth() {
   } catch (e) { console.error(e); authReady = false; renderAcct({ error: e.message }); return null; }
 }
 async function login() {
-  if (PAGE === 'admin' || CHOOSE) { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
+  if (PAGE === 'admin' || CHOOSE || SELECT) { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
   const btns = document.querySelectorAll('.gbtn'); btns.forEach((b) => b.disabled = true);
   try {
     const ap = { connection: CONNECTION };
@@ -97,7 +98,7 @@ async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1
 // ---------- menu ----------
 function renderNav() {
   const el = $('hrNav'); if (!el) return;
-  let html = '<a href="/hr/" class="' + (PAGE === 'student' && !CHOOSE ? 'on' : '') + '">ภาพรวมฝ่าย</a><a href="/hr/choose" class="' + (CHOOSE ? 'on' : '') + '">เลือกฝ่าย</a>';
+  let html = '<a href="/hr/" class="' + (PAGE === 'student' && !CHOOSE && !SELECT ? 'on' : '') + '">ภาพรวมฝ่าย</a><a href="/hr/choose" class="' + (CHOOSE ? 'on' : '') + '">เลือกฝ่าย</a><a href="/hr/select" class="' + (SELECT ? 'on' : '') + '">เลือกเลย</a>';
   if (me && me.isAdmin) html += '<span class="sep">ผู้ดูแล</span>' + ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="adm ' + (PAGE === 'admin' && TAB === k ? 'on' : '') + '">' + l + '</a>').join('');
   el.innerHTML = html;
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
@@ -177,6 +178,23 @@ function deptCard(d) {
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
   return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">' + avatar(d, 'md') + '<span>หัวหน้าฝ่าย<br><b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b>' + (d.head && d.head.contact ? '<small>ติดต่อ: ' + esc(d.head.contact) + '</small>' : '') + '</span></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
 }
+// /hr/select: one dropdown + register button (no browsing)
+function renderSelect() {
+  const box = $('depts'); if (!box) return;
+  const reg = myDept(), regDep = reg && deps.find((d) => d.code === reg), y = myYear(), g = myGender();
+  const sel = $('selDept'), cur = sel ? sel.value : (picked || '');
+  const slotOf = (d) => (y ? slot(d.quota[g][y], d.filled[g][y]) : null);
+  const opts = deps.map((d) => { const st = slotOf(d), full = st && st.c === 'off' && state === 'open'; return '<option value="' + d.code + '"' + (full && d.code !== reg ? ' disabled' : '') + (d.code === cur ? ' selected' : '') + '>' + esc(d.name) + (st && state === 'open' ? ' — ' + esc(st.note) : '') + (d.code === reg ? ' (ของคุณ)' : '') + '</option>'; }).join('');
+  const d = deps.find((x) => x.code === cur), h = (d && d.head) || {}, st = d ? slotOf(d) : null;
+  const blocked = d && st && st.c !== 'on' ? st.note : '';
+  const info = d ? '<div class="selinfo ' + (TONE[d.code] || '') + '">' + avatar(d, 'lg') + '<div><b>' + esc(d.name) + '</b><p>' + esc(d.description) + '</p><p class="muted">หัวหน้าฝ่าย: <b>' + (h.name ? esc(h.name) : 'ยังไม่ประกาศ') + '</b>' + (h.contact ? ' · ' + esc(h.contact) : '') + '</p>' + (st ? '<p class="muted">ชั้นปี ' + y + ' ' + GL[g] + ': ' + esc(st.note) + '</p>' : '') + '</div></div>' : '';
+  const label = state === 'pending' ? 'ยังไม่เปิดลงทะเบียน' : state === 'closed' ? 'ปิดลงทะเบียนแล้ว' : blocked ? 'ลงทะเบียนไม่ได้ (' + blocked + ')' : (regDep && d && d.code !== reg ? 'เปลี่ยนเป็นฝ่ายนี้' : 'ลงทะเบียน');
+  box.innerHTML = '<div class="card selbox">' + (regDep ? '<div class="selreg">✓ ลงทะเบียนแล้ว: <b>' + esc(regDep.name) + '</b>' + (state === 'open' ? ' <button class="btn sm" type="button" onclick="unselect()">ยกเลิก</button>' : '') + '</div>' : '')
+    + '<label class="sellbl" for="selDept">เลือกฝ่าย</label><select id="selDept"><option value="">— เลือกฝ่ายที่ต้องการ —</option>' + opts + '</select>' + info
+    + '<button id="selBtn" class="btn primary" type="button" ' + (!d || (reg && d.code === reg) || blocked || state !== 'open' ? 'disabled' : '') + '>' + (d && reg === d.code ? 'คุณลงทะเบียนฝ่ายนี้แล้ว' : label) + '</button></div>';
+  $('selDept').onchange = (e) => { setPicked(e.target.value || null); renderSelect(); };
+  $('selBtn').onclick = () => register();
+}
 // /hr/choose shows only the head of each department
 function headCard(d) {
   const reg = myDept() === d.code, pk = picked === d.code, h = d.head || {};
@@ -221,7 +239,7 @@ function renderSummary() {
     return '<div class="sg' + (y === my && g === mg ? ' me' : '') + '"><div class="sl"><span>' + GL[g] + ' <b>' + f + '</b><small>/' + q + '</small></span><span class="st ' + st.c + '">' + st.t + '</span></div><div class="prog"><i style="width:' + pct + '%"></i></div></div>';
   }).join('') + '</div>').join('') + '</div>';
 }
-function renderDepts() { if (!$('depts')) return; $('depts').innerHTML = deps.map(CHOOSE ? headCard : deptCard).join(''); renderSummary(); renderBar(); }
+function renderDepts() { if (!$('depts')) return; if (SELECT) { renderSelect(); renderSummary(); return; } $('depts').innerHTML = deps.map(CHOOSE ? headCard : deptCard).join(''); renderSummary(); renderBar(); }
 function pick(code) { setPicked(picked === code ? null : code); renderDepts(); }
 
 // bottom bar: choose a department first, then press ลงทะเบียน (sign-in happens at that point)
@@ -247,19 +265,34 @@ function renderBar() {
 async function loadDepartments() {
   if (PAGE !== 'student') return;
   let r;
-  try { r = await pub('/camps/departments'); } catch (e) { if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
+  if (!auth0Client || !me) return;
+  try { r = await api('/camps/departments'); } catch (e) { if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
+  if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { if (!deps.length) $('depts').innerHTML = failBox(await errMsg(r), 'loadDepartments()'); return; }
   const d = await r.json(); deps = d.departments || []; state = d.registration || 'pending';
   renderState(); renderDepts(); if (me) renderAcct();
 }
 async function loadMe() {
   let r;
-  try { r = await api('/camps/me'); } catch (e) { renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
-  if (r.status === 401) { me = null; renderAcct(); return; }
-  if (!r.ok) { renderAcct({ error: await errMsg(r) }); return; }
-  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderDepts(); renderAdmin(); renderNav();
+  try { r = await api('/camps/me'); } catch (e) { renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); renderGate({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
+  if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
+  if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
+  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderNav();
+  if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
 }
+// student pages show nothing until the visitor has signed in with Google
+function renderGate(x) {
+  if (PAGE !== 'student') return;
+  document.body.classList.add('gated');
+  let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
+  if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
+  if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อนใช้งาน</h2><p class="meta">ต้องเข้าสู่ระบบด้วยบัญชี Google อีเมลมหาวิทยาลัย (@lru.ac.th) จึงจะดูข้อมูลฝ่ายและลงทะเบียนได้</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+}
+function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
+let polling = false;
+function startPolling() { if (polling) return; polling = true; setInterval(() => { if (!document.hidden && me) loadDepartments(); }, 30000); }
 async function register() {
   const d = deps.find((x) => x.code === picked); if (!d) return;
   if (!authReady) return toast('ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า', true);
@@ -630,9 +663,10 @@ async function exportRegPdf() {
 // ---------- start ----------
 async function start() {
   renderNav();
-  if (PAGE === 'student') { loadDepartments(); setInterval(() => { if (!document.hidden) loadDepartments(); }, 30000); }
+  if (PAGE === 'student') renderGate({ loading: true });
   const authed = await initAuth();
   if (authed === 'redirect') return;
-  if (authed) await loadMe(); else if (authReady) renderAcct();
+  if (authed) await loadMe();
+  else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: 'ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า' }); }
 }
 window.addEventListener('DOMContentLoaded', start);
