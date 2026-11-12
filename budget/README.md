@@ -104,3 +104,7 @@ If a Google account has no access, the app shows its email so the person can sen
 - **Phone (< 768px):** single column with a bottom tab bar and floating "บันทึก" button. Phones must use the installed web app.
 - **iPad / small laptop (768–1023px):** left icon rail, content up to 1160px. Tablets are not forced to install.
 - **Desktop / iPad landscape (≥ 1024px):** full left sidebar with the signed-in user, two-column dashboard, and table views for transactions and donations. Dialogs open as centred cards.
+
+## Editing a user's access
+
+Admin → ผู้ใช้ → tap a user to change their display name, student ID, on/off switch and which accounts they can use. A disabled user is refused at sign-in (message "บัญชีนี้ถูกปิดสิทธิ์ใช้งาน"). Admins can't disable themselves, and users who hold the Auth0 `budget_admin` role always see every account (manage that role in Auth0). Every change is written to the audit log (`USER_UPDATED`).

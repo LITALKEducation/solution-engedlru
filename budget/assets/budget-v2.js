@@ -22,7 +22,7 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
  let n=3;const txs=[{transaction_id:'DEMO-0003',transaction_uuid:'t3',account_uuid:'a2',account_name:'บัญชีธนาคาร',type:'income',is_donation:1,category:'เงินบริจาค',amount:20000,details:'บริจาคโดย คุณสมชาย ใจดี (PromptPay)',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date(Date.now()-864e5).toISOString(),status:'active'},{transaction_id:'DEMO-0002',transaction_uuid:'t2',account_uuid:'a1',account_name:'เงินสดชมรม',type:'expense',category:'อุปกรณ์',amount:850.5,details:'ซื้อกระดาษ A4 และปากกา',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date(Date.now()-2*864e5).toISOString(),status:'active'},{transaction_id:'DEMO-0001',transaction_uuid:'t1',account_uuid:'a1',account_name:'เงินสดชมรม',type:'income',category:'อื่น ๆ',amount:5000,details:'ยอดยกมา',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date(Date.now()-5*864e5).toISOString(),status:'active'}];
  const dons=[{uuid:'d2',transaction_uuid:'t2',transaction_id:'DEMO-D2',account_name:'บัญชีธนาคาร',donor_name:'คุณสมชาย ใจดี',method:'promptpay',amount:1000,donated_at:'2026-11-08',note:'สนับสนุนโครงการ',evidence_uuid:'e',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ'},{uuid:'d1',transaction_uuid:'t1',transaction_id:'DEMO-D1',account_name:'เงินสดชมรม',donor_name:'ไม่ประสงค์ออกนาม',method:'cash',amount:500,donated_at:'2026-11-05',note:'',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ'}];
  const notifs=[{uuid:'n2',kind:'donation',transaction_id:'DEMO-0003',type:'income',amount:20000,account_name:'บัญชีธนาคาร',title:'บริจาคใหม่ ฿20,000.00',body:'ผู้ช่วย · บัญชีธนาคาร · บริจาคโดย คุณสมชาย ใจดี (PromptPay)',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-36e5).toISOString(),unread:true},{uuid:'n1',kind:'transaction',transaction_id:'DEMO-0002',type:'expense',amount:850.5,account_name:'เงินสดชมรม',title:'เงินออก ฿850.50',body:'ผู้ช่วย · เงินสดชมรม · ซื้อกระดาษ A4 และปากกา',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-2*864e5).toISOString(),unread:true}];
- const users=[{email:'demo@example.com',display_name:'ผู้ทดสอบ',student_id:'0000000',enabled:true},{email:'helper@example.com',display_name:'ผู้ช่วย',student_id:'6401234',enabled:true}];
+ const users=[{uuid:'u1',email:'demo@example.com',display_name:'ผู้ทดสอบ',student_id:'0000000',enabled:true,account_uuids:['a1','a2']},{uuid:'u2',email:'helper@example.com',display_name:'ผู้ช่วย',student_id:'6401234',enabled:true,account_uuids:['a1']}];
  const res=o=>({ok:true,status:200,json:async()=>o,blob:async()=>new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#faf3f2"/><text x="300" y="190" font-size="34" text-anchor="middle" fill="#d32f2f" font-family="sans-serif">Demo receipt</text><text x="300" y="240" font-size="20" text-anchor="middle" fill="#82787a" font-family="sans-serif">sample evidence image</text></svg>'],{type:'image/svg+xml'})});
  return async(path,opt={})=>{const u=path.split('?')[0],post=(opt.method||'GET')==='POST';
   if(u==='/budget/meta')return res({accounts:accs,categories:cats.filter(c=>c.active!==0)});
@@ -41,7 +41,8 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
   if(u==='/budget/admin/accounts'&&!post)return res({accounts:accs.map(a=>({...a,description:a.name==='บัญชีธนาคาร'?'บัญชีออมทรัพย์ของชมรม':'เงินสดที่ถือไว้',active:1}))});
    if(u==='/budget/admin/accounts'&&post){const b=JSON.parse(opt.body);if(accs.some(a=>a.name===b.name))return {ok:false,status:400,json:async()=>({error:'ไม่สามารถสร้างบัญชีได้: ชื่อนี้มีอยู่แล้ว'})};accs.push({uuid:'a'+(accs.length+1),name:b.name,currency:'THB'});return res({ok:true})}
    if(u==='/budget/admin/users'&&!post)return res({users:users});
-   if(u==='/budget/admin/users'&&post){const b=JSON.parse(opt.body);if(users.some(x=>x.email===b.email))return {ok:false,status:400,json:async()=>({error:'อีเมลนี้มีอยู่แล้ว'})};users.push({email:b.email,display_name:b.displayName,student_id:b.studentId,enabled:true});return res({ok:true})}
+   if(u==='/budget/admin/users'&&post){const b=JSON.parse(opt.body);if(users.some(x=>x.email===b.email))return {ok:false,status:400,json:async()=>({error:'อีเมลนี้มีอยู่แล้ว'})};users.push({uuid:'u'+(users.length+1),email:b.email,display_name:b.displayName,student_id:b.studentId,enabled:true,account_uuids:b.accountUuids||[]});return res({ok:true})}
+   if(/^\/budget\/admin\/users\//.test(u)&&(opt.method||'')==='PATCH'){const x=users.find(y=>y.uuid===decodeURIComponent(u.split('/').pop()));const b=JSON.parse(opt.body);if(!x)return {ok:false,status:404,json:async()=>({error:'ไม่พบผู้ใช้'})};if(b.enabled===false&&x.email==='demo@example.com')return {ok:false,status:400,json:async()=>({error:'ปิดสิทธิ์ของตัวเองไม่ได้'})};if(b.displayName!==undefined)x.display_name=b.displayName;if(b.studentId!==undefined)x.student_id=b.studentId;if(b.enabled!==undefined)x.enabled=b.enabled;if(b.accountUuids)x.account_uuids=b.accountUuids;return res({ok:true})}
   if(u==='/budget/transactions'&&post){const f=opt.body,acc=accs.find(a=>a.uuid===f.get('accountUuid')),cat=cats.find(c=>c.uuid===f.get('categoryUuid'));n++;const id='DEMO-'+String(n).padStart(4,'0');txs.unshift({transaction_id:id,transaction_uuid:'t'+n,account_uuid:acc.uuid,account_name:acc.name,type:f.get('type'),category:cat.name,amount:Number(f.get('amount')),details:f.get('details'),created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date().toISOString(),status:'active'});return res({transaction:{transactionId:id,uuid:'demo-'+n,accountUuid:acc.uuid,type:f.get('type'),amount:Number(f.get('amount')),details:f.get('details')},verificationUrl:location.origin+'/verify/?id='+id})}
   if(u.endsWith('/evidence'))return res({});
   return res({ok:true})}})();
@@ -82,7 +83,7 @@ async function init(){
   if(!await withTimeout(auth0Client.isAuthenticated(),T,'ตรวจสอบสถานะไม่ทัน')){show('login');return}
   const token=await withTimeout(auth0Client.getTokenSilently(),T,'ขอสิทธิ์เข้าใช้งานไม่ทัน');
   const r=await withTimeout(fetch(API+'/budget/me',{headers:{Authorization:'Bearer '+token}}),15000,'เชื่อมต่อเซิร์ฟเวอร์ไม่ทัน');
-  if(r.status===403){let em='';try{em=(await auth0Client.getUser())?.email||''}catch(e){}const box=$('deniedEmail');box.textContent=em;box.classList.toggle('hidden',!em);show('denied');return}
+  if(r.status===403){let em='';try{const m=(await r.clone().json()).error;if(m)$('deniedText').textContent=m}catch(e){}try{em=(await auth0Client.getUser())?.email||''}catch(e){}const box=$('deniedEmail');box.textContent=em;box.classList.toggle('hidden',!em);show('denied');return}
   if(!r.ok)throw new Error(await errMsg(r));
   me=await r.json();
  }catch(e){console.error(e);loginMsg(e.message||'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง');show('login');return}
@@ -372,7 +373,7 @@ async function exportPdf(){try{await needPdf()}catch(e){return toast(e.message,1
  doc.save('budget-report-'+new Date().toISOString().slice(0,10)+'.pdf')}
 window.addEventListener('DOMContentLoaded',init);
 // ---- Settings (tabs sliding / accordion / toggle / modal / error shake — transitions.dev patterns) ----
-const ADM_TABS=['accounts','categories','users'];let admTab='accounts',cats=[];
+const ADM_TABS=['accounts','categories','users'];let admTab='accounts',cats=[],admUsers=[];
 const TYPE_LABEL={income:'เงินเข้า',expense:'เงินออก',both:'ทั้งสองประเภท'},RESERVED_CAT='เงินบริจาค';
 const accOpen={expense:true,income:true,both:true,hidden:false};
 const ICO_EDIT=svgI('<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>');
@@ -394,8 +395,11 @@ async function loadAdminAccounts(){
 async function loadAdminUsers(){
  let r;try{r=await api('/budget/admin/users')}catch(e){$('users').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadAdminUsers()');return}
  if(!r.ok){$('users').innerHTML=failBox(await errMsg(r),'loadAdminUsers()');return}
- const list=(await r.json()).users||[];
- $('users').innerHTML=list.map(x=>'<div class="adm-row"><span class="av">'+esc(((x.display_name||x.email||'?').trim()[0]||'?').toUpperCase())+'</span><div class="cm"><b>'+esc(x.display_name||x.email)+'</b><small>'+esc(x.email)+(x.student_id?' · '+esc(x.student_id):'')+'</small></div><span class="pill-t '+(x.enabled?'income':'expense')+'">'+(x.enabled?'เปิดใช้':'ปิด')+'</span></div>').join('')||'<div class="empty">ยังไม่มีผู้ใช้</div>'}
+ admUsers=(await r.json()).users||[];
+ const names=Object.fromEntries(((meta&&meta.accounts)||[]).map(a=>[a.uuid,a.name]));
+ $('users').innerHTML=admUsers.map((x,i)=>{const n=(x.account_uuids||[]).length;
+  return '<div class="adm-row click" role="button" tabindex="0" onclick="editUser('+i+')" onkeydown="if(event.key===\'Enter\')editUser('+i+')"><span class="av">'+esc(((x.display_name||x.email||'?').trim()[0]||'?').toUpperCase())+'</span><div class="cm"><b>'+esc(x.display_name||x.email)+'</b><small>'+esc(x.email)+(x.student_id?' · '+esc(x.student_id):'')+'</small></div><div class="meta2"><span class="pill-t '+(x.enabled?'income':'expense')+'">'+(x.enabled?'เปิดใช้':'ปิดสิทธิ์')+'</span><small>'+(n?n+' บัญชี':'ไม่มีบัญชี')+'</small></div>'+svgI('<path d="M9 6l6 6-6 6"/>').replace('<svg','<svg class="chev"')+'</div>'}).join('')||'<div class="empty">ยังไม่มีผู้ใช้</div>'
+}
 function openAdd(id,focusId){openModal(id);setTimeout(()=>{const f=$(focusId);if(f)f.focus()},260)}
 // -- categories: accordion groups + toggle switches
 async function loadCats(){
@@ -426,6 +430,25 @@ async function toggleCat(i,btn){const c=cats[i];if(!c||btn.disabled)return;const
 $('catEditForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('catEditSave');b.disabled=true;
  try{const res=await patchCat($('catEditId').value,{name:$('catEditName').value,type:$('catEditType').value});
   if(res.ok){hideModal('catEdit');toast('บันทึกหมวดหมู่แล้ว')}else formError($('catEditName'),res.msg)}finally{b.disabled=false}});
+
+// -- edit a user's access (name, student id, enabled, accounts)
+function setSwitch(btn,on,anim){if(anim)btn.classList.add('is-init');btn.setAttribute('data-on',on?'true':'false')}
+function editUser(i){const u=admUsers[i];if(!u)return;
+ $('euId').value=u.uuid;$('euEmail').textContent=u.email;$('euAv').textContent=((u.display_name||u.email||'?').trim()[0]||'?').toUpperCase();
+ $('euName').value=u.display_name||'';$('euStudent').value=u.student_id||'';
+ const self=me&&u.email&&me.email&&u.email.toLowerCase()===me.email.toLowerCase();
+ setSwitch($('euEnabled'),!!u.enabled,false);$('euEnabled').disabled=!!self;
+ $('euNote').textContent=self?'บัญชีของคุณเอง — ปิดสิทธิ์ตัวเองไม่ได้':'ผู้ดูแล (budget_admin) เห็นทุกบัญชีเสมอ จัดการบทบาทใน Auth0';
+ const have=new Set(u.account_uuids||[]);
+ $('euAccounts').innerHTML=((meta&&meta.accounts)||[]).map(a=>'<label><input type="checkbox" value="'+esc(a.uuid)+'"'+(have.has(a.uuid)?' checked':'')+'> '+esc(a.name)+'</label>').join('')||'<div class="empty sm">ยังไม่มีบัญชี</div>';
+ $('euErr').closest('.t-input-wrap').classList.remove('is-error');
+ openModal('editUser')}
+$('euEnabled').addEventListener('click',()=>{const b=$('euEnabled');if(b.disabled)return;setSwitch(b,b.getAttribute('data-on')!=='true',true);$('euEnabledHint').textContent=b.getAttribute('data-on')==='true'?'ผู้ใช้เข้าสู่ระบบและใช้งานได้':'ผู้ใช้จะเข้าใช้งานไม่ได้จนกว่าจะเปิดอีกครั้ง'});
+$('editUserForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('euSave');b.disabled=true;
+ try{const accounts=[...$('euAccounts').querySelectorAll('input:checked')].map(x=>x.value);
+  const r=await api('/budget/admin/users/'+encodeURIComponent($('euId').value),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayName:$('euName').value,studentId:$('euStudent').value,enabled:$('euEnabled').getAttribute('data-on')==='true',accountUuids:accounts})});
+  if(!r.ok){const wrap=$('euErr').closest('.t-input-wrap');$('euErr').textContent=await errMsg(r);wrap.classList.add('is-error');shake($('euSave'));return}
+  hideModal('editUser');toast('บันทึกสิทธิ์ผู้ใช้แล้ว');await loadAdminUsers()}finally{b.disabled=false}});
 // -- add forms (modals)
 async function postJson(path,body){const r=await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return r.ok?{ok:true}:{ok:false,msg:await errMsg(r)}}
 $('accountForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,b=f.querySelector('.cta');b.disabled=true;

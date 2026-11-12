@@ -15,9 +15,9 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/budget-v2.css?v=20">
+<link rel="stylesheet" href="/assets/budget-v2.css?v=21">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
-<script src="/assets/vendor/qrcode.js?v=20" defer></script>
+<script src="/assets/vendor/qrcode.js?v=21" defer></script>
 </head>
 <body data-page="dashboard">
 <div id="loading" class="splash"><img class="pulse" src="/icons/icon-192.png" alt=""><b>Budget</b><div class="bar"><i></i></div><small>กำลังตรวจสอบสิทธิ์…</small>
@@ -158,8 +158,15 @@
 <form id="categoryForm" class="form-grid"><div class="t-input-wrap"><label>ชื่อหมวดหมู่<input class="t-input" id="newCategory" required maxlength="120" placeholder="เช่น ค่าเดินทาง"></label><div class="t-error-msg"></div></div><label>ประเภท<select id="newCategoryType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select></label><button class="cta" type="submit">เพิ่มหมวดหมู่</button></form></div></div>
 <div id="addUser" class="modal hidden" onclick="if(event.target===this)hideModal('addUser')"><div class="modal-card sheet"><button class="close" onclick="hideModal('addUser')" aria-label="ปิด">×</button><h2>เปิดสิทธิ์ผู้ใช้</h2>
 <form id="userForm" class="form-grid"><div class="t-input-wrap"><label>อีเมล<input class="t-input" id="newUserEmail" type="email" inputmode="email" required placeholder="name@example.com"></label><div class="t-error-msg"></div></div><label>ชื่อ<input id="newUserName" placeholder="ชื่อที่แสดง"></label><label>รหัสนักศึกษา<input id="newStudentId" inputmode="numeric" placeholder="ถ้ามี"></label><div class="field"><small>บัญชีที่เข้าถึงได้</small><div id="newUserAccount" class="account-opts"></div></div><button class="cta" type="submit">เปิดสิทธิ์</button></form></div></div>
+<div id="editUser" class="modal hidden" onclick="if(event.target===this)hideModal('editUser')"><div class="modal-card sheet"><button class="close" onclick="hideModal('editUser')" aria-label="ปิด">×</button><h2>แก้ไขสิทธิ์ผู้ใช้</h2>
+<form id="editUserForm" class="form-grid"><input type="hidden" id="euId"><div class="eu-id"><span class="av" id="euAv">?</span><div><b id="euEmail"></b><small id="euNote"></small></div></div>
+<label>ชื่อที่แสดง<input id="euName" maxlength="200" placeholder="ชื่อ"></label><label>รหัสนักศึกษา<input id="euStudent" maxlength="50" inputmode="numeric" placeholder="ถ้ามี"></label>
+<div class="eu-switch"><div><b>เปิดใช้งาน</b><small id="euEnabledHint">ผู้ใช้เข้าสู่ระบบและใช้งานได้</small></div><button type="button" class="t-toggle" id="euEnabled" role="switch" aria-label="เปิดใช้งาน" data-on="true"><span class="t-toggle-thumb"></span></button></div>
+<div class="field"><small>บัญชีที่เข้าถึงได้</small><div id="euAccounts" class="account-opts"></div></div>
+<div class="t-input-wrap"><div class="t-error-msg" id="euErr"></div></div>
+<button class="cta" type="submit" id="euSave">บันทึกการเปลี่ยนแปลง</button></form></div></div>
 <div id="catEdit" class="modal hidden" onclick="if(event.target===this)hideModal('catEdit')"><div class="modal-card sheet"><button class="close" onclick="hideModal('catEdit')" aria-label="ปิด">×</button><h2>แก้ไขหมวดหมู่</h2>
 <form id="catEditForm" class="form-grid"><input type="hidden" id="catEditId"><div class="t-input-wrap"><label>ชื่อหมวดหมู่<input class="t-input" id="catEditName" required maxlength="120"></label><div class="t-error-msg"></div></div><label>ประเภท<select id="catEditType"><option value="expense">เงินออก</option><option value="income">เงินเข้า</option><option value="both">ทั้งสองประเภท</option></select></label><small>รายการเดิมจะแสดงชื่อใหม่ทันที ประเภทเปลี่ยนไม่ได้ถ้ามีรายการเดิมคนละประเภท</small><button class="cta" type="submit" id="catEditSave">บันทึก</button></form></div></div>
 <div id="toast" class="t-toast" role="status" aria-live="polite"></div>
-<script src="/assets/budget-v2.js?v=20"></script>
+<script src="/assets/budget-v2.js?v=21"></script>
 </body></html>
