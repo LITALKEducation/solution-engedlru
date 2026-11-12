@@ -248,3 +248,12 @@ td{vertical-align:middle}
 @media(min-width:760px){.depts.heads{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:1100px){body[data-page=student] .depts.heads{grid-template-columns:repeat(5,minmax(0,1fr))}.headcard{padding:24px 12px 14px}}
 @media(max-width:380px){.depts.heads{grid-template-columns:minmax(0,1fr)}}
+
+/* /hr/select */
+.selbox{gap:12px}
+.sellbl{font-weight:700;font-size:15px}
+.selbox select{width:100%;min-height:52px;font-size:16px}
+.selinfo{display:flex;gap:14px;align-items:center;background:var(--panel);border-radius:18px;padding:12px 14px}
+.selinfo p{margin:2px 0 0;font-size:14px}.selinfo b{font-size:16px}
+.selreg{background:#dcfce7;color:#15803d;border-radius:14px;padding:10px 14px;font-size:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.selbox>.btn.primary{min-height:52px;font-size:16px}
