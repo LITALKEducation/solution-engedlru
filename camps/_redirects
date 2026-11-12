@@ -1,1 +1,6 @@
-/verify/* /verify/index.html 200
+# QR codes printed before the move pointed at /verify/?id=...
+/verify /budget/verify/ 302
+/verify/* /budget/verify/:splat 302
+# installed web apps fetch the old manifest URL; send them to the new one
+/manifest.webmanifest /budget/manifest.webmanifest 301
+/budget/verify/* /budget/verify/index.html 200
