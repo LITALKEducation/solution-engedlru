@@ -131,8 +131,9 @@ details.reg summary{cursor:pointer;font-size:15px}
 a.btn{text-decoration:none}
 
 /* gender-aware slots */
-.yrs{grid-template-columns:repeat(2,1fr)}
-@media(min-width:760px){.yrs{grid-template-columns:repeat(4,1fr)}}
+.yrs{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(min-width:760px){.yrs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.yr{min-width:0}.gr .st{font-size:11px}
 .yr{align-items:stretch;gap:5px;text-align:left;padding:10px}
 .yr .yl{font-size:13px;font-weight:800;text-align:left}
 .gr{display:flex;align-items:center;gap:6px;border-radius:10px;padding:4px 6px;background:#fff}
@@ -189,3 +190,8 @@ td{vertical-align:middle}
 .chipbtn{border:0;border-radius:999px;background:#fff;color:var(--brand-d);font-weight:700;font-size:13px;padding:8px 16px;flex:none;cursor:pointer}
 .chipbtn:active{transform:scale(.97)}
 @media(min-width:760px){.ut b,.ut small{max-width:320px}}
+
+/* desktop */
+.qgrid{display:block}
+@media(min-width:1100px){.qgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.qgrid .panel{margin-bottom:0}
+ body[data-page=student] .depts{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-page=student] .dept:first-child{grid-column:auto}}

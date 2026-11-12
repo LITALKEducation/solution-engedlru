@@ -50,15 +50,15 @@ a.card:hover .cta svg{transform:translateX(4px)}
 /* departments */
 .sec-title{font-size:20px;margin:30px 4px 14px;display:flex;align-items:center;gap:10px}
 .sec-title em{font-style:normal;background:var(--panel);border-radius:999px;padding:2px 12px;font-size:13px;color:var(--mute);font-weight:700}
-.depts{display:grid;grid-template-columns:1fr;gap:14px}
+.depts{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .dept{background:#fff;border:1px solid var(--line);border-radius:24px;padding:20px;display:flex;gap:16px;align-items:flex-start}
 .dept .icon{flex:none;width:52px;height:52px;border-radius:16px}
 .dept .icon svg{width:26px;height:26px}
 .dept h3{font-size:18px;margin-bottom:2px}
 .dept p{color:var(--mute);font-size:15px}
 .t1 .icon{background:#fde8e8;color:#c62828}.t2 .icon{background:#fef3c7;color:#b45309}.t3 .icon{background:#dcfce7;color:#15803d}.t4 .icon{background:#dbeafe;color:#1d4ed8}.t5 .icon{background:#ede9fe;color:#6d28d9}
-@media(min-width:760px){.depts{grid-template-columns:1fr 1fr}.dept:first-child{grid-column:1/-1}}
-@media(min-width:1000px){.depts{grid-template-columns:repeat(3,1fr)}.dept:first-child{grid-column:auto}.dept{flex-direction:column}}
+@media(min-width:760px){.depts{grid-template-columns:repeat(2,minmax(0,1fr))}.dept:first-child{grid-column:1/-1}}
+@media(min-width:1000px){.depts{grid-template-columns:repeat(3,minmax(0,1fr))}.dept:first-child{grid-column:auto}.dept{flex-direction:column}}
 .steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;gap:12px;counter-reset:s}
 .steps li{counter-increment:s;background:var(--panel);border-radius:22px;padding:18px 18px 18px 64px;position:relative;font-size:15px}
 .steps li::before{content:counter(s);position:absolute;left:18px;top:16px;width:32px;height:32px;border-radius:50%;background:#fff;color:var(--brand-d);font-weight:800;display:grid;place-items:center}
@@ -73,3 +73,7 @@ footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:
 @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .badge.open{background:#dcfce7;color:#15803d}.badge.closed{background:#fee2e2;color:#b91c1c}
+
+/* wide desktop for HR pages */
+.dept>*{min-width:0}
+@media(min-width:1100px){body[data-page] main{max-width:1200px}body[data-page] .hero{padding-left:max(48px,calc(50% - 552px));padding-right:max(48px,calc(50% - 552px))}}
