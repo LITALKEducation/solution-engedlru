@@ -12,6 +12,8 @@ permissions:
 
 jobs:
   append-only:
+    # Escape hatch for the rare deliberate repair: put allow-migration-edit in the PR title or add that label.
+    if: ${{ !contains(github.event.pull_request.title, 'allow-migration-edit') && !contains(join(github.event.pull_request.labels.*.name, ','), 'allow-migration-edit') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
