@@ -1,5 +1,5 @@
 (() => {
-const API='https://engedlru-api.stnetworld.workers.dev', DOMAIN='auth.litalkeducation.com', CLIENT='PGqozL94LzOwstm4pD39W5kvalYRiK7w', REDIRECT=location.origin+location.pathname;
+const API='https://engedlru-api.stnetworld.workers.dev', DOMAIN='auth.litalkeducation.com', CLIENT='PGqozL94LzOwstm4pD39W5kvalYRiK7w', REDIRECT=location.origin+'/hr/';
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let auth=null, scanner=null, rows=[], isAdmin=false;
 function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
@@ -18,9 +18,9 @@ async function init(){
   $('login').classList.add('hidden');$('app').classList.remove('hidden');
   if(!isAdmin){document.querySelector('[data-tab="students"]').classList.add('hidden');document.querySelector('[data-tab="scanners"]').classList.add('hidden');$('stats').classList.add('hidden');}
   else{await refresh();await refreshStats();}
- }catch(e){if(e.status===403){$('login').classList.remove('hidden');$('login').querySelector('p').textContent='บัญชีนี้ยังไม่มีสิทธิ์ camp_admin หรือ budget_admin';$('account').textContent='ไม่มีสิทธิ์'}else{$('login').classList.remove('hidden');$('login').querySelector('p').textContent=e.message||'ไม่สามารถเชื่อมต่อระบบได้';$('account').textContent='เกิดข้อผิดพลาด'}}
+ }catch(e){if(e.status===403){$('login').classList.remove('hidden');$('login').querySelector('p').textContent='บัญชีนี้ยังไม่ได้รับมอบหมายให้เป็นเจ้าหน้าที่สแกน หรือไม่มีสิทธิ์ผู้ดูแล';$('account').textContent='ไม่มีสิทธิ์'}else{$('login').classList.remove('hidden');$('login').querySelector('p').textContent=e.message||'ไม่สามารถเชื่อมต่อระบบได้';$('account').textContent='เกิดข้อผิดพลาด'}}
 }
-$('loginBtn').onclick=()=>auth.loginWithRedirect({authorizationParams:{connection:'google-oauth2'}});
+$('loginBtn').onclick=()=>{try{sessionStorage.setItem('hrReturn','/camps/lotto/')}catch(e){}auth.loginWithRedirect({authorizationParams:{connection:'google-oauth2'}})};
 async function refreshStats(){try{const d=await data('/camps/lotto/admin/overview');$('stats').innerHTML=[['รายชื่อทั้งหมด',d.total],['เช็คชื่อแล้ว',d.checked],['ยังไม่เช็คชื่อ',d.remaining]].map(([l,n])=>'<div class="stat"><span>'+l+'</span><b>'+n+'</b></div>').join('')}catch(e){toast(e.message)}}
 async function refreshScanners(){try{const d=await data('/camps/lotto/admin/scanners');$('scannerList').innerHTML=(d.scanners||[]).length?'<table><thead><tr><th>อีเมลเจ้าหน้าที่</th><th>เพิ่มเมื่อ</th><th>จัดการ</th></tr></thead><tbody>'+d.scanners.map(x=>'<tr><td>'+esc(x.email)+'</td><td>'+esc(fmt(x.created_at))+'</td><td><button class="secondary" data-remove-scanner="'+esc(x.email)+'">ถอนสิทธิ์</button></td></tr>').join('')+'</tbody></table>':'<p class="empty">ยังไม่มีเจ้าหน้าที่ที่ได้รับมอบหมาย</p>';$('scannerList').querySelectorAll('[data-remove-scanner]').forEach(b=>b.onclick=async()=>{if(!confirm('ถอนสิทธิ์ '+b.dataset.removeScanner+' ?'))return;try{await data('/camps/lotto/admin/scanners/'+encodeURIComponent(b.dataset.removeScanner),{method:'DELETE'});await refreshScanners();toast('ถอนสิทธิ์แล้ว')}catch(e){toast(e.message)}})}catch(e){toast(e.message)}}
 $('scannerForm').onsubmit=async e=>{e.preventDefault();try{await post('/camps/lotto/admin/scanners',{email:$('scannerEmail').value});$('scannerForm').reset();await refreshScanners();toast('เพิ่มเจ้าหน้าที่แล้ว')}catch(e){toast(e.message)}};
