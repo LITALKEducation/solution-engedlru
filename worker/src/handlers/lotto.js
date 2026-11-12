@@ -121,7 +121,7 @@ async function listScanners(req, env) {
 async function addScanner(req, env) {
   const a = await actor(req, env); if (a.response) return a.response;
   const b = await req.json().catch(() => null), email = clean(b?.email,254).toLowerCase();
-  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) return fail(req, env, "อีเมลไม่ถูกต้อง");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(req, env, "อีเมลไม่ถูกต้อง");
   await env.DB.prepare("INSERT INTO camp_lotto_scanners (email,added_by) VALUES (?,?) ON CONFLICT(email) DO UPDATE SET active=1,added_by=excluded.added_by").bind(email,a.email).run();
   return json(req, env, { ok: true });
 }
@@ -170,7 +170,7 @@ export async function lotto(req, env, url) {
     const p=url.pathname, m=req.method;
     if (m==="GET" && p==="/camps/lotto/admin/scanners") return await listScanners(req,env);
     if (m==="POST" && p==="/camps/lotto/admin/scanners") return await addScanner(req,env);
-    const scannerDel=p.match(/^\\/camps\\/lotto\\/admin\\/scanners\\/(.+)$/);
+    const scannerDel=p.match(/^\/camps\/lotto\/admin\/scanners\/(.+)$/);
     if (m==="DELETE" && scannerDel) return await removeScanner(req,env,scannerDel[1]);
     if (m==="GET" && p==="/camps/lotto/scanner/me") return await scannerMe(req,env);
     if (m==="GET" && p==="/camps/lotto/scanner/lookup") return await scannerLookup(req,env,url);

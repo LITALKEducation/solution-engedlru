@@ -4,6 +4,8 @@
   Cache-Control: public, max-age=0, must-revalidate
 /hr/*
   Cache-Control: public, max-age=0, must-revalidate
+/lotto/*
+  Cache-Control: public, max-age=0, must-revalidate
 /icons/*
   Cache-Control: public, max-age=604800
 /sw.js

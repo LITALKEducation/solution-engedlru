@@ -1,0 +1,48 @@
+name: CI
+
+# Catches broken code before it reaches main (and so before the deploy workflow runs migrations against production):
+# syntax errors, broken file references in camps/, the Worker bundle, and the API tests.
+on:
+  pull_request:
+    paths:
+      - "worker/**"
+      - "camps/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax and file references
+        run: npm run check
+
+      - name: API tests (in-memory D1, every migration applied)
+        run: npm test
+
+      - name: Validate Worker bundle
+        run: npx wrangler deploy --dry-run

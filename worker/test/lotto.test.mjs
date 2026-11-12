@@ -1,0 +1,28 @@
+// Camps lottery API checks (run with `npm test`).
+import {makeEnv,installFetch} from './env.mjs';
+const {lotto}=await import('../src/handlers/lotto.js');
+installFetch();const {env}=makeEnv();let pass=0,fl=0;const ok=(c,m)=>{if(c)pass++;else{fl++;console.log('  FAIL:',m)}};
+async function call(who,method,path,body){const url=new URL('https://api.x'+path);const h={Origin:'https://enged.sorasukt.com'};if(who)h.Authorization='Bearer '+who;if(body)h['Content-Type']='application/json';
+ const r=await lotto(new Request(url,{method,headers:h,body:body?JSON.stringify(body):undefined}),env,url);return {s:r.status,d:await r.json().catch(()=>null)}}
+let r=await call(null,'GET','/camps/lotto/admin/overview');ok(r.s===401,'anon 401');
+r=await call('s1','GET','/camps/lotto/admin/overview');ok(r.s===403,'student cannot see admin overview');
+r=await call('s1','GET','/camps/lotto/scanner/me');ok(r.s===403,'unassigned student cannot scan');
+r=await call('admin','POST','/camps/lotto/admin/students',{studentId:'6740102220',name:'สมชาย ใจดี',drawNumber:'001'});ok(r.s===200&&r.d.created,'admin adds student');
+r=await call('admin','POST','/camps/lotto/admin/students',{studentId:'6740102221',name:'x',drawNumber:'001'});ok(r.s===409,'duplicate draw number 409');
+r=await call('admin','POST','/camps/lotto/admin/students/import',{students:[{studentId:'๖๘๔๐๑๐๐๐๐๑',name:'นางสาวสมหญิง',drawNumber:'002'},{studentId:'abc',name:'x',drawNumber:'3'}]});ok(r.d.imported===1&&r.d.errors.length===1,'bulk import Thai digits: '+JSON.stringify(r.d));
+r=await call('admin','POST','/camps/lotto/admin/scanners',{email:'sb6740102220@lru.ac.th'});ok(r.s===200,'assign scanner by email (needs a valid email regex): '+r.s+' '+JSON.stringify(r.d));
+r=await call('admin','POST','/camps/lotto/admin/scanners',{email:'not-an-email'});ok(r.s===400,'invalid email rejected');
+r=await call('admin','GET','/camps/lotto/admin/scanners');ok(r.d.scanners.length===1,'scanner listed');
+r=await call('s1','GET','/camps/lotto/scanner/me');ok(r.s===200&&r.d.isAdmin===false,'assigned scanner allowed (not admin)');
+r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===200&&r.d.ok,'scan checks in');
+r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===409&&r.d.alreadyChecked,'second scan 409 already checked');
+r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'9999999999'});ok(r.s===404,'unknown id 404');
+r=await call('s1','GET','/camps/lotto/scanner/lookup?q=สมชาย');ok(r.d.students.length===1,'scanner lookup');
+r=await call('s1','POST','/camps/lotto/admin/students',{studentId:'6740102229',name:'x',drawNumber:'9'});ok(r.s===403,'scanner cannot edit roster');
+r=await call('admin','DELETE','/camps/lotto/admin/students/6740102220');ok(r.s===409,'cannot delete a checked-in student');
+r=await call('admin','DELETE','/camps/lotto/admin/students/6840100001');ok(r.s===200,'delete unchecked');
+r=await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102220%40lru.ac.th');ok(r.s===200,'remove scanner (route regex)');
+r=await call('s1','GET','/camps/lotto/scanner/me');ok(r.s===403,'removed scanner blocked');
+r=await call('admin','GET','/camps/lotto/admin/overview');ok(r.d.total===1&&r.d.checked===1,'overview counts');
+console.log(fl?fl+' FAILED':'all '+pass+' lotto checks passed');
+process.exit(fl?1:0);
