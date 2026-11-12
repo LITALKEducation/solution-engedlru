@@ -2,7 +2,10 @@
 // admins manage roster (CSV import), quotas per year and gender, and registration state on separate pages.
 const API = window.CAMPS_API || 'https://engedlru-api.stnetworld.workers.dev';
 const AUTH_DOMAIN = 'auth.litalkeducation.com', CLIENT_ID = 'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
-const HR_URL = location.origin + '/hr/';          // Auth0 callback + logout URL must include https://<host>/hr/
+// Every page is its own Auth0 callback (and logout) URL, so one broken page can never take sign-in down for the others.
+// All of these must be listed in Auth0 -> Allowed Callback URLs and Allowed Logout URLs (see camps/README.md).
+const PAGE_PATHS = { student: { '': '/hr/', choose: '/hr/choose', select: '/hr/select' }, admin: { overview: '/hr/overview', quota: '/hr/quota', students: '/hr/students', settings: '/hr/settings' } };
+const HR_URL = location.origin + ((PAGE_PATHS[document.body.dataset.page] || {})[document.body.dataset.tab || (document.body.dataset.page === 'admin' ? 'overview' : '')] || '/hr/');
 const CONNECTION = 'google-oauth2';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -80,37 +83,20 @@ async function initAuth() {
     if (!window.auth0) throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ');
     auth0Client = await withTimeout(auth0.createAuth0Client({ domain: AUTH_DOMAIN, clientId: CLIENT_ID, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: HR_URL } }), 12000, 'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
     if (location.search.includes('code=') || location.search.includes('error=')) {
-      let callbackResult;
-      try { callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน'); }
+      try { await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน'); }
       finally { history.replaceState({}, document.title, HR_URL); }   // never leave ?code= / ?error= in the address bar (a reload would replay it)
-      // Cross-app handoff: localStorage is shared by /hr/ and /lotto/ on this origin.
-      // Consume only fresh, same-origin relative destinations to avoid stale redirects or open redirects.
-      // Order: appState (travels with the Auth0 request, most reliable) > fresh /lotto/ handoff > this tab's sessionStorage.
-      let back = (callbackResult && callbackResult.appState && callbackResult.appState.returnTo) || '';
-      try {
-        const raw = localStorage.getItem('camps.auth.returnTo');
-        localStorage.removeItem('camps.auth.returnTo');
-        if (raw) {
-          const handoff = JSON.parse(raw);
-          if (!back && handoff && typeof handoff.path === 'string' && Date.now() - Number(handoff.createdAt) < 10 * 60 * 1000) back = handoff.path;
-        }
-      } catch (e) { /* storage may be unavailable */ }
-      if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
-      const safeBack = typeof back === 'string' && back.startsWith('/') && !back.startsWith('//') &&
-        (back.startsWith('/hr/') || back === '/lotto/' || back === '/camps/lotto/');
-      if (safeBack && back !== location.pathname) { location.replace(new URL(back, location.origin).href); return 'redirect'; }
+      // we are already on this page's own callback URL: nothing to redirect to
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
   } catch (e) { console.error(e); authReady = false; authError = e.error_description || e.message; renderAcct({ error: authError }); return null; }
 }
 async function login() {
-  if (PAGE === 'admin' || CHOOSE || SELECT) { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
   const btns = document.querySelectorAll('.gbtn'); btns.forEach((b) => b.disabled = true);
   try {
     const ap = { connection: CONNECTION };
     try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ }
-    await auth0Client.loginWithRedirect({ authorizationParams: ap, appState: { returnTo: location.pathname } });
+    await auth0Client.loginWithRedirect({ authorizationParams: ap });
   } catch (e) { btns.forEach((b) => b.disabled = false); toast(e.message || 'เข้าสู่ระบบไม่สำเร็จ', true); }
 }
 async function logout() { await auth0Client.logout({ logoutParams: { returnTo: HR_URL } }); }

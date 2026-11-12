@@ -1,5 +1,5 @@
 (() => {
-const API='https://engedlru-api.stnetworld.workers.dev', DOMAIN='auth.litalkeducation.com', CLIENT='PGqozL94LzOwstm4pD39W5kvalYRiK7w', REDIRECT=location.origin+'/hr/';
+const API='https://engedlru-api.stnetworld.workers.dev', DOMAIN='auth.litalkeducation.com', CLIENT='PGqozL94LzOwstm4pD39W5kvalYRiK7w', REDIRECT=location.origin+'/lotto/';   // this app's own Auth0 callback (Allowed Callback + Logout URLs must list it)
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let auth=null, scanner=null, rows=[], isAdmin=false;
 function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
@@ -11,7 +11,7 @@ function fmt(s){return s?new Date(s.replace(' ','T')+'Z').toLocaleString('th-TH'
 async function init(){
  try{
   auth=await auth0.createAuth0Client({domain:DOMAIN,clientId:CLIENT,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:REDIRECT}});
-  if(location.search.includes('code=')||location.search.includes('error=')){await auth.handleRedirectCallback();history.replaceState({},document.title,REDIRECT)}
+  if(location.search.includes('code=')||location.search.includes('error=')){try{await auth.handleRedirectCallback()}finally{history.replaceState({},document.title,REDIRECT)}}
   if(!await auth.isAuthenticated()){$('login').classList.remove('hidden');$('account').textContent='ยังไม่ได้เข้าสู่ระบบ';return}
   const u=await auth.getUser();$('account').innerHTML=esc(u.email||'เข้าสู่ระบบแล้ว')+' · <button id="logoutBtn" class="linkbtn" type="button">ออก</button>';$('logoutBtn').onclick=signOut;
   const access=await data('/camps/lotto/scanner/me'); isAdmin=!!access.isAdmin;
@@ -22,7 +22,7 @@ async function init(){
 }
 // sign out (Auth0 clears the session shared with /hr/ and /budget/) and come back through the Google account chooser
 function signOut(){try{sessionStorage.setItem('chooseGoogle','1')}catch(e){}auth.logout({logoutParams:{returnTo:REDIRECT}})}
-$('loginBtn').onclick=()=>{try{localStorage.setItem('camps.auth.returnTo',JSON.stringify({path:'/lotto/',createdAt:Date.now()}));sessionStorage.setItem('hrReturn','/lotto/')}catch(e){}{const ap={connection:'google-oauth2'};try{if(sessionStorage.getItem('chooseGoogle')){ap.prompt='select_account';sessionStorage.removeItem('chooseGoogle')}}catch(e){}auth.loginWithRedirect({authorizationParams:ap,appState:{returnTo:'/lotto/'}})}};
+$('loginBtn').onclick=()=>{{const ap={connection:'google-oauth2'};try{if(sessionStorage.getItem('chooseGoogle')){ap.prompt='select_account';sessionStorage.removeItem('chooseGoogle')}}catch(e){}auth.loginWithRedirect({authorizationParams:ap})}};
 async function refreshStats(){try{const d=await data('/camps/lotto/admin/overview');$('stats').innerHTML=[['รายชื่อทั้งหมด',d.total],['เช็คชื่อแล้ว',d.checked],['ยังไม่เช็คชื่อ',d.remaining]].map(([l,n])=>'<div class="stat"><span>'+l+'</span><b>'+n+'</b></div>').join('')}catch(e){toast(e.message)}}
 async function refreshScanners(){try{const d=await data('/camps/lotto/admin/scanners');$('scannerList').innerHTML=(d.scanners||[]).length?'<table><thead><tr><th>อีเมลเจ้าหน้าที่</th><th>เพิ่มเมื่อ</th><th>จัดการ</th></tr></thead><tbody>'+d.scanners.map(x=>'<tr><td>'+esc(x.email)+'</td><td>'+esc(fmt(x.created_at))+'</td><td><button class="secondary" data-remove-scanner="'+esc(x.email)+'">ถอนสิทธิ์</button></td></tr>').join('')+'</tbody></table>':'<p class="empty">ยังไม่มีเจ้าหน้าที่ที่ได้รับมอบหมาย</p>';$('scannerList').querySelectorAll('[data-remove-scanner]').forEach(b=>b.onclick=async()=>{if(!confirm('ถอนสิทธิ์ '+b.dataset.removeScanner+' ?'))return;try{await data('/camps/lotto/admin/scanners/'+encodeURIComponent(b.dataset.removeScanner),{method:'DELETE'});await refreshScanners();toast('ถอนสิทธิ์แล้ว')}catch(e){toast(e.message)}})}catch(e){toast(e.message)}}
 $('scannerForm').onsubmit=async e=>{e.preventDefault();try{await post('/camps/lotto/admin/scanners',{email:$('scannerEmail').value});$('scannerForm').reset();await refreshScanners();toast('เพิ่มเจ้าหน้าที่แล้ว')}catch(e){toast(e.message)}};
