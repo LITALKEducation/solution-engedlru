@@ -6,6 +6,7 @@ const CONNECTION = 'google-oauth2';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const YEARS = [1, 2, 3, 4];
+const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/admin/)
 const ICON = {
   direction: '<path d="M4 22V3M4 4h14l-2 4 2 4H4"/>',
   structure: '<rect x="3" y="3" width="14" height="6" rx="1.5"/><path d="M17 6h3v5H12v3"/><rect x="10" y="14" width="4" height="7" rx="1"/>',
@@ -21,7 +22,9 @@ const STATE_TEXT = {
   closed: ['ปิดลงทะเบียนแล้ว', 'ปิดการลงทะเบียนแล้ว ยังดูรายละเอียดและจำนวนผู้ลงทะเบียนของแต่ละฝ่ายได้ตามปกติ']
 };
 
-let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null, tab = 'overview';
+const ADMIN_TABS = [['overview', 'ภาพรวม'], ['quota', 'โควตา'], ['students', 'นักศึกษา'], ['settings', 'ตั้งค่า']];
+const tabFromHash = () => { const k = (location.hash || '').slice(1); return ADMIN_TABS.some((t) => t[0] === k) ? k : 'overview'; };
+let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null, tab = tabFromHash();
 const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(msg)), ms))]);
 
 // ---------- ui helpers ----------
@@ -63,12 +66,15 @@ async function initAuth() {
     if (location.search.includes('code=') || location.search.includes('error=')) {
       await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน');
       history.replaceState({}, document.title, HR_URL);
+      let back = null; try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ }
+      if (back && /^\/hr\/[\w\-/#]*$/.test(back) && back !== location.pathname + location.hash) { location.replace(back); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
   } catch (e) { console.error(e); authReady = false; renderAcct({ error: e.message }); return null; }
 }
 async function login() {
+  if (PAGE === 'admin') { try { sessionStorage.setItem('hrReturn', location.pathname + location.hash); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
   const btns = document.querySelectorAll('.gbtn'); btns.forEach((b) => b.disabled = true);
   try {
     const ap = { connection: CONNECTION };
@@ -87,6 +93,7 @@ const REASONS = {
 };
 function renderAcct(x) {
   const box = $('acct');
+  if (!box) { if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
   if (!me) {
     box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
@@ -108,7 +115,8 @@ function renderAcct(x) {
 // ---------- departments ----------
 function renderState() {
   const [chip, text] = STATE_TEXT[state] || STATE_TEXT.pending;
-  const c = $('stateChip'); c.textContent = chip; c.className = 'state-chip ' + state; $('heroText').textContent = text;
+  const c = $('stateChip'); if (c) { c.textContent = chip; c.className = 'state-chip ' + state; }
+  const t = $('heroText'); if (t && !t.dataset.static) t.textContent = text;
 }
 // open/closed status of one department+year slot
 function slot(q, f) {
@@ -133,7 +141,7 @@ function deptCard(d) {
   return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-pressed="' + pk + '" onclick="pick(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();pick(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p></div>' + tag + '</div><div class="yrs">' + yrs + '</div></div>';
 }
 function renderSummary() {
-  if (!deps.length) return;
+  if (!deps.length || !$('sumBox')) return;
   const mine = myYear();
   $('sumBox').innerHTML = '<h2>ภาพรวมการลงทะเบียน</h2><div class="sumgrid">' + YEARS.map((y) => {
     const q = deps.reduce((a, d) => a + d.quota[y], 0), f = deps.reduce((a, d) => a + d.filled[y], 0);
@@ -141,11 +149,12 @@ function renderSummary() {
     return '<div class="sy' + (y === mine ? ' mine' : '') + '"><div class="sh"><b>ปี ' + y + (y === mine ? ' (คุณ)' : '') + '</b><span class="st ' + st.c + '">' + st.t + '</span></div><div class="big">' + f + '<small> / ' + q + '</small></div><div class="prog"><i style="width:' + pct + '%"></i></div><div class="yn">' + (q ? 'ลงทะเบียนแล้ว ' + f + ' คน · ' + (q > f ? 'เหลือ ' + (q - f) : 'เต็ม') : 'ยังไม่เปิดรับ') + '</div></div>';
   }).join('') + '</div>';
 }
-function renderDepts() { $('depts').innerHTML = deps.map(deptCard).join(''); renderSummary(); renderBar(); }
+function renderDepts() { if (!$('depts')) return; $('depts').innerHTML = deps.map(deptCard).join(''); renderSummary(); renderBar(); }
 function pick(code) { setPicked(picked === code ? null : code); renderDepts(); }
 
 // bottom bar: choose a department first, then press ลงทะเบียน (sign-in happens at that point)
 function renderBar() {
+  if (!$('bar')) return;
   const bar = $('bar'), reg = myDept(), regDep = reg && deps.find((d) => d.code === reg), pk = picked && deps.find((d) => d.code === picked);
   document.body.classList.toggle('has-bar', !!(regDep || pk));
   if (!regDep && !pk) { bar.classList.add('hidden'); return; }
@@ -174,8 +183,8 @@ async function loadMe() {
   try { r = await api('/camps/me'); } catch (e) { renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
   if (r.status === 401) { me = null; renderAcct(); return; }
   if (!r.ok) { renderAcct({ error: await errMsg(r) }); return; }
-  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderDepts(); renderAdmin();
-  resumeAfterLogin();
+  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderDepts(); renderAdmin(); renderNav();
+  if (PAGE === 'student') resumeAfterLogin();
 }
 async function register() {
   const d = deps.find((x) => x.code === picked); if (!d) return;
@@ -207,15 +216,27 @@ async function unselect() {
 }
 
 // ---------- admin ----------
-const TABS = [['overview', 'ภาพรวม'], ['quota', 'โควตา'], ['students', 'นักศึกษา'], ['settings', 'ตั้งค่า']];
-function renderAdmin() {
-  const box = $('adminBox');
-  if (!me || !me.isAdmin) { box.classList.add('hidden'); return; }
-  box.classList.remove('hidden');
-  box.innerHTML = '<h2 class="sec-title">จัดการระบบ <em>ผู้ดูแล</em></h2><div class="tabs" role="tablist">' + TABS.map(([k, l]) => '<button class="' + (tab === k ? 'on' : '') + '" onclick="setTab(\'' + k + '\')">' + l + '</button>').join('') + '</div><div id="adminBody"><div class="skeleton"></div></div>';
+const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธิ์ผู้ดูแล</h2><div class="warn">บัญชี ' + esc(m.email) + ' ไม่ได้รับสิทธิ์ผู้ดูแลฝ่ายบุคคล ต้องมี Auth0 role <b>camp_admin</b> หรือ <b>budget_admin</b></div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary sm" href="/hr/">กลับไปหน้าลงทะเบียน</a><button class="btn sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div></div>';
+function renderAdmin(x) {
+  const box = $('adminBox'); if (!box) return;
+  if (x && x.error) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button></div>'; return; }
+  if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบผู้ดูแล</h2><p class="meta">ต้องเข้าสู่ระบบด้วยบัญชี Google ที่ได้รับสิทธิ์ผู้ดูแล</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '</div>'; return; }
+  if (!me.isAdmin) { box.innerHTML = NO_PERM(me); return; }
+  box.innerHTML = '<div id="adminBody"><div class="skeleton"></div></div>';
   loadAdminTab();
 }
-function setTab(k) { tab = k; renderAdmin(); }
+// menu: separate items for registration and each admin section (admin items only for admins)
+function renderNav() {
+  const el = $('hrNav'); if (!el) return;
+  let html = '<a href="/hr/" class="' + (PAGE === 'student' ? 'on' : '') + '">ลงทะเบียน</a>';
+  if (me && me.isAdmin) html += '<span class="sep">ผู้ดูแล</span>' + ADMIN_TABS.map(([k, l]) => '<a href="/hr/admin/#' + k + '" class="adm ' + (PAGE === 'admin' && tab === k ? 'on' : '') + '">' + l + '</a>').join('');
+  el.innerHTML = html;
+}
+window.addEventListener('hashchange', () => {
+  if (PAGE !== 'admin') return;
+  tab = tabFromHash(); renderNav();
+  if (me && me.isAdmin && $('adminBody')) { $('adminBody').innerHTML = '<div class="skeleton"></div>'; loadAdminTab(); }
+});
 async function loadAdminTab() {
   const body = $('adminBody');
   if (tab === 'students') return loadStudents();
@@ -345,9 +366,10 @@ async function exportCsv() {
 
 // ---------- start ----------
 async function start() {
-  loadDepartments();
-  setInterval(() => { if (!document.hidden) loadDepartments(true); }, 30000);
+  renderNav();
+  if (PAGE === 'student') { loadDepartments(); setInterval(() => { if (!document.hidden) loadDepartments(true); }, 30000); }
   const authed = await initAuth();
-  if (authed) await loadMe(); else if (authReady) renderAcct();
+  if (authed === 'redirect') return;
+  if (authed) await loadMe(); else if (authReady) { renderAcct(); }
 }
 window.addEventListener('DOMContentLoaded', start);
