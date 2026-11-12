@@ -129,3 +129,33 @@ details.reg summary{cursor:pointer;font-size:15px}
 .hrnav a.on{background:var(--brand);color:#fff}
 .hrnav .sep{flex:none;font-size:11px;font-weight:700;color:var(--mute);padding:0 6px 0 12px;margin-left:4px;border-left:2px solid var(--line)}
 a.btn{text-decoration:none}
+
+/* gender-aware slots */
+.yrs{grid-template-columns:repeat(2,1fr)}
+@media(min-width:760px){.yrs{grid-template-columns:repeat(4,1fr)}}
+.yr{align-items:stretch;gap:5px;text-align:left;padding:10px}
+.yr .yl{font-size:13px;font-weight:800;text-align:left}
+.gr{display:flex;align-items:center;gap:6px;border-radius:10px;padding:4px 6px;background:#fff}
+.gr .gn{font-size:12px;color:var(--mute);width:30px;flex:none}
+.gr b{font-size:15px;flex:1}
+.gr .st{white-space:nowrap}
+.gr.off b{color:#9a8f91}
+.gr.me{outline:2px solid var(--brand);outline-offset:-1px}
+.sy .sg{margin-top:8px}.sy .sg.me .sl{color:var(--brand-d)}
+.sy .sl{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:13px;margin-bottom:4px}
+.sy .sl b{font-size:18px}.sy .sl small{color:var(--mute);font-size:12px}
+.sumgrid{grid-template-columns:repeat(2,1fr)}
+/* admin: quota matrix, csv, tables */
+.qm{display:grid;grid-template-columns:52px repeat(4,1fr);gap:8px;align-items:center}
+.qh{font-size:12px;font-weight:700;color:var(--mute);text-align:center}
+.qg{font-size:13px;font-weight:800}
+.qc{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);text-align:center}
+.qc input{text-align:center;padding:8px 4px;min-height:42px}
+.qact{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.gc{white-space:nowrap;font-size:13px;line-height:1.5}.gc span{display:inline-block;width:14px;color:var(--mute);font-weight:700}.gc.full{color:#b91c1c;font-weight:800}
+td{vertical-align:middle}
+.filerow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.filerow .btn{cursor:pointer}
+@media(min-width:760px){.form.cols5{grid-template-columns:1.1fr 1.6fr .6fr .7fr auto;align-items:end}.form.fl{grid-template-columns:1fr 130px 130px}}
+.form.fl{grid-template-columns:1fr 1fr 1fr}.form.fl input{grid-column:1/-1}
+@media(min-width:760px){.form.fl input{grid-column:auto}}

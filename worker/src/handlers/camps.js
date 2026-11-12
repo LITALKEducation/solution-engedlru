@@ -1,11 +1,12 @@
 // Camps · ฝ่ายบุคคล: students sign in with Google (university email), pick one department;
-// admins manage the roster (student id → name + year) and per-department / per-year quotas.
+// admins manage the roster (student id → name + year + gender) and per-department / per-year / per-gender quotas.
 import { json } from "../lib/cors.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
 const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
 const clean = (s, max = 200) => String(s ?? "").trim().slice(0, max);
 const YEARS = [1, 2, 3, 4];
+const GENDERS = ["M", "F"]; // M = ชาย, F = หญิง
 const STATES = ["pending", "open", "closed"];
 
 // sb6740102220@lru.ac.th -> { type: "sb", studentId: "6740102220" }
@@ -20,6 +21,55 @@ function normalizeStudentId(v) {
   if (p) return p.studentId;
   return /^\d{6,12}$/.test(s) ? s : null;
 }
+// ชาย/หญิง/M/F/male/female ... -> "M" | "F" | null
+export function normalizeGender(v) {
+  const s = String(v ?? "").trim().toLowerCase().replace(/\.$/, "");
+  if (["m", "male", "man", "boy", "ชาย", "ช", "นาย", "เด็กชาย"].includes(s)) return "M";
+  if (["f", "female", "woman", "girl", "หญิง", "ญ", "นาง", "นางสาว", "น.ส", "เด็กหญิง"].includes(s)) return "F";
+  return null;
+}
+// Fallback when a roster has no gender column: Thai titles in front of the name.
+export function genderFromName(name) {
+  const n = String(name ?? "").trim();
+  if (/^(นาย|เด็กชาย|ด\.ช\.)/.test(n)) return "M";
+  if (/^(นางสาว|นาง|น\.ส\.|เด็กหญิง|ด\.ญ\.)/.test(n)) return "F";
+  return null;
+}
+// "ปี 3" / "3" / "Y3" -> 3 (1-4) | null
+function parseYear(v) {
+  const m = /^(?:ชั้นปีที่|ชั้นปี|ปีที่|ปี|year|y)?\s*([1-4])$/i.exec(String(v ?? "").trim());
+  return m ? Number(m[1]) : null;
+}
+
+// Small RFC-4180-ish CSV reader: quotes, "" escapes, newlines in quotes, BOM, delimiter auto-detect (, ; tab).
+export function parseCsv(text) {
+  const src = String(text ?? "").replace(/^﻿/, "");
+  const first = src.split(/\r?\n/).find((l) => l.trim()) || "";
+  const count = (c) => first.split(c).length - 1;
+  const delim = count("\t") >= Math.max(count(","), count(";")) && count("\t") > 0 ? "\t" : count(";") > count(",") ? ";" : ",";
+  const rows = []; let row = [], cell = "", q = false, line = 1, rowLine = 1;
+  const endCell = () => { row.push(cell.trim()); cell = ""; };
+  const endRow = () => { endCell(); if (row.some((c) => c !== "")) rows.push({ line: rowLine, cells: row }); row = []; rowLine = line + 1; };
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (q) {
+      if (ch === '"') { if (src[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else { if (ch === "\n") line++; cell += ch; }
+    } else if (ch === '"' && cell === "") q = true;
+    else if (ch === delim) endCell();
+    else if (ch === "\n") { endRow(); line++; rowLine = line; }
+    else if (ch === "\r") { /* ignore */ }
+    else cell += ch;
+  }
+  if (cell !== "" || row.length) endRow();
+  return rows;
+}
+const HEADER_KEYS = {
+  id: /^(รหัส|รหัสนักศึกษา|student[_ ]?id|studentid|id|code)$/i,
+  name: /^(ชื่อ|ชื่อ-?นามสกุล|ชื่อสกุล|name|fullname|full[_ ]name)$/i,
+  year: /^(ชั้นปี|ชั้น|ปี|ปีที่|year|level)$/i,
+  gender: /^(เพศ|gender|sex)$/i
+};
 
 async function registrationState(env) {
   const r = await env.DB.prepare("SELECT value FROM camp_settings WHERE key='registration_state'").first();
@@ -68,20 +118,19 @@ async function status(request, env) {
   return json(request, env, { registration: await registrationState(env) });
 }
 
+const grid = () => ({ M: { 1: 0, 2: 0, 3: 0, 4: 0 }, F: { 1: 0, 2: 0, 3: 0, 4: 0 } });
 async function departmentsWithSlots(env) {
   const [deps, quotas, filled] = await Promise.all([
     env.DB.prepare("SELECT code,name,description,sort_order FROM camp_departments ORDER BY sort_order").all(),
-    env.DB.prepare("SELECT department_code,year,quota FROM camp_quotas").all(),
-    env.DB.prepare("SELECT department_code,year,COUNT(*) c FROM camp_selections GROUP BY department_code,year").all()
+    env.DB.prepare("SELECT department_code,gender,year,quota FROM camp_quotas").all(),
+    env.DB.prepare("SELECT department_code,gender,year,COUNT(*) c FROM camp_selections GROUP BY department_code,gender,year").all()
   ]);
   const q = {}, f = {};
-  for (const r of quotas.results || []) (q[r.department_code] ||= {})[r.year] = r.quota;
-  for (const r of filled.results || []) (f[r.department_code] ||= {})[r.year] = r.c;
+  for (const r of quotas.results || []) (q[r.department_code] ||= grid())[r.gender][r.year] = r.quota;
+  for (const r of filled.results || []) (f[r.department_code] ||= grid())[r.gender][r.year] = r.c;
   return (deps.results || []).map((d) => {
-    const quota = {}, fill = {}, remaining = {};
-    for (const y of YEARS) {
-      quota[y] = q[d.code]?.[y] || 0; fill[y] = f[d.code]?.[y] || 0; remaining[y] = Math.max(0, quota[y] - fill[y]);
-    }
+    const quota = q[d.code] || grid(), fill = f[d.code] || grid(), remaining = grid();
+    for (const g of GENDERS) for (const y of YEARS) remaining[g][y] = Math.max(0, quota[g][y] - fill[g][y]);
     return { code: d.code, name: d.name, description: d.description, quota, filled: fill, remaining };
   });
 }
@@ -98,7 +147,7 @@ async function me(request, env) {
   if (!w.parsed) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
   else {
-    student = await env.DB.prepare("SELECT student_id,name,year FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
+    student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
     if (!student) reason = "not_in_roster";
     else selection = await env.DB.prepare("SELECT department_code,selected_at FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
   }
@@ -110,13 +159,14 @@ async function me(request, env) {
 
 async function eligibleStudent(request, env) {
   const w = await who(request, env); if (w.response) return { response: w.response };
-  if (!w.parsed) return { response: fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (เช่น sb6740102220@lru.ac.th)", 403, { reason: "not_university_email" }) };
+  if (!w.parsed) return { response: fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th)", 403, { reason: "not_university_email" }) };
   if (!w.verified) return { response: fail(request, env, "อีเมลนี้ยังไม่ได้รับการยืนยัน", 403, { reason: "email_not_verified" }) };
-  const student = await env.DB.prepare("SELECT student_id,name,year FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
+  const student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
   if (!student) return { response: fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อผู้ดูแล`, 403, { reason: "not_in_roster" }) };
   return { w, student };
 }
 
+const GL = { M: "ชาย", F: "หญิง" };
 async function select(request, env) {
   const r = await eligibleStudent(request, env); if (r.response) return r.response;
   const { w, student } = r;
@@ -128,16 +178,16 @@ async function select(request, env) {
   if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
   const cur = await env.DB.prepare("SELECT department_code FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
   if (cur?.department_code === code) return json(request, env, { ok: true, unchanged: true });
-  // One atomic statement: insert/switch only while the department still has a free slot for this year.
+  // One atomic statement: insert/switch only while the department still has a free slot for this year and gender.
   const res = await env.DB.prepare(
-    `INSERT INTO camp_selections (student_id,department_code,year,selected_at)
-     SELECT ?,?,?,datetime('now')
-     WHERE (SELECT COUNT(*) FROM camp_selections WHERE department_code=? AND year=?)
-         < COALESCE((SELECT quota FROM camp_quotas WHERE department_code=? AND year=?),0)
-     ON CONFLICT(student_id) DO UPDATE SET department_code=excluded.department_code,year=excluded.year,selected_at=excluded.selected_at`
-  ).bind(student.student_id, code, student.year, code, student.year, code, student.year).run();
-  if (!res?.meta?.changes) return fail(request, env, `${dep.name} เต็มแล้วสำหรับชั้นปี ${student.year}`, 409, { code: "FULL" });
-  await audit(env, w, "CAMP_SELECT", student.student_id, { department: code, year: student.year, from: cur?.department_code || null });
+    `INSERT INTO camp_selections (student_id,department_code,year,gender,selected_at)
+     SELECT ?,?,?,?,datetime('now')
+     WHERE (SELECT COUNT(*) FROM camp_selections WHERE department_code=? AND year=? AND gender=?)
+         < COALESCE((SELECT quota FROM camp_quotas WHERE department_code=? AND year=? AND gender=?),0)
+     ON CONFLICT(student_id) DO UPDATE SET department_code=excluded.department_code,year=excluded.year,gender=excluded.gender,selected_at=excluded.selected_at`
+  ).bind(student.student_id, code, student.year, student.gender, code, student.year, student.gender, code, student.year, student.gender).run();
+  if (!res?.meta?.changes) return fail(request, env, `${dep.name} เต็มแล้วสำหรับ${GL[student.gender]}ชั้นปี ${student.year}`, 409, { code: "FULL" });
+  await audit(env, w, "CAMP_SELECT", student.student_id, { department: code, year: student.year, gender: student.gender, from: cur?.department_code || null });
   return json(request, env, { ok: true });
 }
 
@@ -155,11 +205,11 @@ async function adminOverview(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const [deps, reg, byYear, selected] = await Promise.all([
     departmentsWithSlots(env), registrationState(env),
-    env.DB.prepare("SELECT year,COUNT(*) c FROM camp_students GROUP BY year").all(),
+    env.DB.prepare("SELECT gender,year,COUNT(*) c FROM camp_students GROUP BY gender,year").all(),
     env.DB.prepare("SELECT COUNT(*) c FROM camp_selections").first()
   ]);
-  const students = {}; for (const y of YEARS) students[y] = 0;
-  for (const r of byYear.results || []) students[r.year] = r.c;
+  const students = grid();
+  for (const r of byYear.results || []) if (students[r.gender]) students[r.gender][r.year] = r.c;
   return json(request, env, { registration: reg, departments: deps, students, selectedTotal: selected?.c || 0 });
 }
 
@@ -172,23 +222,26 @@ async function adminSetState(request, env) {
   return json(request, env, { ok: true });
 }
 
+// body: { departmentCode, quotas: { M: {1:n,2:n,3:n,4:n}, F: {...} } }
 async function adminSetQuota(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const code = clean(b?.departmentCode, 40);
   const dep = await env.DB.prepare("SELECT code,name FROM camp_departments WHERE code=?").bind(code).first();
   if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
-  const quotas = {};
-  for (const y of YEARS) {
-    const n = Number(b?.quotas?.[y]);
-    if (!Number.isInteger(n) || n < 0 || n > 9999) return fail(request, env, `จำนวนของชั้นปี ${y} ต้องเป็นเลขจำนวนเต็ม 0–9999`);
-    quotas[y] = n;
+  const quotas = grid();
+  for (const g of GENDERS) for (const y of YEARS) {
+    const n = Number(b?.quotas?.[g]?.[y]);
+    if (!Number.isInteger(n) || n < 0 || n > 9999) return fail(request, env, `จำนวนของ${GL[g]}ชั้นปี ${y} ต้องเป็นเลขจำนวนเต็ม 0–9999`);
+    quotas[g][y] = n;
   }
-  const filled = await env.DB.prepare("SELECT year,COUNT(*) c FROM camp_selections WHERE department_code=? GROUP BY year").bind(code).all();
+  const filled = await env.DB.prepare("SELECT gender,year,COUNT(*) c FROM camp_selections WHERE department_code=? GROUP BY gender,year").bind(code).all();
   for (const r of filled.results || []) {
-    if (quotas[r.year] < r.c) return fail(request, env, `ชั้นปี ${r.year} ของ${dep.name}มีผู้เลือกแล้ว ${r.c} คน ตั้งต่ำกว่านี้ไม่ได้ (ล้างการเลือกของบางคนก่อน)`, 409);
+    if (quotas[r.gender]?.[r.year] < r.c) return fail(request, env, `${GL[r.gender]}ชั้นปี ${r.year} ของ${dep.name}มีผู้ลงทะเบียนแล้ว ${r.c} คน ตั้งต่ำกว่านี้ไม่ได้ (ล้างการลงทะเบียนของบางคนก่อน)`, 409);
   }
-  await env.DB.batch(YEARS.map((y) => env.DB.prepare("INSERT INTO camp_quotas (department_code,year,quota) VALUES (?,?,?) ON CONFLICT(department_code,year) DO UPDATE SET quota=excluded.quota").bind(code, y, quotas[y])));
+  const stmts = [];
+  for (const g of GENDERS) for (const y of YEARS) stmts.push(env.DB.prepare("INSERT INTO camp_quotas (department_code,gender,year,quota) VALUES (?,?,?,?) ON CONFLICT(department_code,gender,year) DO UPDATE SET quota=excluded.quota").bind(code, g, y, quotas[g][y]));
+  await env.DB.batch(stmts);
   await audit(env, a, "CAMP_QUOTA", code, { quotas });
   return json(request, env, { ok: true });
 }
@@ -196,51 +249,64 @@ async function adminSetQuota(request, env) {
 async function adminStudents(request, env, url) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const q = clean(url.searchParams.get("q"), 80).toLowerCase();
-  const year = Number(url.searchParams.get("year"));
+  const year = Number(url.searchParams.get("year")), gender = url.searchParams.get("gender");
   const where = ["1=1"], p = [];
   if (q) { where.push("(lower(s.name) LIKE ? OR s.student_id LIKE ?)"); p.push(`%${q}%`, `%${q}%`); }
   if (YEARS.includes(year)) { where.push("s.year=?"); p.push(year); }
+  if (GENDERS.includes(gender)) { where.push("s.gender=?"); p.push(gender); }
   const rows = await env.DB.prepare(
-    `SELECT s.student_id,s.name,s.year,sel.department_code,d.name department_name
+    `SELECT s.student_id,s.name,s.year,s.gender,sel.department_code,d.name department_name
      FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code
-     WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 1000`).bind(...p).all();
+     WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 2000`).bind(...p).all();
   return json(request, env, { students: rows.results || [] });
 }
 
-function upsertStudentStmt(env, id, name, year) {
-  return env.DB.prepare("INSERT INTO camp_students (student_id,name,year) VALUES (?,?,?) ON CONFLICT(student_id) DO UPDATE SET name=excluded.name,year=excluded.year,updated_at=datetime('now')").bind(id, name, year);
+function upsertStudentStmt(env, id, name, year, gender) {
+  return env.DB.prepare("INSERT INTO camp_students (student_id,name,year,gender) VALUES (?,?,?,?) ON CONFLICT(student_id) DO UPDATE SET name=excluded.name,year=excluded.year,gender=excluded.gender,updated_at=datetime('now')").bind(id, name, year, gender);
 }
+const syncSelectionStmt = (env, id, year, gender) => env.DB.prepare("UPDATE camp_selections SET year=?,gender=? WHERE student_id=?").bind(year, gender, id);
+
 async function adminUpsertStudent(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const id = normalizeStudentId(b?.studentId), name = clean(b?.name, 200), year = Number(b?.year);
+  const gender = normalizeGender(b?.gender) || (b?.gender ? null : genderFromName(name));
   if (!id) return fail(request, env, "รหัสนักศึกษาต้องเป็นตัวเลข 6–12 หลัก (หรืออีเมล sb…@lru.ac.th)");
   if (!name) return fail(request, env, "กรุณาระบุชื่อ");
   if (!YEARS.includes(year)) return fail(request, env, "ชั้นปีต้องเป็น 1–4");
+  if (!gender) return fail(request, env, "กรุณาเลือกเพศ (ชาย/หญิง)");
   const old = await env.DB.prepare("SELECT year FROM camp_students WHERE student_id=?").bind(id).first();
-  await env.DB.batch([upsertStudentStmt(env, id, name, year), env.DB.prepare("UPDATE camp_selections SET year=? WHERE student_id=?").bind(year, id)]);
-  await audit(env, a, "CAMP_STUDENT", id, { name, year, created: !old });
+  await env.DB.batch([upsertStudentStmt(env, id, name, year, gender), syncSelectionStmt(env, id, year, gender)]);
+  await audit(env, a, "CAMP_STUDENT", id, { name, year, gender, created: !old });
   return json(request, env, { ok: true, created: !old });
 }
 
-// Bulk paste: one student per line — "id,name,year" (comma, tab or semicolon separated; id may be the university email)
+// CSV (or pasted text). Columns: รหัส, ชื่อ, ชั้นปี, เพศ — with or without a header row; header names may be Thai or English
+// and in any order. Without a gender column the gender is read from the Thai title in the name (นาย / นางสาว / นาง).
 async function adminBulkStudents(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
-  const lines = String(b?.text ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (!lines.length) return fail(request, env, "ไม่มีข้อมูล");
-  if (lines.length > 1500) return fail(request, env, "นำเข้าได้ครั้งละไม่เกิน 1,500 บรรทัด");
+  const rows = parseCsv(b?.text);
+  if (!rows.length) return fail(request, env, "ไม่มีข้อมูล");
+  if (rows.length > 3000) return fail(request, env, "นำเข้าได้ครั้งละไม่เกิน 3,000 แถว");
+  let col = { id: 0, name: 1, year: 2, gender: 3 };
+  const head = rows[0].cells;
+  const keyed = {};
+  head.forEach((c, i) => { for (const k of Object.keys(HEADER_KEYS)) if (HEADER_KEYS[k].test(c.trim()) && keyed[k] === undefined) keyed[k] = i; });
+  let data = rows, hasHeader = false;
+  if (Object.keys(keyed).length >= 2 && !normalizeStudentId(head[keyed.id ?? 0])) { hasHeader = true; data = rows.slice(1); col = { id: keyed.id ?? -1, name: keyed.name ?? -1, year: keyed.year ?? -1, gender: keyed.gender ?? -1 }; if (col.id < 0 || col.name < 0 || col.year < 0) return fail(request, env, "หัวตารางต้องมีคอลัมน์ รหัส, ชื่อ และชั้นปี (เพศไม่บังคับถ้าชื่อมีคำนำหน้า นาย/นางสาว)"); }
   const good = [], errors = [];
-  lines.forEach((line, i) => {
-    const parts = line.split(/\t|,|;/).map((x) => x.trim());
-    if (i === 0 && /รหัส|student/i.test(line) && !normalizeStudentId(parts[0])) return; // header row
-    if (parts.length < 3) return errors.push({ line: i + 1, text: line, error: "ต้องมี รหัส, ชื่อ, ชั้นปี" });
-    const id = normalizeStudentId(parts[0]), year = Number(parts[parts.length - 1]), name = clean(parts.slice(1, -1).join(" "), 200);
-    if (!id) return errors.push({ line: i + 1, text: line, error: "รหัสนักศึกษาไม่ถูกต้อง" });
-    if (!name) return errors.push({ line: i + 1, text: line, error: "ไม่มีชื่อ" });
-    if (!YEARS.includes(year)) return errors.push({ line: i + 1, text: line, error: "ชั้นปีต้องเป็น 1–4" });
-    good.push({ id, name, year });
-  });
+  for (const r of data) {
+    const c = r.cells, text = c.join(", ");
+    const id = normalizeStudentId(c[col.id]), name = clean(c[col.name], 200), year = parseYear(c[col.year]);
+    const rawG = col.gender >= 0 ? c[col.gender] : "";
+    const gender = rawG ? normalizeGender(rawG) : genderFromName(name);
+    if (!id) { errors.push({ line: r.line, text, error: "รหัสนักศึกษาไม่ถูกต้อง" }); continue; }
+    if (!name) { errors.push({ line: r.line, text, error: "ไม่มีชื่อ" }); continue; }
+    if (!year) { errors.push({ line: r.line, text, error: "ชั้นปีต้องเป็น 1–4" }); continue; }
+    if (!gender) { errors.push({ line: r.line, text, error: rawG ? `เพศ "${rawG}" ไม่ถูกต้อง (ใช้ ชาย/หญิง)` : "ไม่ระบุเพศ (ใส่คอลัมน์เพศ หรือใช้คำนำหน้า นาย/นางสาว)" }); continue; }
+    good.push({ id, name, year, gender });
+  }
   const dedup = new Map(); for (const g of good) dedup.set(g.id, g);
   const list = [...dedup.values()];
   const existing = new Set();
@@ -250,10 +316,10 @@ async function adminBulkStudents(request, env) {
     for (const x of r.results || []) existing.add(x.student_id);
   }
   const stmts = [];
-  for (const g of list) { stmts.push(upsertStudentStmt(env, g.id, g.name, g.year)); stmts.push(env.DB.prepare("UPDATE camp_selections SET year=? WHERE student_id=?").bind(g.year, g.id)); }
+  for (const g of list) { stmts.push(upsertStudentStmt(env, g.id, g.name, g.year, g.gender)); stmts.push(syncSelectionStmt(env, g.id, g.year, g.gender)); }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
-  await audit(env, a, "CAMP_STUDENTS_IMPORT", null, { added: list.length - existing.size, updated: existing.size, errors: errors.length });
-  return json(request, env, { ok: true, added: list.length - existing.size, updated: existing.size, errors });
+  await audit(env, a, "CAMP_STUDENTS_IMPORT", null, { added: list.length - existing.size, updated: existing.size, errors: errors.length, header: hasHeader });
+  return json(request, env, { ok: true, added: list.length - existing.size, updated: existing.size, errors, total: data.length });
 }
 
 async function adminDeleteStudent(request, env) {
