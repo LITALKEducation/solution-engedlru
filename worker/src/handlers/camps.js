@@ -1,6 +1,7 @@
 // Camps · ฝ่ายบุคคล: students sign in with Google (university email), pick one department;
 // admins manage the roster (student id → name + year + gender) and per-department / per-year / per-gender quotas.
-import { json } from "../lib/cors.js";
+import { json, corsHeaders } from "../lib/cors.js";
+import { putFile } from "../lib/files.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
 const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
@@ -136,9 +137,46 @@ async function status(request, env) {
 }
 
 const grid = () => ({ M: { 1: 0, 2: 0, 3: 0, 4: 0 }, F: { 1: 0, 2: 0, 3: 0, 4: 0 } });
+// head photo: stored in R2 as camps/heads/<code>-<timestamp>.jpg; the timestamp is the cache-busting version in the public URL
+const photoVersion = (key) => { const m = /-(\d+)\.jpg$/.exec(key || ""); return m ? Number(m[1]) : null; };
+const MAX_PHOTO = 600 * 1024;
+async function departmentPhoto(request, env, code) {
+  const row = await env.DB.prepare("SELECT head_photo FROM camp_departments WHERE code=?").bind(code).first();
+  if (!row || !row.head_photo) return new Response("Not found", { status: 404, headers: corsHeaders(request, env) });
+  const obj = await env.FILES.get(row.head_photo);
+  if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(request, env) });
+  return new Response(obj.body, { headers: { ...corsHeaders(request, env), "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable", "Cross-Origin-Resource-Policy": "cross-site", "X-Content-Type-Options": "nosniff" } });
+}
+async function adminSetPhoto(request, env, url) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const code = clean(url.searchParams.get("code"), 40);
+  const dep = await env.DB.prepare("SELECT code,head_photo FROM camp_departments WHERE code=?").bind(code).first();
+  if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (!bytes.length) return fail(request, env, "ไม่พบไฟล์รูป");
+  if (bytes.length > MAX_PHOTO) return fail(request, env, "รูปใหญ่เกินไป (ไม่เกิน 600 KB)", 413);
+  if (!(bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)) return fail(request, env, "รองรับเฉพาะรูป JPEG (ระบบแปลงให้อัตโนมัติ)", 415);
+  const key = `camps/heads/${code}-${Date.now()}.jpg`;
+  await putFile(env, key, bytes, "image/jpeg");
+  await env.DB.prepare("UPDATE camp_departments SET head_photo=? WHERE code=?").bind(key, code).run();
+  if (dep.head_photo) { try { await env.FILES.delete(dep.head_photo); } catch (e) { /* old photo cleanup is best-effort */ } }
+  await audit(env, a, "CAMP_HEAD_PHOTO", code, { bytes: bytes.length });
+  return json(request, env, { ok: true, photo: photoVersion(key) });
+}
+async function adminDeletePhoto(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null);
+  const code = clean(b?.departmentCode, 40);
+  const dep = await env.DB.prepare("SELECT code,head_photo FROM camp_departments WHERE code=?").bind(code).first();
+  if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
+  await env.DB.prepare("UPDATE camp_departments SET head_photo=NULL WHERE code=?").bind(code).run();
+  if (dep.head_photo) { try { await env.FILES.delete(dep.head_photo); } catch (e) { /* best-effort */ } }
+  await audit(env, a, "CAMP_HEAD_PHOTO_DELETE", code, {});
+  return json(request, env, { ok: true });
+}
 async function departmentsWithSlots(env) {
   const [deps, quotas, filled] = await Promise.all([
-    env.DB.prepare("SELECT code,name,description,sort_order,head_name,head_contact FROM camp_departments ORDER BY sort_order").all(),
+    env.DB.prepare("SELECT code,name,description,sort_order,head_name,head_contact,head_photo FROM camp_departments ORDER BY sort_order").all(),
     env.DB.prepare("SELECT department_code,gender,year,quota FROM camp_quotas").all(),
     env.DB.prepare("SELECT department_code,gender,year,COUNT(*) c FROM camp_selections GROUP BY department_code,gender,year").all()
   ]);
@@ -148,7 +186,7 @@ async function departmentsWithSlots(env) {
   return (deps.results || []).map((d) => {
     const quota = q[d.code] || grid(), fill = f[d.code] || grid(), remaining = grid();
     for (const g of GENDERS) for (const y of YEARS) remaining[g][y] = Math.max(0, quota[g][y] - fill[g][y]);
-    return { code: d.code, name: d.name, description: d.description, head: { name: d.head_name || "", contact: d.head_contact || "" }, quota, filled: fill, remaining };
+    return { code: d.code, name: d.name, description: d.description, head: { name: d.head_name || "", contact: d.head_contact || "", photo: photoVersion(d.head_photo) }, quota, filled: fill, remaining };
   });
 }
 async function departments(request, env) {
@@ -440,11 +478,14 @@ export async function camps(request, env, url) {
     const p = url.pathname, m = request.method;
     if (m === "GET" && p === "/camps/status") return await status(request, env);
     if (m === "GET" && p === "/camps/departments") return await departments(request, env);
+    { const pm = /^\/camps\/department-photo\/([a-z0-9_-]{1,40})$/.exec(p); if (m === "GET" && pm) return await departmentPhoto(request, env, pm[1]); }
     if (m === "GET" && p === "/camps/me") return await me(request, env);
     if (m === "POST" && p === "/camps/select") return await select(request, env);
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
     if (m === "POST" && p === "/camps/admin/state") return await adminSetState(request, env);
+    if (m === "POST" && p === "/camps/admin/department/photo") return await adminSetPhoto(request, env, url);
+    if (m === "POST" && p === "/camps/admin/department/photo/delete") return await adminDeletePhoto(request, env);
     if (m === "POST" && p === "/camps/admin/department") return await adminSetDepartment(request, env);
     if (m === "POST" && p === "/camps/admin/quota") return await adminSetQuota(request, env);
     if (m === "GET" && p === "/camps/admin/students") return await adminStudents(request, env, url);

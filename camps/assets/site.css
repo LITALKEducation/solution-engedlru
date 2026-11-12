@@ -48,7 +48,7 @@ a.card:hover .cta svg{transform:translateX(4px)}
 }
 
 /* departments */
-.sec-title{font-size:20px;margin:30px 4px 14px;display:flex;align-items:center;gap:10px}
+.sec-title{flex-wrap:wrap;font-size:20px;margin:30px 4px 14px;display:flex;align-items:center;gap:10px}
 .sec-title em{font-style:normal;background:var(--panel);border-radius:999px;padding:2px 12px;font-size:13px;color:var(--mute);font-weight:700}
 .depts{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .dept{background:#fff;border:1px solid var(--line);border-radius:24px;padding:20px;display:flex;gap:16px;align-items:flex-start}

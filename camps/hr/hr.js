@@ -10,7 +10,8 @@ const YEARS = [1, 2, 3, 4];
 const GENDERS = ['M', 'F'];
 const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k] || 'ไม่ระบุเพศ' });   // legacy rows may have no gender yet
 const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
-const TAB = document.body.dataset.tab || 'overview';     // which admin page this is
+const TAB = document.body.dataset.tab || 'overview';
+const CHOOSE = PAGE === 'student' && TAB === 'choose';      // /hr/choose: pick a department (heads only)     // which admin page this is
 const ICON = {
   direction: '<path d="M4 22V3M4 4h14l-2 4 2 4H4"/>',
   structure: '<rect x="3" y="3" width="14" height="6" rx="1.5"/><path d="M17 6h3v5H12v3"/><rect x="10" y="14" width="4" height="7" rx="1"/>',
@@ -82,7 +83,7 @@ async function initAuth() {
   } catch (e) { console.error(e); authReady = false; renderAcct({ error: e.message }); return null; }
 }
 async function login() {
-  if (PAGE === 'admin') { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
+  if (PAGE === 'admin' || CHOOSE) { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
   const btns = document.querySelectorAll('.gbtn'); btns.forEach((b) => b.disabled = true);
   try {
     const ap = { connection: CONNECTION };
@@ -96,7 +97,7 @@ async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1
 // ---------- menu ----------
 function renderNav() {
   const el = $('hrNav'); if (!el) return;
-  let html = '<a href="/hr/" class="' + (PAGE === 'student' ? 'on' : '') + '">ลงทะเบียน</a>';
+  let html = '<a href="/hr/" class="' + (PAGE === 'student' && !CHOOSE ? 'on' : '') + '">ภาพรวมฝ่าย</a><a href="/hr/choose" class="' + (CHOOSE ? 'on' : '') + '">เลือกฝ่าย</a>';
   if (me && me.isAdmin) html += '<span class="sep">ผู้ดูแล</span>' + ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="adm ' + (PAGE === 'admin' && TAB === k ? 'on' : '') + '">' + l + '</a>').join('');
   el.innerHTML = html;
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
@@ -162,6 +163,8 @@ const myGender = () => (me && me.student ? me.student.gender : '');
 const myDept = () => (me && me.selection ? me.selection.department_code : null);
 
 const headOf = (d) => (d.head && d.head.name) || '';
+const photoUrl = (d) => (d.head && d.head.photo ? API + '/camps/department-photo/' + encodeURIComponent(d.code) + '?v=' + d.head.photo : '');
+const avatar = (d, cls) => photoUrl(d) ? '<img class="hav ' + (cls || '') + '" src="' + photoUrl(d) + '" alt="' + esc(headOf(d) || 'หัวหน้าฝ่าย') + '" loading="lazy" decoding="async">' : '<span class="hav ph ' + (cls || '') + '" aria-hidden="true">' + (headOf(d) ? esc([...headOf(d).replace(/^(นางสาว|นาย|นาง|ครู|อาจารย์|อ\.|ดร\.|ผศ\.|รศ\.|ศ\.)\s*/, '')][0] || '?') : '?') + '</span>';
 function yrsHtml(d) {
   const my = myYear(), mg = myGender();
   return YEARS.map((y) => '<div class="yr' + (y === my ? ' mine' : '') + '"><span class="yl">ปี ' + y + (y === my ? ' (คุณ)' : '') + '</span>' + GENDERS.map((g) => {
@@ -172,7 +175,13 @@ function yrsHtml(d) {
 function deptCard(d) {
   const reg = myDept() === d.code, pk = picked === d.code;
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
-  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">หัวหน้าฝ่าย: <b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
+  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">' + avatar(d, 'md') + '<span>หัวหน้าฝ่าย<br><b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b>' + (d.head && d.head.contact ? '<small>ติดต่อ: ' + esc(d.head.contact) + '</small>' : '') + '</span></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
+}
+// /hr/choose shows only the head of each department
+function headCard(d) {
+  const reg = myDept() === d.code, pk = picked === d.code, h = d.head || {};
+  const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
+  return '<div class="dept pickable headcard ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="' + esc(d.name) + ' หัวหน้าฝ่าย ' + esc(h.name || 'ยังไม่ประกาศ') + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}">' + tag + avatar(d, 'xl') + '<div class="hn"><span class="dn">' + esc(d.name) + '</span><span class="hl">หัวหน้าฝ่าย</span><b>' + (h.name ? esc(h.name) : 'ยังไม่ประกาศ') + '</b>' + (h.contact ? '<small>ติดต่อ: ' + esc(h.contact) + '</small>' : '') + '</div><div class="more">' + (reg ? 'ดูรายละเอียด ›' : 'ดูรายละเอียดและเลือกฝ่าย ›') + '</div></div>';
 }
 // preview first: tap a department card -> details, head and slots; switch between departments with the chips; then "เลือกฝ่ายนี้"
 let pvDlg = null;
@@ -190,15 +199,16 @@ function preview(code) {
     $('pvBody').innerHTML = '<div class="pvchips" role="tablist">' + deps.map((x) => '<button type="button" role="tab" aria-selected="' + (x.code === c) + '" class="' + (x.code === c ? 'on' : '') + '" data-c="' + x.code + '">' + esc(x.name.replace(/^ฝ่าย/, '')) + '</button>').join('') + '</div>'
       + '<div class="pvhead ' + (TONE[d.code] || '') + '"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div><h3>' + esc(d.name) + '</h3>' + (reg ? '<span class="tag ok">✓ คุณลงทะเบียนฝ่ายนี้แล้ว</span>' : '') + '</div></div>'
       + '<div class="pvsec"><b>หน้าที่ของฝ่าย</b><p>' + esc(d.description) + '</p></div>'
-      + '<div class="pvsec"><b>หัวหน้าฝ่าย</b>' + (head.name ? '<p class="pvhd">' + esc(head.name) + '</p>' + (head.contact ? '<p class="muted">ติดต่อ: ' + esc(head.contact) + '</p>' : '') : '<p class="muted">ยังไม่ประกาศ</p>') + '</div>'
+      + '<div class="pvsec"><b>หัวหน้าฝ่าย</b>' + '<div class="pvperson">' + avatar(d, 'lg') + '<div>' + (head.name ? '<p class="pvhd">' + esc(head.name) + '</p>' + (head.contact ? '<p class="muted">ติดต่อ: ' + esc(head.contact) + '</p>' : '') : '<p class="muted">ยังไม่ประกาศ</p>') + '</div></div></div>'
       + '<div class="pvsec"><b>จำนวนที่รับ / ลงทะเบียนแล้ว</b><div class="yrs">' + yrsHtml(d) + '</div>' + (st ? '<p class="muted" style="margin-top:8px">ชั้นปี ' + y + ' ' + GL[g] + ' ของคุณ: ' + esc(st.note) + '</p>' : '') + '</div>'
-      + '<div class="btns"><button class="btn" data-x>ปิด</button>' + (reg ? '' : '<button class="btn primary" data-pick="' + d.code + '">' + (picked === d.code ? '✓ เลือกฝ่ายนี้อยู่' : 'เลือกฝ่ายนี้') + '</button>') + '</div>';
+      + '<div class="btns"><button class="btn" data-x>ปิด</button>' + (reg ? '' : '<button class="btn primary" data-pick="' + d.code + '">' + (!CHOOSE ? 'ไปเลือกฝ่ายนี้ ›' : picked === d.code ? '✓ เลือกฝ่ายนี้อยู่' : 'เลือกฝ่ายนี้') + '</button>') + '</div>';
     const act = $('pvBody').querySelector('.pvchips .on'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center' });
   };
   pvDlg.addEventListener('click', (e) => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.c) draw(t.dataset.c);
     else if (t.hasAttribute('data-x')) close();
+    else if (t.dataset.pick && !CHOOSE) { setPicked(t.dataset.pick); location.href = '/hr/choose'; }
     else if (t.dataset.pick) { setPicked(t.dataset.pick); close(); renderDepts(); const d = deps.find((x) => x.code === t.dataset.pick); toast('เลือก' + (d ? d.name : 'ฝ่าย') + 'แล้ว กด "ลงทะเบียน" ด้านล่างเพื่อยืนยัน'); }
   });
   draw(code);
@@ -211,12 +221,13 @@ function renderSummary() {
     return '<div class="sg' + (y === my && g === mg ? ' me' : '') + '"><div class="sl"><span>' + GL[g] + ' <b>' + f + '</b><small>/' + q + '</small></span><span class="st ' + st.c + '">' + st.t + '</span></div><div class="prog"><i style="width:' + pct + '%"></i></div></div>';
   }).join('') + '</div>').join('') + '</div>';
 }
-function renderDepts() { if (!$('depts')) return; $('depts').innerHTML = deps.map(deptCard).join(''); renderSummary(); renderBar(); }
+function renderDepts() { if (!$('depts')) return; $('depts').innerHTML = deps.map(CHOOSE ? headCard : deptCard).join(''); renderSummary(); renderBar(); }
 function pick(code) { setPicked(picked === code ? null : code); renderDepts(); }
 
 // bottom bar: choose a department first, then press ลงทะเบียน (sign-in happens at that point)
 function renderBar() {
   const bar = $('bar'); if (!bar) return;
+  if (!CHOOSE) { bar.classList.add('hidden'); return; }
   const reg = myDept(), regDep = reg && deps.find((d) => d.code === reg), pk = picked && deps.find((d) => d.code === picked);
   document.body.classList.toggle('has-bar', !!(regDep || pk));
   if (!regDep && !pk) { bar.classList.add('hidden'); return; }
@@ -397,8 +408,42 @@ function renderSettings() {
 function depInfoPanel() {
   return '<div class="panel"><h3>หัวหน้าฝ่ายและหน้าที่ของแต่ละฝ่าย</h3><p class="muted" style="margin-bottom:6px">แสดงให้นักศึกษาเห็นในหน้าเลือกฝ่าย (ตัวอย่างก่อนลงทะเบียน)</p>' + adminData.departments.map((d) => {
     const h = d.head || {};
-    return '<div class="depinfo"><h4>' + esc(d.name) + '</h4><label>หัวหน้าฝ่าย<input id="dh-' + d.code + '" maxlength="120" value="' + esc(h.name || '') + '" placeholder="ชื่อ-นามสกุล หัวหน้าฝ่าย"></label><label>ช่องทางติดต่อ (ไม่บังคับ)<input id="dc-' + d.code + '" maxlength="200" value="' + esc(h.contact || '') + '" placeholder="เบอร์โทร / LINE ID"></label><label class="full">หน้าที่ของฝ่าย<textarea id="dd-' + d.code + '" maxlength="400">' + esc(d.description || '') + '</textarea></label><div class="qact"><button class="btn primary sm" onclick="saveDepInfo(\'' + d.code + '\')">บันทึก</button></div></div>';
+    return '<div class="depinfo"><h4>' + esc(d.name) + '</h4><label>หัวหน้าฝ่าย<input id="dh-' + d.code + '" maxlength="120" value="' + esc(h.name || '') + '" placeholder="ชื่อ-นามสกุล หัวหน้าฝ่าย"></label><label>ช่องทางติดต่อ (ไม่บังคับ)<input id="dc-' + d.code + '" maxlength="200" value="' + esc(h.contact || '') + '" placeholder="เบอร์โทร / LINE ID"></label><div class="full phrow"><span id="dp-' + d.code + '">' + avatar(d, 'lg') + '</span><div class="phbtns"><label class="btn sm ghost" for="df-' + d.code + '">' + (h.photo ? 'เปลี่ยนรูปหัวหน้าฝ่าย' : 'อัปโหลดรูปหัวหน้าฝ่าย') + '</label><input id="df-' + d.code + '" type="file" accept="image/*" class="hidden" onchange="uploadHeadPhoto(\'' + d.code + '\', this)">' + (h.photo ? '<button class="btn sm" type="button" onclick="deleteHeadPhoto(\'' + d.code + '\')">ลบรูป</button>' : '') + '<span class="muted">ระบบย่อรูปเป็นสี่เหลี่ยมจัตุรัสให้อัตโนมัติ</span></div></div><label class="full">หน้าที่ของฝ่าย<textarea id="dd-' + d.code + '" maxlength="400">' + esc(d.description || '') + '</textarea></label><div class="qact"><button class="btn primary sm" onclick="saveDepInfo(\'' + d.code + '\')">บันทึก</button></div></div>';
   }).join('') + '</div>';
+}
+// resize / centre-crop to a 480px square JPEG in the browser, then upload the bytes
+async function squareJpeg(file, size = 480) {
+  const bmp = await createImageBitmap(file).catch(() => null);
+  if (!bmp) throw new Error('อ่านรูปไม่ได้ ลองใช้ไฟล์ JPG หรือ PNG');
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d');
+  const m = Math.min(bmp.width, bmp.height), sx = (bmp.width - m) / 2, sy = (bmp.height - m) / 2;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, size, size); x.drawImage(bmp, sx, sy, m, m, 0, 0, size, size);
+  const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.85));
+  if (!blob) throw new Error('แปลงรูปไม่ได้'); return blob;
+}
+async function uploadHeadPhoto(code, input) {
+  const f = input.files && input.files[0]; if (!f) return; input.value = '';
+  if (f.size > 15 * 1024 * 1024) return toast('ไฟล์รูปใหญ่เกินไป', true);
+  try {
+    const blob = await squareJpeg(f);
+    const r = await api('/camps/admin/department/photo?code=' + encodeURIComponent(code), { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+    if (!r.ok) return toast(await errMsg(r), true);
+    const d = adminData.departments.find((x) => x.code === code); if (d) { d.head = d.head || {}; d.head.photo = (await r.json()).photo; }
+    toast('อัปโหลดรูปแล้ว'); renderKeepEdits(code);
+  } catch (e) { toast(e.message || 'อัปโหลดรูปไม่สำเร็จ', true); }
+}
+async function deleteHeadPhoto(code) {
+  if (!(await confirmDlg('ลบรูปหัวหน้าฝ่าย?', 'นักศึกษาจะเห็นเป็นตัวอักษรย่อแทน', 'ลบรูป'))) return;
+  const r = await post('/camps/admin/department/photo/delete', { departmentCode: code });
+  if (!r.ok) return toast(await errMsg(r), true);
+  const d = adminData.departments.find((x) => x.code === code); if (d && d.head) d.head.photo = null;
+  toast('ลบรูปแล้ว'); renderKeepEdits(code);
+}
+// redraw the settings page but keep what was typed in the other departments' boxes
+function renderKeepEdits() {
+  const keep = {}; for (const d of adminData.departments) for (const k of ['dh', 'dc', 'dd']) { const el = $(k + '-' + d.code); if (el) keep[k + '-' + d.code] = el.value; }
+  renderSettings();
+  for (const k in keep) { const el = $(k); if (el) el.value = keep[k]; }
 }
 async function saveDepInfo(code) {
   const body = { departmentCode: code, headName: $('dh-' + code).value, headContact: $('dc-' + code).value, description: $('dd-' + code).value };

@@ -222,3 +222,29 @@ td{vertical-align:middle}
 .depinfo label{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--mute)}
 .depinfo textarea{min-height:60px}
 @media(min-width:900px){.depinfo{grid-template-columns:1fr 1fr}.depinfo h4,.depinfo .full,.depinfo .qact{grid-column:1/-1}}
+
+/* head photo */
+.hav{flex:none;border-radius:50%;object-fit:cover;background:var(--brand-l);display:inline-grid;place-items:center;font-weight:800;color:var(--brand-d)}
+.hav.sm{width:26px;height:26px;font-size:12px}.hav.lg{width:72px;height:72px;font-size:28px}
+.dept .hd{display:flex;align-items:center;gap:8px}
+.pvperson{display:flex;align-items:center;gap:14px}
+.pvperson p{margin:0}
+.phrow{display:flex;align-items:center;gap:14px}.phbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hidden{display:none!important}
+
+/* /hr/choose: head cards */
+.hav.md{width:44px;height:44px;font-size:18px}.hav.xl{width:92px;height:92px;font-size:36px}
+.dept .hd{align-items:center;gap:10px;margin-top:10px;font-size:13px;line-height:1.35}.dept .hd b{display:block;font-size:15px}.dept .hd small{display:block}
+.depts.heads{grid-template-columns:repeat(2,minmax(0,1fr))}
+.headcard{flex-direction:column!important;align-items:center;text-align:center;gap:6px;padding:22px 16px 16px}
+.headcard .tag{position:absolute;top:12px;right:12px}
+.headcard .hav{margin-bottom:4px}
+.headcard .dn{display:block;font-weight:800;font-size:15px;color:var(--brand-d)}
+.headcard .hl{display:block;font-size:12px;color:var(--mute);margin-top:6px}
+.headcard b{display:block;font-size:17px;line-height:1.3}
+.headcard small{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+.headcard .more{margin-top:8px}
+.cta-choose{display:flex;width:100%;justify-content:center;margin:14px 0 0;padding:14px;font-size:16px}
+@media(min-width:760px){.depts.heads{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:1100px){body[data-page=student] .depts.heads{grid-template-columns:repeat(5,minmax(0,1fr))}.headcard{padding:24px 12px 14px}}
+@media(max-width:380px){.depts.heads{grid-template-columns:minmax(0,1fr)}}
