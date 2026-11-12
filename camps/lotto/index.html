@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#b91c1c"><meta name="robots" content="noindex,nofollow">
+<title>ระบบจับสลาก · Camps</title>
+<link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css?v=1">
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+</head>
+<body>
+<header class="top"><a href="/camps/">‹ กิจกรรมค่าย</a><div><b>Camps / Lotto</b><small>ระบบจัดการการจับสลาก</small></div><span id="account">กำลังตรวจสอบ…</span></header>
+<main>
+<section class="intro"><span class="eyebrow">ENGLISH EDUCATION · LRU</span><h1>ระบบจัดการการจับสลาก</h1><p>จัดการรายชื่อและหมายเลขสลาก ตรวจสอบสิทธิ์ด้วย QR Code และป้องกันการใช้สิทธิ์ซ้ำ</p></section>
+<section id="login" class="panel hidden"><h2>เข้าสู่ระบบผู้ดูแล / เจ้าหน้าที่</h2><p>ใช้บัญชี Google มหาวิทยาลัยที่ได้รับสิทธิ์ camp_admin หรือ budget_admin</p><button id="loginBtn" class="primary">เข้าสู่ระบบด้วย Google</button></section>
+<div id="app" class="hidden">
+<nav class="tabs"><button data-tab="scan" class="active">สแกนเช็คชื่อ</button><button data-tab="students">รายชื่อและเลขสลาก</button><button data-tab="verify">ตรวจสอบสถานะ</button></nav>
+<section id="stats" class="stats"></section>
+<section id="view-scan" class="view panel">
+<div class="section-head"><div><h2>สแกน QR Code นักศึกษา</h2><p>QR Code ต้องมีรหัสนักศึกษา 6–12 หลัก</p></div><span class="pill">เจ้าหน้าที่</span></div>
+<div class="scanner-grid"><div><div id="reader"></div><button id="startScan" class="primary">เปิดกล้องสแกน QR</button><button id="stopScan" class="secondary hidden">ปิดกล้อง</button></div>
+<div class="manual"><h3>กรอกรหัสด้วยตนเอง</h3><label for="scanId">รหัสนักศึกษา</label><div class="inline"><input id="scanId" inputmode="numeric" placeholder="เช่น 6740102220"><button id="manualScan" class="primary">ตรวจสอบ</button></div><div id="scanResult" aria-live="polite" class="result empty">รอการสแกน QR Code</div></div></div>
+</section>
+<section id="view-students" class="view panel hidden">
+<div class="section-head"><div><h2>จัดการรายชื่อและเลขจับสลาก</h2><p>เลขจับสลากต้องไม่ซ้ำกันในชุดการจับสลากนี้</p></div></div>
+<form id="studentForm" class="form-grid"><label>รหัสนักศึกษา<input id="studentId" required inputmode="numeric" placeholder="เช่น 6740102220"></label><label>ชื่อ-นามสกุล<input id="studentName" required placeholder="ชื่อและนามสกุล"></label><label>เลขจับสลาก<input id="drawNumber" required placeholder="เช่น 001"></label><button class="primary" type="submit">บันทึกรายชื่อ</button></form>
+<details class="import"><summary>นำเข้ารายชื่อหลายคนด้วย CSV</summary><p>รูปแบบ: รหัสนักศึกษา, ชื่อ-นามสกุล, เลขจับสลาก (มีหรือไม่มีหัวตารางก็ได้)</p><textarea id="csvInput" rows="5" placeholder="รหัสนักศึกษา,ชื่อ-นามสกุล,เลขจับสลาก&#10;6740102220,สมชาย ใจดี,001"></textarea><button id="importBtn" class="secondary">นำเข้ารายชื่อ</button></details>
+<div class="toolbar"><input id="search" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="refresh" class="secondary">รีเฟรช</button></div><div id="studentTable" class="table-wrap"></div>
+</section>
+<section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบสถานะการใช้สิทธิ์</h2><p>ค้นหาเพื่อดูว่าใครถูกตัดสิทธิ์แล้ว พร้อมเวลาที่สแกนและเจ้าหน้าที่</p></div></div><div class="toolbar"><input id="verifySearch" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="verifyBtn" class="secondary">ค้นหา</button></div><div id="verifyTable" class="table-wrap"></div></section>
+</div>
+<footer>© English Education · LRU</footer>
+</main>
+<div id="qrModal" class="modal hidden"><div class="modal-card"><button id="closeQr" class="close">×</button><h2 id="qrTitle">QR Code นักศึกษา</h2><div id="qrCanvas"></div><p id="qrCaption"></p><button id="printQr" class="primary">พิมพ์ QR Code</button></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="./app.js?v=1"></script>
+</body></html>
