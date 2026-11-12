@@ -57,37 +57,44 @@ const zero = () => ({ M: { 1: 0, 2: 0, 3: 0, 4: 0 }, F: { 1: 0, 2: 0, 3: 0, 4: 0
 
 // ---------- api ----------
 async function pub(path) { return fetch(API + path); }
+// the session is gone (refresh token expired / revoked / signed out in another tab): the page must go back to the sign-in card
+const AUTH_GONE = ['login_required', 'missing_refresh_token', 'invalid_grant', 'consent_required', 'interaction_required'];
+const sessionGone = (e) => !!(e && (e.authGone || AUTH_GONE.includes(e.error)));
 async function api(path, opt = {}) {
   const go = async (fresh) => {
-    const t = await auth0Client.getTokenSilently(fresh ? { cacheMode: 'off' } : undefined);
+    let t;
+    try { t = await auth0Client.getTokenSilently(fresh ? { cacheMode: 'off' } : undefined); }
+    catch (e) { if (sessionGone(e)) throw Object.assign(new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง'), { authGone: true }); throw e; }
     return fetch(API + path, { ...opt, headers: { ...(opt.headers || {}), Authorization: 'Bearer ' + t } });
   };
   let r = await go(false);
-  if (r.status === 401) { try { r = await go(true); } catch (e) { /* fall through */ } }
+  if (r.status === 401) { try { r = await go(true); } catch (e) { if (e && e.authGone) throw e; /* otherwise fall through with the 401 */ } }
   return r;
 }
 const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
 
 // ---------- auth ----------
+let authError = '';
 async function initAuth() {
   try {
     if (!window.auth0) throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ');
     auth0Client = await withTimeout(auth0.createAuth0Client({ domain: AUTH_DOMAIN, clientId: CLIENT_ID, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: HR_URL } }), 12000, 'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
     if (location.search.includes('code=') || location.search.includes('error=')) {
-      const callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน');
-      history.replaceState({}, document.title, HR_URL);
+      let callbackResult;
+      try { callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน'); }
+      finally { history.replaceState({}, document.title, HR_URL); }   // never leave ?code= / ?error= in the address bar (a reload would replay it)
       // Cross-app handoff: localStorage is shared by /hr/ and /lotto/ on this origin.
       // Consume only fresh, same-origin relative destinations to avoid stale redirects or open redirects.
-      let back = '';
+      // Order: appState (travels with the Auth0 request, most reliable) > fresh /lotto/ handoff > this tab's sessionStorage.
+      let back = (callbackResult && callbackResult.appState && callbackResult.appState.returnTo) || '';
       try {
         const raw = localStorage.getItem('camps.auth.returnTo');
         localStorage.removeItem('camps.auth.returnTo');
         if (raw) {
           const handoff = JSON.parse(raw);
-          if (handoff && typeof handoff.path === 'string' && Date.now() - Number(handoff.createdAt) < 10 * 60 * 1000) back = handoff.path;
+          if (!back && handoff && typeof handoff.path === 'string' && Date.now() - Number(handoff.createdAt) < 10 * 60 * 1000) back = handoff.path;
         }
       } catch (e) { /* storage may be unavailable */ }
-      if (!back) back = callbackResult && callbackResult.appState && callbackResult.appState.returnTo;
       if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
       const safeBack = typeof back === 'string' && back.startsWith('/') && !back.startsWith('//') &&
         (back.startsWith('/hr/') || back === '/lotto/' || back === '/camps/lotto/');
@@ -95,7 +102,7 @@ async function initAuth() {
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
-  } catch (e) { console.error(e); authReady = false; renderAcct({ error: e.message }); return null; }
+  } catch (e) { console.error(e); authReady = false; authError = e.error_description || e.message; renderAcct({ error: authError }); return null; }
 }
 async function login() {
   if (PAGE === 'admin' || CHOOSE || SELECT) { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
@@ -103,7 +110,7 @@ async function login() {
   try {
     const ap = { connection: CONNECTION };
     try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ }
-    await auth0Client.loginWithRedirect({ authorizationParams: ap });
+    await auth0Client.loginWithRedirect({ authorizationParams: ap, appState: { returnTo: location.pathname } });
   } catch (e) { btns.forEach((b) => b.disabled = false); toast(e.message || 'เข้าสู่ระบบไม่สำเร็จ', true); }
 }
 async function logout() { await auth0Client.logout({ logoutParams: { returnTo: HR_URL } }); }
@@ -280,7 +287,7 @@ async function loadDepartments() {
   if (PAGE !== 'student') return;
   let r;
   if (!auth0Client || !me) return;
-  try { r = await api('/camps/departments'); } catch (e) { if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
+  try { r = await api('/camps/departments'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { if (!deps.length) $('depts').innerHTML = failBox(await errMsg(r), 'loadDepartments()'); return; }
   const d = await r.json(); deps = d.departments || []; state = d.registration || 'pending';
@@ -288,7 +295,7 @@ async function loadDepartments() {
 }
 async function loadMe() {
   let r;
-  try { r = await api('/camps/me'); } catch (e) { renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); renderGate({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
+  try { r = await api('/camps/me'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); renderGate({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
   me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderNav();
@@ -350,7 +357,7 @@ async function loadAdminPage() {
   const body = $('adminBody');
   if (TAB === 'students') return loadStudents();
   let r;
-  try { r = await api('/camps/admin/overview'); } catch (e) { body.innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadAdminPage()'); return; }
+  try { r = await api('/camps/admin/overview'); } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } body.innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadAdminPage()'); return; }
   if (!r.ok) { body.innerHTML = failBox(await errMsg(r), 'loadAdminPage()'); return; }
   adminData = await r.json();
   if (TAB === 'overview') renderOverview(); else if (TAB === 'quota') renderQuota(); else renderSettings();
@@ -674,6 +681,13 @@ async function exportRegPdf() {
   } catch (e) { toast('สร้างไฟล์ PDF ไม่ได้', true); }
 }
 
+// any other call that finds the session gone (e.g. saving a quota after a long idle) -> back to sign-in instead of a silent failure
+window.addEventListener('unhandledrejection', (ev) => {
+  if (!sessionGone(ev.reason)) return;
+  ev.preventDefault(); me = null; toast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง', true);
+  renderAcct(); renderGate();
+});
+
 // ---------- start ----------
 async function start() {
   renderNav();
@@ -681,6 +695,6 @@ async function start() {
   const authed = await initAuth();
   if (authed === 'redirect') return;
   if (authed) await loadMe();
-  else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: 'ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า' }); }
+  else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: authError || 'ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า' }); }
 }
 window.addEventListener('DOMContentLoaded', start);

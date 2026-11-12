@@ -39,3 +39,10 @@ The student pages (`/hr/`, `/hr/choose`, `/hr/select`) show only a Google sign-i
 
 ### Checks (CI)
 `.github/workflows/ci.yml` runs on every pull request touching `worker/` or `camps/`: `npm run check` (every script parses, every local `src`/`href` in `camps/**/*.html` exists, migration names), `npm test` (API tests against in-memory D1 with all migrations applied) and `wrangler deploy --dry-run`. The deploy workflow runs the same checks before it applies migrations.
+
+### How sign-in works (all three apps)
+- One Auth0 application and one Google connection; tokens live in `localStorage`, so signing in on `/budget/`, `/hr/` or `/lotto/` signs you in on all of them.
+- Auth0 always returns to the approved callback `https://enged.sorasukt.com/hr/`. Each page sends where it was started in the Auth0 `appState.returnTo`; after the callback `/hr/` sends you back there (only `/hr/…`, `/lotto/` and `/camps/lotto/` are accepted). `/budget/` has its own callback `/budget/`. Fallbacks: a fresh (<10 min) `camps.auth.returnTo` handoff written by `/lotto/`, then the tab's `hrReturn`.
+- Allowed Callback URLs: `…/budget/`, `…/hr/`. Allowed Logout URLs: the same two. Sign-out and "ใช้บัญชี Google อื่น" return to `/hr/`; the next sign-in then opens Google's account chooser.
+- `?code=` / `?error=` is removed from the address bar even when Auth0 reports an error, and the reason is shown on the sign-in card.
+- When the session is gone (refresh token expired or revoked) student pages fall back to the sign-in card instead of a "server unreachable" message.
