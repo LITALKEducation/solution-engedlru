@@ -7,7 +7,7 @@ This directory is the complete frontend for the Budget application.
 Create a Cloudflare Pages project connected to this repository.
 
 - Production branch: `main`
-- Root directory: `budget`
+- Root directory: `camps`
 - Build command: `exit 0`
 - Build output directory: `.`
 - Custom domain: `enged.sorasukt.com`
