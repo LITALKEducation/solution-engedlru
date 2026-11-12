@@ -8,6 +8,12 @@ on:
       - "worker/**"
       - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
+    inputs:
+      confirm_production_deploy:
+        description: "ยืนยันการ Apply D1 migrations และ Deploy Worker ไปยัง Production"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -18,6 +24,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_dispatch' || inputs.confirm_production_deploy
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
