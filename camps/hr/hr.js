@@ -16,9 +16,9 @@ const ICON = {
 const TONE = { direction: 't1', structure: 't2', community: 't3', teaching: 't4', welfare: 't5' };
 const svg = (p) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
 const STATE_TEXT = {
-  pending: ['เร็วๆ นี้', 'ค่ายของเรามีทั้งหมด 5 ฝ่าย ดูหน้าที่ของแต่ละฝ่ายไว้ก่อน แล้วรอเลือกฝ่ายที่ใช่ในระบบที่กำลังจะเปิด'],
-  open: ['เปิดรับสมัคร', 'เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัยแล้วเลือกฝ่ายที่คุณสนใจ ดูจำนวนที่ว่างของชั้นปีคุณได้ทันที'],
-  closed: ['ปิดรับสมัครแล้ว', 'ปิดรับการเลือกฝ่ายแล้ว ยังดูรายละเอียดของแต่ละฝ่ายได้ตามปกติ']
+  pending: ['เร็วๆ นี้', 'ค่ายของเรามีทั้งหมด 5 ฝ่าย ดูหน้าที่และจำนวนที่รับของแต่ละฝ่ายไว้ก่อน แล้วรอลงทะเบียนในระบบที่กำลังจะเปิด'],
+  open: ['เปิดลงทะเบียน', 'แตะเลือกฝ่ายที่สนใจ ดูจำนวนที่ลงทะเบียนแล้วและที่ว่างของแต่ละชั้นปี แล้วกดปุ่มลงทะเบียน'],
+  closed: ['ปิดลงทะเบียนแล้ว', 'ปิดการลงทะเบียนแล้ว ยังดูรายละเอียดและจำนวนผู้ลงทะเบียนของแต่ละฝ่ายได้ตามปกติ']
 };
 
 let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null, tab = 'overview';
@@ -27,10 +27,13 @@ const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setT
 // ---------- ui helpers ----------
 let toastT;
 function toast(msg, err) { const t = $('toast'); t.textContent = msg; t.className = (err ? 'err ' : '') + 'show'; clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3400); }
-function confirmDlg(title, text, okLabel) {
+function infoDlg(title, text, okLabel) { // resolves true when the primary button is pressed
+  return confirmDlg(title, text, okLabel, 'ปิด');
+}
+function confirmDlg(title, text, okLabel, cancelLabel) {
   return new Promise((resolve) => {
     const d = document.createElement('div'); d.className = 'dlg';
-    d.innerHTML = '<div class="box" role="dialog" aria-modal="true"><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p><div class="btns"><button class="btn" data-r="0">ยกเลิก</button><button class="btn primary" data-r="1">' + esc(okLabel || 'ยืนยัน') + '</button></div></div>';
+    d.innerHTML = '<div class="box" role="dialog" aria-modal="true"><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p><div class="btns"><button class="btn" data-r="0">' + esc(cancelLabel || 'ยกเลิก') + '</button><button class="btn primary" data-r="1">' + esc(okLabel || 'ยืนยัน') + '</button></div></div>';
     d.addEventListener('click', (e) => { const r = e.target.closest('[data-r]'); if (r || e.target === d) { d.remove(); resolve(!!r && r.dataset.r === '1'); } });
     document.body.appendChild(d); d.querySelector('[data-r="1"]').focus();
   });
@@ -86,7 +89,7 @@ function renderAcct(x) {
   const box = $('acct');
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
   if (!me) {
-    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อเลือกฝ่าย</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
     return;
   }
   const adminPill = me.isAdmin ? ' <span class="pill admin">ผู้ดูแล</span>' : '';
@@ -98,7 +101,7 @@ function renderAcct(x) {
   }
   const st = me.student, selDep = me.selection && deps.find((d) => d.code === me.selection.department_code);
   box.innerHTML = '<div class="row"><div class="avatar">' + esc((st.name || '?').trim()[0].toUpperCase()) + '</div><div><h2>' + esc(st.name) + adminPill + '</h2><div class="meta">รหัสนักศึกษา ' + esc(st.student_id) + ' · ชั้นปี ' + st.year + '</div></div></div>'
-    + '<div class="sel">' + (selDep ? 'ฝ่ายที่เลือก: <b>' + esc(selDep.name) + '</b>' : 'ยังไม่ได้เลือกฝ่าย') + '</div>'
+    + '<div class="sel">' + (selDep ? 'ฝ่ายที่ลงทะเบียน: <b>' + esc(selDep.name) + '</b>' : 'ยังไม่ได้ลงทะเบียนฝ่าย') + '</div>'
     + '<div><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
 }
 
@@ -107,24 +110,58 @@ function renderState() {
   const [chip, text] = STATE_TEXT[state] || STATE_TEXT.pending;
   const c = $('stateChip'); c.textContent = chip; c.className = 'state-chip ' + state; $('heroText').textContent = text;
 }
-function deptCard(d) {
-  const st = me && me.student, mine = st ? st.year : 0, selected = me && me.selection && me.selection.department_code === d.code;
-  const yrs = YEARS.map((y) => {
-    const rem = d.remaining[y], q = d.quota[y];
-    return '<div class="yr' + (y === mine ? ' mine' : '') + (q > 0 && rem === 0 ? ' full' : '') + '">ปี ' + y + (y === mine ? ' (คุณ)' : '') + '<b>' + (q ? rem : '–') + '</b>' + (q ? 'เหลือ / ' + q : 'ยังไม่เปิดรับ') + '</div>';
-  }).join('');
-  let act = '';
-  if (st) {
-    const rem = d.remaining[mine], q = d.quota[mine];
-    if (selected) act = '<span class="chosen">✓ คุณเลือกฝ่ายนี้</span>' + (state === 'open' ? '<button class="btn ghost" onclick="unselect()">ยกเลิกการเลือก</button>' : '');
-    else if (state !== 'open') act = '<button class="btn" disabled>' + (state === 'pending' ? 'ยังไม่เปิดรับ' : 'ปิดรับแล้ว') + '</button>';
-    else if (!q) act = '<button class="btn" disabled>ไม่เปิดรับชั้นปี ' + mine + '</button>';
-    else if (!rem) act = '<button class="btn" disabled>เต็มแล้ว</button>';
-    else act = '<button class="btn primary" onclick="choose(\'' + d.code + '\')">' + (me.selection ? 'เปลี่ยนมาฝ่ายนี้' : 'เลือกฝ่ายนี้') + '</button>';
-  }
-  return '<div class="dept ' + (TONE[d.code] || '') + (selected ? ' mine' : '') + '"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p></div></div><div class="yrs">' + yrs + '</div>' + (act ? '<div class="act">' + act + '</div>' : '') + '</div>';
+// open/closed status of one department+year slot
+function slot(q, f) {
+  if (state === 'pending') return { t: 'เร็วๆ นี้', c: 'wait', note: 'ยังไม่เปิด' };
+  if (state === 'closed') return { t: 'ปิด', c: 'off', note: 'ปิดลงทะเบียน' };
+  if (!q) return { t: 'ปิด', c: 'off', note: 'ไม่รับ' };
+  if (f >= q) return { t: 'ปิด', c: 'off', note: 'เต็มแล้ว' };
+  return { t: 'เปิด', c: 'on', note: 'เหลือ ' + (q - f) + ' ที่' };
 }
-function renderDepts() { $('depts').innerHTML = deps.map(deptCard).join(''); }
+let picked = null; try { picked = sessionStorage.getItem('hrPicked'); } catch (e) { /* ignore */ }
+function setPicked(code) { picked = code; try { code ? sessionStorage.setItem('hrPicked', code) : sessionStorage.removeItem('hrPicked'); } catch (e) { /* ignore */ } }
+const myYear = () => (me && me.student ? me.student.year : 0);
+const myDept = () => (me && me.selection ? me.selection.department_code : null);
+
+function deptCard(d) {
+  const mine = myYear(), reg = myDept() === d.code, pk = picked === d.code;
+  const yrs = YEARS.map((y) => {
+    const q = d.quota[y], f = d.filled[y], st = slot(q, f);
+    return '<div class="yr ' + st.c + (y === mine ? ' mine' : '') + '"><span class="yl">ปี ' + y + (y === mine ? ' (คุณ)' : '') + '</span><b>' + (q ? f + '/' + q : '–') + '</b><span class="yn">' + (q ? 'ลงทะเบียนแล้ว' : 'ไม่รับ') + '</span><span class="st ' + st.c + '">' + st.t + '</span><span class="yn">' + (q ? st.note : '') + '</span></div>';
+  }).join('');
+  const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
+  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-pressed="' + pk + '" onclick="pick(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();pick(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p></div>' + tag + '</div><div class="yrs">' + yrs + '</div></div>';
+}
+function renderSummary() {
+  if (!deps.length) return;
+  const mine = myYear();
+  $('sumBox').innerHTML = '<h2>ภาพรวมการลงทะเบียน</h2><div class="sumgrid">' + YEARS.map((y) => {
+    const q = deps.reduce((a, d) => a + d.quota[y], 0), f = deps.reduce((a, d) => a + d.filled[y], 0);
+    const st = slot(q, f), pct = q ? Math.min(100, Math.round(f / q * 100)) : 0;
+    return '<div class="sy' + (y === mine ? ' mine' : '') + '"><div class="sh"><b>ปี ' + y + (y === mine ? ' (คุณ)' : '') + '</b><span class="st ' + st.c + '">' + st.t + '</span></div><div class="big">' + f + '<small> / ' + q + '</small></div><div class="prog"><i style="width:' + pct + '%"></i></div><div class="yn">' + (q ? 'ลงทะเบียนแล้ว ' + f + ' คน · ' + (q > f ? 'เหลือ ' + (q - f) : 'เต็ม') : 'ยังไม่เปิดรับ') + '</div></div>';
+  }).join('') + '</div>';
+}
+function renderDepts() { $('depts').innerHTML = deps.map(deptCard).join(''); renderSummary(); renderBar(); }
+function pick(code) { setPicked(picked === code ? null : code); renderDepts(); }
+
+// bottom bar: choose a department first, then press ลงทะเบียน (sign-in happens at that point)
+function renderBar() {
+  const bar = $('bar'), reg = myDept(), regDep = reg && deps.find((d) => d.code === reg), pk = picked && deps.find((d) => d.code === picked);
+  document.body.classList.toggle('has-bar', !!(regDep || pk));
+  if (!regDep && !pk) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  const parts = [];
+  if (regDep && (!pk || pk.code === regDep.code)) {
+    parts.push('<div class="bi"><span class="chosen">✓ ลงทะเบียนแล้ว</span><b>' + esc(regDep.name) + '</b></div>');
+    parts.push(state === 'open' ? '<button class="btn ghost" onclick="unselect()">ยกเลิก</button>' : '');
+  } else {
+    const y = myYear(), st = y ? slot(pk.quota[y], pk.filled[y]) : null;
+    const blocked = st && st.c !== 'on' ? st.note : '';
+    parts.push('<div class="bi"><span class="muted">' + (regDep ? 'เปลี่ยนจาก ' + esc(regDep.name) + ' เป็น' : 'ฝ่ายที่เลือก') + '</span><b>' + esc(pk.name) + '</b>' + (y ? '<span class="muted">ชั้นปี ' + y + ': ' + esc(st.note) + '</span>' : '') + '</div>');
+    parts.push('<button class="btn primary" ' + (blocked || state !== 'open' ? 'disabled' : '') + ' onclick="register()">' + (state === 'pending' ? 'ยังไม่เปิดลงทะเบียน' : state === 'closed' ? 'ปิดลงทะเบียนแล้ว' : blocked ? 'ลงทะเบียนไม่ได้ (' + esc(blocked) + ')' : 'ลงทะเบียน') + '</button>');
+  }
+  bar.innerHTML = '<div class="barin">' + parts.join('') + '</div>';
+}
 async function loadDepartments(quiet) {
   let r;
   try { r = await pub('/camps/departments'); } catch (e) { if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
@@ -138,19 +175,34 @@ async function loadMe() {
   if (r.status === 401) { me = null; renderAcct(); return; }
   if (!r.ok) { renderAcct({ error: await errMsg(r) }); return; }
   me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderDepts(); renderAdmin();
+  resumeAfterLogin();
 }
-async function choose(code) {
-  const d = deps.find((x) => x.code === code), cur = me.selection && deps.find((x) => x.code === me.selection.department_code);
-  const ok = await confirmDlg(cur ? 'เปลี่ยนฝ่าย?' : 'ยืนยันเลือกฝ่าย?', cur ? 'เปลี่ยนจาก ' + cur.name + ' เป็น ' + d.name + ' (ที่นั่งเดิมจะถูกคืน)' : 'คุณจะเลือก ' + d.name + ' (ชั้นปี ' + me.student.year + ') เปลี่ยนฝ่ายได้ตลอดช่วงที่เปิดรับ', cur ? 'เปลี่ยนฝ่าย' : 'ยืนยัน');
+async function register() {
+  const d = deps.find((x) => x.code === picked); if (!d) return;
+  if (!authReady) return toast('ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า', true);
+  if (!me) { try { sessionStorage.setItem('hrResume', '1'); } catch (e) { /* ignore */ } return login(); }
+  if (me.reason) {
+    const sw = !me.isAdmin;
+    const go = await infoDlg('ลงทะเบียนไม่ได้', REASONS[me.reason](me).replace(/&amp;/g, '&').replace(/<[^>]+>/g, ''), sw ? 'ใช้บัญชี Google อื่น' : 'ตกลง');
+    if (go && sw) switchAccount(); return;
+  }
+  if (state !== 'open') return toast(state === 'pending' ? 'ยังไม่เปิดลงทะเบียน' : 'ปิดลงทะเบียนแล้ว', true);
+  const cur = me.selection && deps.find((x) => x.code === me.selection.department_code);
+  const ok = await confirmDlg(cur ? 'เปลี่ยนฝ่าย?' : 'ยืนยันลงทะเบียน?', cur ? 'เปลี่ยนจาก ' + cur.name + ' เป็น ' + d.name + ' (ที่นั่งเดิมจะถูกคืน)' : 'ลงทะเบียน ' + d.name + ' (ชั้นปี ' + me.student.year + ') เปลี่ยนฝ่ายได้ตลอดช่วงที่เปิดลงทะเบียน', cur ? 'เปลี่ยนฝ่าย' : 'ลงทะเบียน');
   if (!ok) return;
-  const r = await post('/camps/select', { departmentCode: code });
-  if (!r.ok) toast(await errMsg(r), true); else toast('เลือก' + d.name + 'เรียบร้อยแล้ว');
+  const r = await post('/camps/select', { departmentCode: d.code });
+  if (!r.ok) toast(await errMsg(r), true); else { toast('ลงทะเบียน' + d.name + 'เรียบร้อยแล้ว'); setPicked(null); }
   await Promise.all([loadDepartments(), loadMe()]);
 }
+// after the Google redirect: pick up where the student left off
+function resumeAfterLogin() {
+  let flag = null; try { flag = sessionStorage.getItem('hrResume'); sessionStorage.removeItem('hrResume'); } catch (e) { /* ignore */ }
+  if (flag && picked && me) setTimeout(register, 400);
+}
 async function unselect() {
-  if (!(await confirmDlg('ยกเลิกการเลือกฝ่าย?', 'ที่นั่งของคุณจะถูกคืนให้คนอื่น', 'ยกเลิกการเลือก'))) return;
+  if (!(await confirmDlg('ยกเลิกการลงทะเบียน?', 'ที่นั่งของคุณจะถูกคืนให้คนอื่น', 'ยกเลิกการลงทะเบียน'))) return;
   const r = await post('/camps/unselect');
-  if (!r.ok) toast(await errMsg(r), true); else toast('ยกเลิกการเลือกแล้ว');
+  if (!r.ok) toast(await errMsg(r), true); else toast('ยกเลิกการลงทะเบียนแล้ว');
   await Promise.all([loadDepartments(), loadMe()]);
 }
 
@@ -176,12 +228,27 @@ async function loadAdminTab() {
 function renderOverview() {
   const a = adminData, rosterTotal = YEARS.reduce((s, y) => s + (a.students[y] || 0), 0);
   const rows = a.departments.map((d) => '<tr><td><b>' + esc(d.name) + '</b></td>' + YEARS.map((y) => { const q = d.quota[y], f = d.filled[y]; return '<td class="' + (q > 0 && f >= q ? 'full' : '') + '">' + f + '/' + q + '</td>'; }).join('') + '<td>' + YEARS.reduce((s, y) => s + d.filled[y], 0) + '/' + YEARS.reduce((s, y) => s + d.quota[y], 0) + '</td></tr>').join('');
-  $('adminBody').innerHTML = '<div class="panel"><h3>จำนวนที่เลือกแล้ว / โควตา</h3><div class="tbl-wrap"><table><thead><tr><th>ฝ่าย</th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
-    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><p class="muted">' + YEARS.map((y) => 'ปี ' + y + ': <b>' + (a.students[y] || 0) + '</b>').join(' · ') + ' · รวม <b>' + rosterTotal + '</b> คน · เลือกฝ่ายแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่เลือก ' + Math.max(0, rosterTotal - a.selectedTotal) + ')</p><div style="margin-top:12px"><button class="btn sm" onclick="exportCsv()">ดาวน์โหลด CSV (รายชื่อ + ฝ่าย)</button></div></div>';
+  $('adminBody').innerHTML = '<div class="panel"><h3>ลงทะเบียนแล้ว / โควตา</h3><div class="tbl-wrap"><table><thead><tr><th>ฝ่าย</th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
+    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><p class="muted">' + YEARS.map((y) => 'ปี ' + y + ': <b>' + (a.students[y] || 0) + '</b>').join(' · ') + ' · รวม <b>' + rosterTotal + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, rosterTotal - a.selectedTotal) + ')</p><div style="margin-top:12px"><button class="btn sm" onclick="exportCsv()">ดาวน์โหลด CSV (รายชื่อ + ฝ่าย)</button></div></div><div class="panel" id="regList"><h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="skeleton"></div></div>';
+  loadRegList();
 }
+// names of everyone registered, grouped by department and year (admins only)
+async function loadRegList() {
+  const box = $('regList'); if (!box) return;
+  let r; try { r = await api('/camps/admin/students'); } catch (e) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadRegList()'); return; }
+  if (!r.ok) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox(await errMsg(r), 'loadRegList()'); return; }
+  const list = (await r.json()).students || [];
+  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + adminData.departments.map((d) => {
+    const mem = list.filter((x) => x.department_code === d.code);
+    return '<details class="reg"><summary><b>' + esc(d.name) + '</b> <span class="muted">' + mem.length + ' คน</span></summary>' + (mem.length ? YEARS.map((y) => {
+      const ys = mem.filter((x) => x.year === y); return ys.length ? '<div class="regy"><span class="pill">ปี ' + y + ' · ' + ys.length + '/' + d.quota[y] + '</span> ' + ys.map((x) => esc(x.name)).join(', ') + '</div>' : '';
+    }).join('') : '<div class="muted" style="padding:6px 0">ยังไม่มีผู้ลงทะเบียน</div>') + '</details>';
+  }).join('');
+}
+
 function renderQuota() {
-  $('adminBody').innerHTML = '<p class="muted" style="margin:0 4px 10px">กำหนดจำนวนที่รับของแต่ละฝ่ายแยกตามชั้นปี (0 = ไม่เปิดรับชั้นปีนั้น) ตั้งต่ำกว่าจำนวนที่มีคนเลือกแล้วไม่ได้</p>' + adminData.departments.map((d) =>
-    '<div class="panel"><h3>' + esc(d.name) + '</h3><div class="qgrid">' + YEARS.map((y) => '<label>ปี ' + y + '<input type="number" inputmode="numeric" min="0" max="9999" id="q-' + d.code + '-' + y + '" value="' + d.quota[y] + '"><span>เลือกแล้ว ' + d.filled[y] + '</span></label>').join('') + '</div><button class="btn primary sm" onclick="saveQuota(\'' + d.code + '\')">บันทึกโควตา</button></div>').join('');
+  $('adminBody').innerHTML = '<p class="muted" style="margin:0 4px 10px">กำหนดจำนวนที่รับของแต่ละฝ่ายแยกตามชั้นปี (0 = ไม่เปิดรับชั้นปีนั้น) ตั้งต่ำกว่าจำนวนที่มีคนลงทะเบียนแล้วไม่ได้</p>' + adminData.departments.map((d) =>
+    '<div class="panel"><h3>' + esc(d.name) + '</h3><div class="qgrid">' + YEARS.map((y) => '<label>ปี ' + y + '<input type="number" inputmode="numeric" min="0" max="9999" id="q-' + d.code + '-' + y + '" value="' + d.quota[y] + '"><span>ลงทะเบียนแล้ว ' + d.filled[y] + '</span></label>').join('') + '</div><button class="btn primary sm" onclick="saveQuota(\'' + d.code + '\')">บันทึกโควตา</button></div>').join('');
 }
 async function saveQuota(code) {
   const quotas = {}; for (const y of YEARS) quotas[y] = Number($('q-' + code + '-' + y).value);
@@ -196,13 +263,13 @@ async function saveQuota(code) {
 }
 function renderSettings() {
   const s = adminData.registration;
-  const opts = [['pending', 'เร็วๆ นี้'], ['open', 'เปิดรับ'], ['closed', 'ปิดรับ']];
-  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการเลือกฝ่าย</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดรับ = นักศึกษาเลือก/เปลี่ยนฝ่ายได้ · ปิดรับ = ล็อกการเลือกทั้งหมด (ผู้ดูแลยังล้างการเลือกรายคนได้)</p></div>';
+  const opts = [['pending', 'เร็วๆ นี้'], ['open', 'เปิดลงทะเบียน'], ['closed', 'ปิดลงทะเบียน']];
+  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p></div>';
 }
 async function setState(k) {
   if (k === adminData.registration) return;
-  if (k === 'open' && !(await confirmDlg('เปิดรับการเลือกฝ่าย?', 'นักศึกษาในรายชื่อจะเริ่มเลือกฝ่ายได้ทันที ตรวจสอบรายชื่อและโควตาให้เรียบร้อยก่อน', 'เปิดรับ'))) return;
-  if (k === 'closed' && !(await confirmDlg('ปิดรับการเลือกฝ่าย?', 'นักศึกษาจะเลือกหรือเปลี่ยนฝ่ายไม่ได้อีก', 'ปิดรับ'))) return;
+  if (k === 'open' && !(await confirmDlg('เปิดลงทะเบียน?', 'นักศึกษาในรายชื่อจะเริ่มเลือกฝ่ายได้ทันที ตรวจสอบรายชื่อและโควตาให้เรียบร้อยก่อน', 'เปิดลงทะเบียน'))) return;
+  if (k === 'closed' && !(await confirmDlg('ปิดลงทะเบียน?', 'นักศึกษาจะลงทะเบียนหรือเปลี่ยนฝ่ายไม่ได้อีก', 'ปิดลงทะเบียน'))) return;
   const r = await post('/camps/admin/state', { registration: k });
   if (!r.ok) return toast(await errMsg(r), true);
   toast('อัปเดตสถานะแล้ว'); await Promise.all([loadAdminTab(), loadDepartments()]);
@@ -237,7 +304,7 @@ async function loadStudentList() {
   try { r = await api('/camps/admin/students?' + q); } catch (e) { list.innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadStudentList()'); return; }
   if (!r.ok) { list.innerHTML = failBox(await errMsg(r), 'loadStudentList()'); return; }
   students = (await r.json()).students || [];
-  list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b><small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่เลือกฝ่าย') + '</small></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
+  list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b><small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
 }
 async function saveStudent(e) {
   e.preventDefault();
@@ -252,7 +319,7 @@ async function delStudent(i) {
   if (!r.ok) return toast(await errMsg(r), true); toast('ลบแล้ว'); loadStudentList();
 }
 async function clearSel(i) {
-  const s = students[i]; if (!(await confirmDlg('ล้างการเลือกฝ่าย?', s.name + ' จะกลับไปเป็นยังไม่เลือกฝ่าย และที่นั่งจะถูกคืน', 'ล้างการเลือก'))) return;
+  const s = students[i]; if (!(await confirmDlg('ล้างการลงทะเบียน?', s.name + ' จะกลับไปเป็นยังไม่ลงทะเบียน และที่นั่งจะถูกคืน', 'ล้างการลงทะเบียน'))) return;
   const r = await post('/camps/admin/selections/clear', { studentId: s.student_id });
   if (!r.ok) return toast(await errMsg(r), true); toast('ล้างการเลือกแล้ว'); loadStudentList();
 }

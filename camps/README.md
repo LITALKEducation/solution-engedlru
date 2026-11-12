@@ -13,7 +13,7 @@ Only `/budget/` is a web app. `sw.js` at the root is a one-off migration worker 
 
 ## ฝ่ายบุคคล (department selection)
 
-- **Students** sign in with Google using the university email `sb6740102220@lru.ac.th`; the student ID (`6740102220`) is read from the email (domain must be exactly `lru.ac.th` and the email verified by Google). They must be on the roster, then pick **one** department. Each department/year has a quota and the page shows how many slots remain; students may switch or cancel while registration is open.
+- **Students** sign in with Google using the university email `sb6740102220@lru.ac.th`; the student ID (`6740102220`) is read from the email (domain must be exactly `lru.ac.th` and the email verified by Google). They first pick a department, then press **ลงทะเบียน** (Google sign-in happens at that step and the choice is remembered across the redirect). They must be on the roster and can hold **one** department. Each department/year has a quota and the page shows how many slots remain; students may switch or cancel while registration is open.
 - **Admins** (Auth0 role `camp_admin` or `budget_admin`) manage everything on the same page: roster (student ID → name + year 1–4, single add or paste/CSV import), quotas per department per year, registration state (เร็วๆ นี้ / เปิดรับ / ปิดรับ), per-student clear, CSV export.
 - Slots are claimed with one atomic SQL statement, so two students can't take the last slot.
 - API: `/camps/*` on the Worker; tables from `worker/migrations/0006_camps_hr.sql` (applied automatically by the deploy workflow).

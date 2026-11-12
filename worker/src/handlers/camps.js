@@ -121,7 +121,7 @@ async function select(request, env) {
   const r = await eligibleStudent(request, env); if (r.response) return r.response;
   const { w, student } = r;
   const state = await registrationState(env);
-  if (state !== "open") return fail(request, env, state === "pending" ? "ยังไม่เปิดให้เลือกฝ่าย" : "ปิดรับการเลือกฝ่ายแล้ว", 403, { registration: state });
+  if (state !== "open") return fail(request, env, state === "pending" ? "ยังไม่เปิดให้ลงทะเบียน" : "ปิดลงทะเบียนแล้ว", 403, { registration: state });
   const b = await request.json().catch(() => null);
   const code = clean(b?.departmentCode, 40);
   const dep = await env.DB.prepare("SELECT code,name FROM camp_departments WHERE code=?").bind(code).first();
@@ -144,7 +144,7 @@ async function select(request, env) {
 async function unselect(request, env) {
   const r = await eligibleStudent(request, env); if (r.response) return r.response;
   const state = await registrationState(env);
-  if (state !== "open") return fail(request, env, "ตอนนี้ยกเลิกการเลือกไม่ได้ (ไม่ได้เปิดรับอยู่)", 403, { registration: state });
+  if (state !== "open") return fail(request, env, "ตอนนี้ยกเลิกการลงทะเบียนไม่ได้ (ไม่ได้เปิดลงทะเบียนอยู่)", 403, { registration: state });
   await env.DB.prepare("DELETE FROM camp_selections WHERE student_id=?").bind(r.student.student_id).run();
   await audit(env, r.w, "CAMP_UNSELECT", r.student.student_id);
   return json(request, env, { ok: true });
