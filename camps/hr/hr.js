@@ -8,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const YEARS = [1, 2, 3, 4];
 const GENDERS = ['M', 'F'];
-const GL = { M: 'ชาย', F: 'หญิง' };
+const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k] || 'ไม่ระบุเพศ' });   // legacy rows may have no gender yet
 const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
 const TAB = document.body.dataset.tab || 'overview';     // which admin page this is
 const ICON = {
@@ -42,6 +42,12 @@ function confirmDlg(title, text, okLabel, cancelLabel) {
   });
 }
 const infoDlg = (title, text, okLabel) => confirmDlg(title, text, okLabel, 'ปิด');
+function openDlg(html) {
+  const d = document.createElement('div'); d.className = 'dlg';
+  d.innerHTML = '<div class="box wide" role="dialog" aria-modal="true">' + html + '</div>';
+  d.addEventListener('mousedown', (e) => { if (e.target === d) d.remove(); });
+  document.body.appendChild(d); return d;
+}
 const failBox = (msg, retry) => '<div class="failbox"><b>โหลดข้อมูลไม่สำเร็จ</b><p>' + esc(msg) + '</p><button class="btn primary sm" onclick="' + retry + '">ลองใหม่</button></div>';
 async function errMsg(r) { try { const d = await r.json(); return d.error || ('เกิดข้อผิดพลาด (' + r.status + ')'); } catch (e) { return 'เกิดข้อผิดพลาด (' + r.status + ')'; } }
 const gBtn = (label, fn) => '<button class="gbtn" onclick="' + fn + '">' + $('gicon').innerHTML + '<span>' + label + '</span></button>';
@@ -105,6 +111,7 @@ function renderState() {
 const REASONS = {
   not_university_email: (m) => 'บัญชี Google นี้ (' + esc(m.email) + ') ไม่ใช่อีเมลมหาวิทยาลัย กรุณาเข้าสู่ระบบด้วยอีเมล @lru.ac.th',
   email_not_verified: (m) => 'อีเมล ' + esc(m.email) + ' ยังไม่ได้รับการยืนยันจาก Google',
+  no_gender: () => 'ผู้ดูแลยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อผู้ดูแลเพื่อให้ระบุ',
   not_in_roster: (m) => 'ไม่พบรหัสนักศึกษา ' + esc(m.studentId || '') + ' ในรายชื่อของค่าย กรุณาติดต่อผู้ดูแลเพื่อให้เพิ่มรหัส ชั้นปี และเพศของคุณ'
 };
 function renderAcct(x) {
@@ -255,18 +262,73 @@ function renderOverview() {
     + '<div class="panel" id="regList"><h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="skeleton"></div></div>';
   loadRegList();
 }
-// names of everyone registered, grouped by department, year and gender (admins only)
+// names of everyone registered, grouped by department, year and gender (admins only); admins can add / remove names by hand
+const openReg = new Set(); let allStudents = [];
 async function loadRegList() {
   const box = $('regList'); if (!box) return;
   let r; try { r = await api('/camps/admin/students'); } catch (e) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadRegList()'); return; }
   if (!r.ok) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox(await errMsg(r), 'loadRegList()'); return; }
-  const list = (await r.json()).students || [];
-  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + adminData.departments.map((d) => {
-    const mem = list.filter((x) => x.department_code === d.code);
-    return '<details class="reg"><summary><b>' + esc(d.name) + '</b> <span class="muted">' + mem.length + ' คน</span></summary>' + (mem.length ? YEARS.map((y) => GENDERS.map((g) => {
-      const m = mem.filter((x) => x.year === y && x.gender === g); return m.length ? '<div class="regy"><span class="pill">ปี ' + y + ' ' + GL[g] + ' · ' + m.length + '/' + d.quota[g][y] + '</span> ' + m.map((x) => esc(x.name)).join(', ') + '</div>' : '';
-    }).join('')).join('') : '<div class="muted" style="padding:6px 0">ยังไม่มีผู้ลงทะเบียน</div>') + '</details>';
+  allStudents = (await r.json()).students || [];
+  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><p class="muted" style="margin:-4px 0 8px">ผู้ดูแลเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
+    const mem = allStudents.filter((x) => x.department_code === d.code);
+    return '<details class="reg" data-code="' + d.code + '"' + (openReg.has(d.code) ? ' open' : '') + ' ontoggle="regToggle(this)"><summary><b>' + esc(d.name) + '</b> <span class="muted">' + mem.length + ' คน</span></summary>' + (mem.length ? YEARS.map((y) => GENDERS.map((g) => {
+      const m = mem.filter((x) => x.year === y && x.gender === g); return m.length ? '<div class="regy"><span class="pill">ปี ' + y + ' ' + GL[g] + ' · ' + m.length + '/' + d.quota[g][y] + '</span> ' + m.map((x) => '<span class="nm">' + esc(x.name) + '<button type="button" aria-label="นำ ' + esc(x.name) + ' ออก" title="นำออกจากฝ่าย" onclick="removeFrom(\'' + x.student_id + '\')">×</button></span>').join('') + '</div>' : '';
+    }).join('')).join('') : '<div class="muted" style="padding:6px 0">ยังไม่มีผู้ลงทะเบียน</div>') + '<div style="margin-top:8px"><button class="btn sm primary" onclick="pickerDialog(\'' + d.code + '\')">＋ เพิ่มรายชื่อเข้า' + esc(d.name.replace(/^ฝ่าย/, '')) + '</button></div></details>';
   }).join('');
+}
+function regToggle(el) { el.open ? openReg.add(el.dataset.code) : openReg.delete(el.dataset.code); }
+async function removeFrom(id) {
+  const s = allStudents.find((x) => x.student_id === id); if (!s) return;
+  if (!(await confirmDlg('นำออกจากฝ่าย?', s.name + ' จะกลับไปเป็นยังไม่ลงทะเบียน และที่นั่งจะถูกคืน', 'นำออก'))) return;
+  const r = await post('/camps/admin/selections/clear', { studentId: id });
+  if (!r.ok) return toast(await errMsg(r), true); toast('นำออกแล้ว'); loadAdminPage();
+}
+// put students into a department; asks before going over the quota
+async function doAssign(code, ids, force) {
+  const r = await post('/camps/admin/selections/assign', { departmentCode: code, studentIds: ids, force: !!force });
+  if (!r.ok) { toast(await errMsg(r), true); return false; }
+  const d = await r.json(); let assigned = d.assigned;
+  if (d.noGender && d.noGender.length) toast('ข้าม ' + d.noGender.length + ' คนที่ยังไม่ระบุเพศ (' + d.noGender.slice(0, 3).map((x) => x.name).join(', ') + ')', true);
+  if (d.full.length && !force) {
+    const names = d.full.slice(0, 4).map((x) => x.name).join(', ') + (d.full.length > 4 ? ' และอีก ' + (d.full.length - 4) + ' คน' : '');
+    if (await confirmDlg('ฝ่ายเต็มโควตา', 'ที่นั่งของเพศและชั้นปีนี้เต็มแล้ว เพิ่มไม่ได้ ' + d.full.length + ' คน (' + names + ') ต้องการเพิ่มเกินโควตาหรือไม่?', 'เพิ่มเกินโควตา')) {
+      const r2 = await post('/camps/admin/selections/assign', { departmentCode: code, studentIds: d.full.map((x) => x.studentId), force: true });
+      if (r2.ok) assigned += (await r2.json()).assigned; else toast(await errMsg(r2), true);
+    }
+  }
+  const dep = deps.find((x) => x.code === code) || (adminData && adminData.departments.find((x) => x.code === code));
+  toast(assigned ? 'เพิ่ม ' + assigned + ' คนเข้า' + (dep ? dep.name : 'ฝ่าย') + 'แล้ว' + (d.missing.length ? ' (ไม่พบรหัส ' + d.missing.length + ')' : '') : (d.unchanged ? 'อยู่ในฝ่ายนี้อยู่แล้ว' : 'ไม่ได้เพิ่มใคร'), !assigned && !d.unchanged);
+  return assigned > 0 || d.unchanged > 0;
+}
+// pick several students and add them to one department (overview page)
+function pickerDialog(code) {
+  const dep = adminData.departments.find((x) => x.code === code);
+  const slots = YEARS.map((y) => 'ปี ' + y + ': ' + GENDERS.map((g) => (g === 'M' ? 'ช' : 'ญ') + ' ' + dep.filled[g][y] + '/' + dep.quota[g][y]).join(' · ')).join('  |  ');
+  const d = openDlg('<h3>เพิ่มรายชื่อเข้า' + esc(dep.name) + '</h3><p class="muted">' + esc(slots) + '</p><input id="pkQ" type="search" placeholder="ค้นหาชื่อหรือรหัส"><label class="chk"><input type="checkbox" id="pkAll"> แสดงคนที่มีฝ่ายอยู่แล้ว (ย้ายมาฝ่ายนี้)</label><div id="pkList" class="pickl"></div><label class="chk"><input type="checkbox" id="pkForce"> เพิ่มแม้ฝ่ายเต็มโควตา</label><div class="btns"><button class="btn" data-x>ยกเลิก</button><button class="btn primary" id="pkOk" disabled>เพิ่ม</button></div>');
+  const chosen = new Set();
+  const draw = () => {
+    const q = $('pkQ').value.trim().toLowerCase(), all = $('pkAll').checked;
+    const rows = allStudents.filter((x) => x.department_code !== code && (all || !x.department_code) && (!q || x.name.toLowerCase().includes(q) || x.student_id.includes(q)));
+    $('pkList').innerHTML = rows.map((x) => '<label class="pk"><input type="checkbox" value="' + x.student_id + '"' + (chosen.has(x.student_id) ? ' checked' : '') + '><span><b>' + esc(x.name) + '</b><small>' + esc(x.student_id) + ' · ปี ' + x.year + ' · ' + GL[x.gender] + (x.department_name ? ' · อยู่ ' + esc(x.department_name) : '') + '</small></span></label>').join('') || '<div class="muted" style="padding:14px;text-align:center">ไม่พบนักศึกษา</div>';
+    $('pkOk').textContent = chosen.size ? 'เพิ่ม ' + chosen.size + ' คน' : 'เพิ่ม'; $('pkOk').disabled = !chosen.size;
+  };
+  d.addEventListener('change', (e) => { if (e.target.closest('#pkList')) { e.target.checked ? chosen.add(e.target.value) : chosen.delete(e.target.value); draw(); } else if (e.target.id === 'pkAll') draw(); });
+  $('pkQ').addEventListener('input', draw);
+  d.querySelector('[data-x]').onclick = () => d.remove();
+  $('pkOk').onclick = async () => { $('pkOk').disabled = true; const ok = await doAssign(code, [...chosen], $('pkForce').checked); if (ok) { d.remove(); loadAdminPage(); } else draw(); };
+  draw(); $('pkQ').focus();
+}
+// assign one student from the students page
+async function assignDialog(i) {
+  const s = students[i];
+  if (!s.gender) return toast('ยังไม่ได้ระบุเพศของ ' + s.name + ' กด "แก้ไข" เพื่อระบุเพศก่อน', true);
+  let r; try { r = await api('/camps/admin/overview'); } catch (e) { return toast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', true); }
+  if (!r.ok) return toast(await errMsg(r), true);
+  adminData = await r.json();
+  const opts = adminData.departments.map((x) => { const q = x.quota[s.gender][s.year], f = x.filled[s.gender][s.year], cur = s.department_code === x.code; return '<option value="' + x.code + '"' + (cur ? ' selected' : '') + '>' + esc(x.name) + ' — ปี ' + s.year + ' ' + GL[s.gender] + ' ' + f + '/' + q + (q && f >= q ? ' (เต็ม)' : !q ? ' (ไม่รับ)' : '') + (cur ? ' · ปัจจุบัน' : '') + '</option>'; }).join('');
+  const d = openDlg('<h3>กำหนดฝ่าย</h3><p><b>' + esc(s.name) + '</b><br><span class="muted">' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + '</span></p><label class="fld">ฝ่าย<select id="asDept">' + opts + '</select></label><label class="chk"><input type="checkbox" id="asForce"> เพิ่มแม้ฝ่ายเต็มโควตา</label><div class="btns"><button class="btn" data-x>ยกเลิก</button><button class="btn primary" id="asOk">กำหนดฝ่าย</button></div>');
+  d.querySelector('[data-x]').onclick = () => d.remove();
+  $('asOk').onclick = async () => { $('asOk').disabled = true; const ok = await doAssign($('asDept').value, [s.student_id], $('asForce').checked); if (ok) { d.remove(); loadStudentList(); } else $('asOk').disabled = false; };
 }
 function renderQuota() {
   $('adminBody').innerHTML = '<p class="muted" style="margin:0 4px 10px">กำหนดจำนวนที่รับของแต่ละฝ่าย แยก <b>ชาย / หญิง</b> และชั้นปี (0 = ไม่เปิดรับ) ตั้งต่ำกว่าจำนวนที่มีคนลงทะเบียนแล้วไม่ได้</p>' + adminData.departments.map((d) =>
@@ -308,7 +370,7 @@ const GENDER_OPTS = '<option value="">เลือก</option><option value="M">
 async function loadStudents() {
   const body = $('adminBody');
   body.innerHTML = '<div class="panel"><h3>เพิ่ม / แก้ไขนักศึกษา</h3><form id="stForm" class="form cols5"><label>รหัสนักศึกษา<input id="stId" required inputmode="numeric" placeholder="6740102220"></label><label>ชื่อ-นามสกุล<input id="stName" required maxlength="200" placeholder="ชื่อ นามสกุล"></label><label>ชั้นปี<select id="stYr" required><option value="">เลือก</option>' + YEARS.map((y) => '<option value="' + y + '">' + y + '</option>').join('') + '</select></label><label>เพศ<select id="stG" required>' + GENDER_OPTS + '</select></label><button class="btn primary" type="submit">บันทึก</button></form><div class="muted" style="margin-top:6px">พิมพ์รหัสแล้วระบบเดาชั้นปีให้จากเลขสองหลักแรก และเดาเพศจากคำนำหน้าชื่อ (นาย / นางสาว) แก้ได้</div></div>'
-    + '<div class="panel"><h3>นำเข้าจากไฟล์ CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ ถ้าบันทึกจาก Excel ให้เลือก "CSV UTF-8"</p>'
+    + '<div class="panel"><h3>นำเข้าจากไฟล์ CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ ถ้าบันทึกจาก Excel ให้เลือก "CSV UTF-8"</p>'
     + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ CSV</label><input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง</button><span id="csvName" class="muted"></span></div>'
     + '<textarea id="bulk" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย&#10;6840100001,สมหญิง รักเรียน,2,หญิง"></textarea><div style="margin-top:10px"><button class="btn primary sm" id="bulkBtn">นำเข้า</button></div><div id="bulkRes" class="result"></div></div>'
     + '<div class="panel"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><div class="form fl"><input id="stQ" type="search" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
@@ -332,7 +394,7 @@ async function loadStudentList() {
   if (!r.ok) { list.innerHTML = failBox(await errMsg(r), 'loadStudentList()'); return; }
   students = (await r.json()).students || [];
   $('stCount').textContent = '(' + students.length + ' คน)';
-  list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b><small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
+  list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b><small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + '<button class="btn sm" onclick="assignDialog(' + i + ')">' + (s.department_code ? 'ย้ายฝ่าย' : 'กำหนดฝ่าย') + '</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
 }
 async function saveStudent(e) {
   e.preventDefault();
@@ -360,7 +422,7 @@ async function readCsvFile(e) {
   $('bulk').value = text; $('csvName').textContent = f.name + ' · ' + text.split(/\r?\n/).filter((l) => l.trim()).length + ' บรรทัด — ตรวจสอบแล้วกด "นำเข้า"'; e.target.value = '';
 }
 function downloadTemplate() {
-  const csv = '﻿รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ\r\n6740102220,สมชาย ใจดี,3,ชาย\r\n6840100001,สมหญิง รักเรียน,2,หญิง\r\n';
+  const csv = '\ufeffรหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ,ฝ่าย\r\n6740102220,สมชาย ใจดี,3,ชาย,ฝ่ายการสอน\r\n6840100001,สมหญิง รักเรียน,2,หญิง,\r\n';
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students-template.csv'; document.body.appendChild(a); a.click(); a.remove();
 }
 async function bulkImport() {
@@ -370,7 +432,7 @@ async function bulkImport() {
     const r = await post('/camps/admin/students/bulk', { text });
     if (!r.ok) return toast(await errMsg(r), true);
     const d = await r.json();
-    $('bulkRes').innerHTML = '✓ เพิ่มใหม่ <b>' + d.added + '</b> · อัปเดต <b>' + d.updated + '</b>' + (d.errors.length ? ' · ข้าม <b>' + d.errors.length + '</b> แถว:<div class="err">' + d.errors.slice(0, 30).map((x) => 'บรรทัด ' + x.line + ': ' + esc(x.error) + ' — ' + esc(x.text)).join('<br>') + '</div>' : '');
+    $('bulkRes').innerHTML = '✓ เพิ่มใหม่ <b>' + d.added + '</b> · อัปเดต <b>' + d.updated + '</b>' + (d.assigned ? ' · ใส่เข้าฝ่าย <b>' + d.assigned + '</b>' + (d.overQuota ? ' (<span class="err">เกินโควตา ' + d.overQuota + ' ช่อง</span>)' : '') : '') + (d.errors.length ? ' · ข้าม <b>' + d.errors.length + '</b> แถว:<div class="err">' + d.errors.slice(0, 30).map((x) => 'บรรทัด ' + x.line + ': ' + esc(x.error) + ' — ' + esc(x.text)).join('<br>') + '</div>' : '');
     if (!d.errors.length) { $('bulk').value = ''; $('csvName').textContent = ''; }
     toast('นำเข้าเสร็จแล้ว'); loadStudentList();
   } finally { btn.disabled = false; }
