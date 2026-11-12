@@ -50,9 +50,11 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
 const UA=navigator.userAgent;
 const IS_IOS=/iPhone|iPad|iPod/i.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const IS_MOBILE=IS_IOS||/Android|Mobile|Windows Phone|webOS|BlackBerry/i.test(UA);
+// iPadOS 13+ reports a Mac user agent with touch, Android tablets omit "Mobile": both count as tablets, not phones
+const IS_PHONE=/iPhone|iPod|Windows Phone|webOS|BlackBerry/i.test(UA)||(/Android/i.test(UA)&&/Mobile/i.test(UA));
 const IN_APP_BROWSER=/Line\/|FBAN|FBAV|Instagram|MicroMessenger|TikTok|; wv\)/i.test(UA);
 const isStandalone=()=>['standalone','fullscreen','minimal-ui'].some(m=>matchMedia('(display-mode: '+m+')').matches)||navigator.standalone===true;
-const needsInstall=()=>!TEST&&IS_MOBILE&&!isStandalone();
+const needsInstall=()=>!TEST&&IS_PHONE&&!isStandalone();
 const icoShare=()=>svgI('<path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),icoDots=()=>svgI('<circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/>');
 function updateGate(){gateRender();const st=$('gateSteps');st.innerHTML=st.innerHTML.replace(/<li>/g,'<li><span>').replace(/<\/li>/g,'</span></li>')}
 function gateRender(){
@@ -89,7 +91,8 @@ async function init(){
  try{await loadMeta();const q=new URLSearchParams(location.search).get('page');if(['transaction','donation','audit'].includes(q))showPage(q);await loadDashboard()}catch(e){console.error(e);toast('โหลดข้อมูลไม่สำเร็จ',1)}
 }
 function loginMsg(t){const b=$('loginMsg');b.textContent=t;b.classList.toggle('hidden',!t)}
-function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id));if(id==='app')fillSideUser()}
+function fillSideUser(){const n=(me&&(me.name||me.email))||'';$('sideName').textContent=n;$('sideEmail').textContent=(me&&me.email)||'';$('sideAv').textContent=(n.trim()[0]||'?').toUpperCase()}
 // Google sign-in through Auth0's Google social connection (name can be overridden with window.BUDGET_AUTH0_CONNECTION)
 const AUTH_CONNECTION=window.BUDGET_AUTH0_CONNECTION||'google-oauth2';
 async function login(forceChoose){
@@ -152,13 +155,25 @@ function rowHtml(t,src,i){
  const sub=don?mLabel(t.method)+' · '+t.account_name:[timeOf(t.created_at),t.category,t.account_name].filter(Boolean).join(' · ');
  const cap=don?mLabel(t.method):(t.is_donation?'บริจาค':inc?'เงินเข้า':'เงินออก');
  return '<button class="row" onclick="openDetail(\''+src+'\','+i+')"><span class="av '+k+'">'+IC[k]+'</span><span class="rm"><b>'+esc(title)+'</b><small>'+esc(sub)+'</small></span><span class="ra"><b class="amt '+k+'">'+(inc?'+':'-')+'฿'+money(t.amount)+'</b><small>'+esc(cap)+'</small></span></button>'}
+const WIDE=matchMedia('(min-width:1024px)');
+function tableHtml(rows,src,key){
+ const don=src==='don';
+ const head=don?['วันที่','ผู้บริจาค','ช่องทาง','บัญชี','จำนวน']:['วันที่','รายการ','หมวดหมู่','บัญชี','ผู้บันทึก','จำนวน'];
+ const body=rows.map((t,i)=>{const k=don?'donation':(t.is_donation?'donation':t.type),inc=don||t.type==='income',amt='<td class="num amt '+k+'">'+(inc?'+':'-')+'฿'+money(t.amount)+'</td>';
+  const dt='<td class="nw">'+esc(fmtDate(t[key]))+'</td>';
+  return '<tr onclick="openDetail(\''+src+'\','+i+')">'+(don
+   ?dt+'<td class="ttl"><b>'+esc(t.donor_name)+'</b></td><td><span class="pill-t donation">'+mLabel(t.method)+'</span></td><td>'+esc(t.account_name)+'</td>'+amt
+   :dt+'<td class="ttl"><b>'+esc(t.details)+'</b><small>'+esc(t.transaction_id||'')+'</small></td><td>'+(t.is_donation?'<span class="pill-t donation">บริจาค</span> ':'')+esc(t.category)+'</td><td>'+esc(t.account_name)+'</td><td>'+esc(t.created_by_name||t.created_by_email||'')+'</td>'+amt)+'</tr>'}).join('');
+ return '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+head.map((x,i)=>'<th'+(i===head.length-1?' class="num"':'')+'>'+x+'</th>').join('')+'</tr></thead><tbody>'+body+'</tbody></table></div>'}
+function listHtml(rows,src,key){return WIDE.matches&&rows.length?tableHtml(rows,src,key):groupedHtml(rows,src,key)}
 function groupedHtml(rows,src,key){let out='',last='';rows.forEach((t,i)=>{const k=ymd(t[key]);if(k!==last){out+='<div class="day">'+esc(dayLabel(k))+'</div>';last=k}out+=rowHtml(t,src,i)});return out}
 
+WIDE.addEventListener('change',()=>{if(curPage==='audit'&&reportRows.length)renderReport();if(curPage==='donation'&&donRows.length)renderDonations()});
 // ---- navigation ----
 const TITLES={dashboard:'บัญชีของฉัน',transaction:'บันทึกรายการ',donation:'บริจาค',audit:'ธุรกรรม',admin:'ตั้งค่าระบบ'};
 let curPage='dashboard',prevPage='dashboard',lastDash=0;
 function showPage(p){
- curPage=p;document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const pg=$('page-'+p);pg.classList.remove('hidden');{const o=['dashboard','audit','donation','admin'],d=(o.indexOf(p)<0?1:o.indexOf(p)-o.indexOf(prevPage));pg.style.setProperty('--from',(d>=0?8:-8)+'px')}prevPage=p;replay(pg,'enter');pg.classList.add('stagger');clearTimeout(pg._st);pg._st=setTimeout(()=>pg.classList.remove('stagger'),1300);
+ curPage=p;document.body.dataset.page=p;document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const pg=$('page-'+p);pg.classList.remove('hidden');{const o=['dashboard','audit','donation','admin'],d=(o.indexOf(p)<0?1:o.indexOf(p)-o.indexOf(prevPage));pg.style.setProperty('--from',(d>=0?8:-8)+'px')}prevPage=p;replay(pg,'enter');pg.classList.add('stagger');clearTimeout(pg._st);pg._st=setTimeout(()=>pg.classList.remove('stagger'),1300);
  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
  $('pageTitle').textContent=TITLES[p]||'';$('topLeft').innerHTML=p==='dashboard'?IC.menu:IC.back;$('topLeft').setAttribute('aria-label',p==='dashboard'?'เมนู':'ย้อนกลับ');
  $('fab').classList.toggle('gone',p==='transaction'||(p==='donation'&&!$('donForm').classList.contains('hidden')));
@@ -320,7 +335,7 @@ function renderReport(){const af=$('filterAccount').value;let rows=reportRows;
  if(af)rows=rows.filter(x=>x.account_uuid===af);
  if(repType==='donation')rows=rows.filter(x=>x.is_donation);else if(repType==='income')rows=rows.filter(x=>x.type==='income'&&!x.is_donation);else if(repType)rows=rows.filter(x=>x.type===repType);
  const q=repQ.trim().toLowerCase();if(q)rows=rows.filter(x=>[x.transaction_id,x.details,x.account_name,x.category,x.note,x.created_by_name,x.created_by_email].join(' ').toLowerCase().includes(q));
- lists.rep=rows;$('reportCards').innerHTML=groupedHtml(rows,'rep','created_at')||'<div class="empty">ไม่พบรายการ</div>';$('repCount').textContent=rows.length+' รายการ'}
+ lists.rep=rows;$('reportCards').innerHTML=listHtml(rows,'rep','created_at')||'<div class="empty">ไม่พบรายการ</div>';$('repCount').textContent=rows.length+' รายการ'}
 $('filterAccount').addEventListener('change',renderReport);
 $('repSearch').addEventListener('input',e=>{repQ=e.target.value;renderReport()});
 $('filtBtn').addEventListener('click',()=>$('filterPanel').classList.toggle('hidden'));
@@ -467,7 +482,7 @@ async function loadDonations(){
  renderDonations()}
 function renderDonations(){const q=donQ.trim().toLowerCase();
  const rows=donRows.filter(x=>(!donM||x.method===donM)&&(!q||String(x.donor_name).toLowerCase().includes(q)));
- lists.don=rows;$('donList').innerHTML=groupedHtml(rows,'don','donated_at')||'<div class="empty">ยังไม่มีรายการบริจาค</div>'}
+ lists.don=rows;$('donList').innerHTML=listHtml(rows,'don','donated_at')||'<div class="empty">ยังไม่มีรายการบริจาค</div>'}
 $('donSearch').addEventListener('input',e=>{donQ=e.target.value;renderDonations()});
 $('donChips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;donM=b.dataset.v;document.querySelectorAll('#donChips .chip').forEach(x=>x.classList.toggle('on',x===b));renderDonations()});
 
