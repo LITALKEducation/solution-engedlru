@@ -74,10 +74,11 @@ async function initAuth() {
     if (!window.auth0) throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ');
     auth0Client = await withTimeout(auth0.createAuth0Client({ domain: AUTH_DOMAIN, clientId: CLIENT_ID, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: HR_URL } }), 12000, 'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
     if (location.search.includes('code=') || location.search.includes('error=')) {
-      await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน');
+      const callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน');
       history.replaceState({}, document.title, HR_URL);
-      let back = null; try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ }
-      if (back && (/^\/hr\/[\w\-/]*$/.test(back) || (back === '/lotto/' || back === '/camps/lotto/')) && back !== location.pathname) { location.replace(back); return 'redirect'; }
+      let back = callbackResult && callbackResult.appState && callbackResult.appState.returnTo;
+      if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
+      if (back && (back.startsWith('/hr/') || back === '/lotto/' || back === '/camps/lotto/') && !back.startsWith('//') && back !== location.pathname) { location.replace(back); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
