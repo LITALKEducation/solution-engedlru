@@ -5,7 +5,8 @@ Cloudflare Pages project, root directory `camps`, no build command.
 | Path | What |
 | --- | --- |
 | `/` | Camps home: choose **งบประมาณ** (finance) or **ฝ่ายบุคคล** (coming soon). Plain web page. |
-| `/hr/` | ฝ่ายบุคคล · ลงทะเบียน: the 5 camp departments and student registration (Google sign-in). Plain web page (not a web app). |
+| `/hr/` | ฝ่ายบุคคล · ภาพรวมฝ่าย: the 5 departments (duties, head with photo/contact, slots per year and gender). Plain web page (not a web app). |
+| `/hr/choose` | ฝ่ายบุคคล · เลือกฝ่าย: shows only the head of each department; tap one to preview, pick it and register (Google sign-in). |
 | `/hr/overview` `/hr/quota` `/hr/students` `/hr/settings` | ฝ่ายบุคคล · ผู้ดูแล: one page per admin function, each a menu item visible only to admins (`/hr/admin` redirects to `/hr/overview`). |
 | `/budget/` | Finance web app (Auth0 login, installable PWA, phone install required). See `budget/README.md`. |
 | `/budget/verify/` | Public receipt verification page (QR target). |

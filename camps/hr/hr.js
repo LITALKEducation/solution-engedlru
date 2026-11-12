@@ -10,7 +10,8 @@ const YEARS = [1, 2, 3, 4];
 const GENDERS = ['M', 'F'];
 const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k] || 'ไม่ระบุเพศ' });   // legacy rows may have no gender yet
 const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
-const TAB = document.body.dataset.tab || 'overview';     // which admin page this is
+const TAB = document.body.dataset.tab || 'overview';
+const CHOOSE = PAGE === 'student' && TAB === 'choose';      // /hr/choose: pick a department (heads only)     // which admin page this is
 const ICON = {
   direction: '<path d="M4 22V3M4 4h14l-2 4 2 4H4"/>',
   structure: '<rect x="3" y="3" width="14" height="6" rx="1.5"/><path d="M17 6h3v5H12v3"/><rect x="10" y="14" width="4" height="7" rx="1"/>',
@@ -82,7 +83,7 @@ async function initAuth() {
   } catch (e) { console.error(e); authReady = false; renderAcct({ error: e.message }); return null; }
 }
 async function login() {
-  if (PAGE === 'admin') { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
+  if (PAGE === 'admin' || CHOOSE) { try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ } }   // Auth0 always returns to /hr/
   const btns = document.querySelectorAll('.gbtn'); btns.forEach((b) => b.disabled = true);
   try {
     const ap = { connection: CONNECTION };
@@ -96,7 +97,7 @@ async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1
 // ---------- menu ----------
 function renderNav() {
   const el = $('hrNav'); if (!el) return;
-  let html = '<a href="/hr/" class="' + (PAGE === 'student' ? 'on' : '') + '">ลงทะเบียน</a>';
+  let html = '<a href="/hr/" class="' + (PAGE === 'student' && !CHOOSE ? 'on' : '') + '">ภาพรวมฝ่าย</a><a href="/hr/choose" class="' + (CHOOSE ? 'on' : '') + '">เลือกฝ่าย</a>';
   if (me && me.isAdmin) html += '<span class="sep">ผู้ดูแล</span>' + ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="adm ' + (PAGE === 'admin' && TAB === k ? 'on' : '') + '">' + l + '</a>').join('');
   el.innerHTML = html;
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
@@ -174,7 +175,13 @@ function yrsHtml(d) {
 function deptCard(d) {
   const reg = myDept() === d.code, pk = picked === d.code;
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
-  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">' + avatar(d, 'sm') + '<span>หัวหน้าฝ่าย: <b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b></span></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
+  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">' + avatar(d, 'md') + '<span>หัวหน้าฝ่าย<br><b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b>' + (d.head && d.head.contact ? '<small>ติดต่อ: ' + esc(d.head.contact) + '</small>' : '') + '</span></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
+}
+// /hr/choose shows only the head of each department
+function headCard(d) {
+  const reg = myDept() === d.code, pk = picked === d.code, h = d.head || {};
+  const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
+  return '<div class="dept pickable headcard ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="' + esc(d.name) + ' หัวหน้าฝ่าย ' + esc(h.name || 'ยังไม่ประกาศ') + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}">' + tag + avatar(d, 'xl') + '<div class="hn"><span class="dn">' + esc(d.name) + '</span><span class="hl">หัวหน้าฝ่าย</span><b>' + (h.name ? esc(h.name) : 'ยังไม่ประกาศ') + '</b>' + (h.contact ? '<small>ติดต่อ: ' + esc(h.contact) + '</small>' : '') + '</div><div class="more">' + (reg ? 'ดูรายละเอียด ›' : 'ดูรายละเอียดและเลือกฝ่าย ›') + '</div></div>';
 }
 // preview first: tap a department card -> details, head and slots; switch between departments with the chips; then "เลือกฝ่ายนี้"
 let pvDlg = null;
@@ -194,13 +201,14 @@ function preview(code) {
       + '<div class="pvsec"><b>หน้าที่ของฝ่าย</b><p>' + esc(d.description) + '</p></div>'
       + '<div class="pvsec"><b>หัวหน้าฝ่าย</b>' + '<div class="pvperson">' + avatar(d, 'lg') + '<div>' + (head.name ? '<p class="pvhd">' + esc(head.name) + '</p>' + (head.contact ? '<p class="muted">ติดต่อ: ' + esc(head.contact) + '</p>' : '') : '<p class="muted">ยังไม่ประกาศ</p>') + '</div></div></div>'
       + '<div class="pvsec"><b>จำนวนที่รับ / ลงทะเบียนแล้ว</b><div class="yrs">' + yrsHtml(d) + '</div>' + (st ? '<p class="muted" style="margin-top:8px">ชั้นปี ' + y + ' ' + GL[g] + ' ของคุณ: ' + esc(st.note) + '</p>' : '') + '</div>'
-      + '<div class="btns"><button class="btn" data-x>ปิด</button>' + (reg ? '' : '<button class="btn primary" data-pick="' + d.code + '">' + (picked === d.code ? '✓ เลือกฝ่ายนี้อยู่' : 'เลือกฝ่ายนี้') + '</button>') + '</div>';
+      + '<div class="btns"><button class="btn" data-x>ปิด</button>' + (reg ? '' : '<button class="btn primary" data-pick="' + d.code + '">' + (!CHOOSE ? 'ไปเลือกฝ่ายนี้ ›' : picked === d.code ? '✓ เลือกฝ่ายนี้อยู่' : 'เลือกฝ่ายนี้') + '</button>') + '</div>';
     const act = $('pvBody').querySelector('.pvchips .on'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center' });
   };
   pvDlg.addEventListener('click', (e) => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.c) draw(t.dataset.c);
     else if (t.hasAttribute('data-x')) close();
+    else if (t.dataset.pick && !CHOOSE) { setPicked(t.dataset.pick); location.href = '/hr/choose'; }
     else if (t.dataset.pick) { setPicked(t.dataset.pick); close(); renderDepts(); const d = deps.find((x) => x.code === t.dataset.pick); toast('เลือก' + (d ? d.name : 'ฝ่าย') + 'แล้ว กด "ลงทะเบียน" ด้านล่างเพื่อยืนยัน'); }
   });
   draw(code);
@@ -213,12 +221,13 @@ function renderSummary() {
     return '<div class="sg' + (y === my && g === mg ? ' me' : '') + '"><div class="sl"><span>' + GL[g] + ' <b>' + f + '</b><small>/' + q + '</small></span><span class="st ' + st.c + '">' + st.t + '</span></div><div class="prog"><i style="width:' + pct + '%"></i></div></div>';
   }).join('') + '</div>').join('') + '</div>';
 }
-function renderDepts() { if (!$('depts')) return; $('depts').innerHTML = deps.map(deptCard).join(''); renderSummary(); renderBar(); }
+function renderDepts() { if (!$('depts')) return; $('depts').innerHTML = deps.map(CHOOSE ? headCard : deptCard).join(''); renderSummary(); renderBar(); }
 function pick(code) { setPicked(picked === code ? null : code); renderDepts(); }
 
 // bottom bar: choose a department first, then press ลงทะเบียน (sign-in happens at that point)
 function renderBar() {
   const bar = $('bar'); if (!bar) return;
+  if (!CHOOSE) { bar.classList.add('hidden'); return; }
   const reg = myDept(), regDep = reg && deps.find((d) => d.code === reg), pk = picked && deps.find((d) => d.code === picked);
   document.body.classList.toggle('has-bar', !!(regDep || pk));
   if (!regDep && !pk) { bar.classList.add('hidden'); return; }
