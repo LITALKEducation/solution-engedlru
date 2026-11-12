@@ -17,7 +17,7 @@
 <section class="intro"><span class="eyebrow">ENGLISH EDUCATION · LRU</span><h1>ระบบจัดการการจับสลาก</h1><p>จัดการรายชื่อและหมายเลขสลาก ตรวจสอบสิทธิ์ด้วย QR Code และป้องกันการใช้สิทธิ์ซ้ำ</p></section>
 <section id="login" class="panel hidden"><h2>เข้าสู่ระบบผู้ดูแล / เจ้าหน้าที่</h2><p>ใช้บัญชี Google มหาวิทยาลัยที่ได้รับสิทธิ์ camp_admin หรือ budget_admin</p><button id="loginBtn" class="primary">เข้าสู่ระบบด้วย Google</button></section>
 <div id="app" class="hidden">
-<nav class="tabs"><button data-tab="scan" class="active">สแกนเช็คชื่อ</button><button data-tab="students">รายชื่อและเลขสลาก</button><button data-tab="verify">ตรวจสอบสถานะ</button></nav>
+<nav class="tabs"><button data-tab="scan" class="active">สแกนเช็คชื่อ</button><button data-tab="students">รายชื่อและเลขสลาก</button><button data-tab="verify">ตรวจสอบสถานะ</button><button data-tab="scanners">เจ้าหน้าที่สแกน</button></nav>
 <section id="stats" class="stats"></section>
 <section id="view-scan" class="view panel">
 <div class="section-head"><div><h2>สแกน QR Code นักศึกษา</h2><p>QR Code ต้องมีรหัสนักศึกษา 6–12 หลัก</p></div><span class="pill">เจ้าหน้าที่</span></div>
@@ -31,6 +31,7 @@
 <div class="toolbar"><input id="search" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="refresh" class="secondary">รีเฟรช</button></div><div id="studentTable" class="table-wrap"></div>
 </section>
 <section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบสถานะการใช้สิทธิ์</h2><p>ค้นหาเพื่อดูว่าใครถูกตัดสิทธิ์แล้ว พร้อมเวลาที่สแกนและเจ้าหน้าที่</p></div></div><div class="toolbar"><input id="verifySearch" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="verifyBtn" class="secondary">ค้นหา</button></div><div id="verifyTable" class="table-wrap"></div></section>
+<section id="view-scanners" class="view panel hidden"><div class="section-head"><div><h2>กำหนดเจ้าหน้าที่สแกน</h2><p>เพิ่มอีเมลบัญชีมหาวิทยาลัยที่ได้รับอนุญาตให้สแกน QR Code</p></div></div><form id="scannerForm" class="inline"><input id="scannerEmail" type="email" required placeholder="student@lru.ac.th"><button class="primary">เพิ่มเจ้าหน้าที่</button></form><div id="scannerList" class="table-wrap"></div></section>
 </div>
 <footer>© English Education · LRU</footer>
 </main>
