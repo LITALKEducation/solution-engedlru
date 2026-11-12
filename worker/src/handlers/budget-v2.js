@@ -35,7 +35,7 @@ async function pushAdmins(env,auth,n){
     const subs=await env.DB.prepare("SELECT uuid,endpoint,p256dh,auth FROM budget_push_subscriptions WHERE user_uuid<>?").bind(auth.row.uuid).all();
     await Promise.all((subs.results||[]).map(async sub=>{
       try{
-        const status=await sendPush(env,sub,{title:n.title,body:n.body,tag:n.transactionId||"budget",url:"/?page=audit"});
+        const status=await sendPush(env,sub,{title:n.title,body:n.body,tag:n.transactionId||"budget",url:"/budget/?page=audit"});
         if(status===404||status===410)await env.DB.prepare("DELETE FROM budget_push_subscriptions WHERE uuid=?").bind(sub.uuid).run();
       }catch(e){console.error("[push] send failed:",e?.message||e)}
     }));
@@ -136,7 +136,7 @@ async function createTransaction(request, env, auth, ctx) {
     throw e;
   }
   runBackground(ctx,pushAdmins(env,auth,notif));
-  return json(request,env,{ok:true,transaction:{uuid,transactionId:id,accountUuid,type,category:category.name,amount:value,details,note,createdAt:now},verificationUrl:`https://enged.sorasukt.com/verify/?id=${encodeURIComponent(id)}`},201);
+  return json(request,env,{ok:true,transaction:{uuid,transactionId:id,accountUuid,type,category:category.name,amount:value,details,note,createdAt:now},verificationUrl:`https://enged.sorasukt.com/budget/verify/?id=${encodeURIComponent(id)}`},201);
 }
 
 async function meta(request,env,auth) {
@@ -342,7 +342,7 @@ async function createDonation(request,env,auth,ctx){
     throw e;
   }
   runBackground(ctx,pushAdmins(env,auth,notif));
-  return json(request,env,{ok:true,donation:{uuid:donationUuid,transactionUuid:txUuid,transactionId:id,accountUuid,donorName,method,amount:value,donatedAt,note},verificationUrl:`https://enged.sorasukt.com/verify/?id=${encodeURIComponent(id)}`},201);
+  return json(request,env,{ok:true,donation:{uuid:donationUuid,transactionUuid:txUuid,transactionId:id,accountUuid,donorName,method,amount:value,donatedAt,note},verificationUrl:`https://enged.sorasukt.com/budget/verify/?id=${encodeURIComponent(id)}`},201);
 }
 
 // ---- Admin notifications & push ----

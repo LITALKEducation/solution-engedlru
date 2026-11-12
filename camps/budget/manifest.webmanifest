@@ -1,0 +1,45 @@
+{
+  "name": "Budget · English Education",
+  "short_name": "Budget",
+  "description": "บริหารงบประมาณ English Education",
+  "id": "/",
+  "start_url": "/budget/?source=pwa",
+  "scope": "/budget/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "th",
+  "background_color": "#ffffff",
+  "theme_color": "#d32f2f",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "บันทึกรายการ",
+      "url": "/budget/?page=transaction",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

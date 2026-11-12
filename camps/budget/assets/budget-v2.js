@@ -5,6 +5,8 @@
 async function resetApp(){try{const r=await navigator.serviceWorker.getRegistrations();await Promise.all(r.map(x=>x.unregister()));const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)))}catch(e){}location.href=location.pathname}
 const withTimeout=(p,ms,msg)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error(msg)),ms))]);
 const API=window.BUDGET_API||'https://engedlru-api.stnetworld.workers.dev',AUTH_DOMAIN=window.BUDGET_AUTH0_DOMAIN||'auth.litalkeducation.com',CLIENT_ID=window.BUDGET_AUTH0_CLIENT_ID||'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
+// The finance app lives under /budget/ (Auth0 callback + logout URLs must include https://<host>/budget/)
+const APP_URL=location.origin+'/budget/';
 let auth0Client,me,meta,reportRows=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -43,7 +45,7 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
    if(u==='/budget/admin/users'&&!post)return res({users:users});
    if(u==='/budget/admin/users'&&post){const b=JSON.parse(opt.body);if(users.some(x=>x.email===b.email))return {ok:false,status:400,json:async()=>({error:'อีเมลนี้มีอยู่แล้ว'})};users.push({uuid:'u'+(users.length+1),email:b.email,display_name:b.displayName,student_id:b.studentId,enabled:true,account_uuids:b.accountUuids||[]});return res({ok:true})}
    if(/^\/budget\/admin\/users\//.test(u)&&(opt.method||'')==='PATCH'){const x=users.find(y=>y.uuid===decodeURIComponent(u.split('/').pop()));const b=JSON.parse(opt.body);if(!x)return {ok:false,status:404,json:async()=>({error:'ไม่พบผู้ใช้'})};if(b.enabled===false&&x.email==='demo@example.com')return {ok:false,status:400,json:async()=>({error:'ปิดสิทธิ์ของตัวเองไม่ได้'})};if(b.displayName!==undefined)x.display_name=b.displayName;if(b.studentId!==undefined)x.student_id=b.studentId;if(b.enabled!==undefined)x.enabled=b.enabled;if(b.accountUuids)x.account_uuids=b.accountUuids;return res({ok:true})}
-  if(u==='/budget/transactions'&&post){const f=opt.body,acc=accs.find(a=>a.uuid===f.get('accountUuid')),cat=cats.find(c=>c.uuid===f.get('categoryUuid'));n++;const id='DEMO-'+String(n).padStart(4,'0');txs.unshift({transaction_id:id,transaction_uuid:'t'+n,account_uuid:acc.uuid,account_name:acc.name,type:f.get('type'),category:cat.name,amount:Number(f.get('amount')),details:f.get('details'),created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date().toISOString(),status:'active'});return res({transaction:{transactionId:id,uuid:'demo-'+n,accountUuid:acc.uuid,type:f.get('type'),amount:Number(f.get('amount')),details:f.get('details')},verificationUrl:location.origin+'/verify/?id='+id})}
+  if(u==='/budget/transactions'&&post){const f=opt.body,acc=accs.find(a=>a.uuid===f.get('accountUuid')),cat=cats.find(c=>c.uuid===f.get('categoryUuid'));n++;const id='DEMO-'+String(n).padStart(4,'0');txs.unshift({transaction_id:id,transaction_uuid:'t'+n,account_uuid:acc.uuid,account_name:acc.name,type:f.get('type'),category:cat.name,amount:Number(f.get('amount')),details:f.get('details'),created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date().toISOString(),status:'active'});return res({transaction:{transactionId:id,uuid:'demo-'+n,accountUuid:acc.uuid,type:f.get('type'),amount:Number(f.get('amount')),details:f.get('details')},verificationUrl:location.origin+'/budget/verify/?id='+id})}
   if(u.endsWith('/evidence'))return res({});
   return res({ok:true})}})();
 
@@ -70,7 +72,7 @@ function gateRender(){
  if(deferredInstall){inst.classList.remove('hidden');steps.innerHTML='<li>แตะปุ่ม <b>“ติดตั้งแอป”</b> ด้านล่าง</li><li>เปิดแอป Budget จากหน้าจอหลัก</li>';return}
  steps.innerHTML='<li>แตะเมนู '+icoDots()+' ของ Chrome</li><li>เลือก <b>“ติดตั้งแอป”</b> หรือ <b>“เพิ่มลงในหน้าจอหลัก”</b></li><li>เปิดแอป Budget จากหน้าจอหลัก</li>'}
 $('gateInstall').addEventListener('click',async()=>{if(!deferredInstall)return;deferredInstall.prompt();const r=await deferredInstall.userChoice;deferredInstall=null;if(r.outcome==='accepted')toast('ติดตั้งแล้ว เปิดแอป Budget จากหน้าจอหลักได้เลย');updateGate()});
-$('gateCopy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.origin+'/');toast('คัดลอกลิงก์แล้ว')}catch(e){toast(location.origin+'/')}});
+$('gateCopy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.origin+'/budget/');toast('คัดลอกลิงก์แล้ว')}catch(e){toast(location.origin+'/')}});
 async function init(){
  updateOnline();
  if(needsInstall()){updateGate();show('gate');return}
@@ -78,8 +80,8 @@ async function init(){
  const T=12000;
  try{
   if(!window.auth0)throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
-  auth0Client=await withTimeout(auth0.createAuth0Client({domain:AUTH_DOMAIN,clientId:CLIENT_ID,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:location.origin+location.pathname}}),T,'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
-  if(location.search.includes('code=')||location.search.includes('error=')){await withTimeout(auth0Client.handleRedirectCallback(),T,'ยืนยันการเข้าสู่ระบบไม่ทัน');history.replaceState({},document.title,location.pathname);}
+  auth0Client=await withTimeout(auth0.createAuth0Client({domain:AUTH_DOMAIN,clientId:CLIENT_ID,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:APP_URL}}),T,'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
+  if(location.search.includes('code=')||location.search.includes('error=')){await withTimeout(auth0Client.handleRedirectCallback(),T,'ยืนยันการเข้าสู่ระบบไม่ทัน');history.replaceState({},document.title,APP_URL);}
   if(!await withTimeout(auth0Client.isAuthenticated(),T,'ตรวจสอบสถานะไม่ทัน')){show('login');return}
   const token=await withTimeout(auth0Client.getTokenSilently(),T,'ขอสิทธิ์เข้าใช้งานไม่ทัน');
   const r=await withTimeout(fetch(API+'/budget/me',{headers:{Authorization:'Bearer '+token}}),15000,'เชื่อมต่อเซิร์ฟเวอร์ไม่ทัน');
@@ -107,7 +109,7 @@ async function login(forceChoose){
  }catch(e){btns.forEach(b=>b.disabled=false);loginMsg(e.message)}}
 // "use another Google account": sign out of Auth0, then ask Google to show its account chooser on the next login
 async function switchGoogle(){try{sessionStorage.setItem('chooseGoogle','1')}catch(e){}await logout()}
-async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:location.origin+location.pathname}})}
+async function logout(){if(TEST){location.href=location.pathname;return}await auth0Client.logout({logoutParams:{returnTo:APP_URL}})}
 async function token(){return auth0Client.getTokenSilently()}
 async function api(path,opt={}){
  if(TEST)return mock(path,opt);
@@ -361,7 +363,7 @@ async function exportExcel(){try{await needXlsx()}catch(e){return toast(e.messag
 let _thFonts;
 async function loadThaiFonts(doc){
  if(!_thFonts){const b64=async u=>{const r=await fetch(u);if(!r.ok)throw new Error('โหลดฟอนต์ไม่สำเร็จ');const buf=new Uint8Array(await r.arrayBuffer());let bin='';for(let i=0;i<buf.length;i+=0x8000)bin+=String.fromCharCode.apply(null,buf.subarray(i,i+0x8000));return btoa(bin)};
-  _thFonts={n:await b64('/assets/fonts/Sarabun-Regular.ttf'),b:await b64('/assets/fonts/Sarabun-Bold.ttf')}}
+  _thFonts={n:await b64('/budget/assets/fonts/Sarabun-Regular.ttf'),b:await b64('/budget/assets/fonts/Sarabun-Bold.ttf')}}
  doc.addFileToVFS('Sarabun-Regular.ttf',_thFonts.n);doc.addFont('Sarabun-Regular.ttf','Sarabun','normal');
  doc.addFileToVFS('Sarabun-Bold.ttf',_thFonts.b);doc.addFont('Sarabun-Bold.ttf','Sarabun','bold');doc.setFont('Sarabun','normal')}
 async function exportPdf(){try{await needPdf()}catch(e){return toast(e.message,1)}if(!reportRows.length)await loadReport();
@@ -548,7 +550,7 @@ async function disablePush(){
   toast('ปิดการแจ้งเตือนแล้ว');await loadNotifs()}catch(e){toast('ปิดไม่สำเร็จ',1)}}
 
 // ---- PWA ----
-if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/budget/sw.js',{scope:'/budget/'}).catch(()=>{}));
 let deferredInstall;
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;if(!standalone&&!IS_MOBILE)$('installBox').classList.remove('hidden');if(!$('gate').classList.contains('hidden'))updateGate()});
