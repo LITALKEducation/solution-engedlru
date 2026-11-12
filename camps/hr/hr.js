@@ -78,7 +78,7 @@ async function initAuth() {
       history.replaceState({}, document.title, HR_URL);
       let back = callbackResult && callbackResult.appState && callbackResult.appState.returnTo;
       if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
-      if (back && (/^\\/hr\\/[\\w\\-/]*$/.test(back) || back === '/lotto/' || back === '/camps/lotto/') && back !== location.pathname) { location.replace(back); return 'redirect'; }
+      if (back && (back.startsWith('/hr/') || back === '/lotto/' || back === '/camps/lotto/') && !back.startsWith('//') && back !== location.pathname) { location.replace(back); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
