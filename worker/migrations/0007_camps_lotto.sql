@@ -19,3 +19,11 @@ CREATE TABLE IF NOT EXISTS camp_lotto_scan_logs (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_camp_lotto_scan_logs_student ON camp_lotto_scan_logs(student_id, created_at);
+
+-- Admin-assigned accounts allowed to operate the QR scanner.
+CREATE TABLE IF NOT EXISTS camp_lotto_scanners (
+  email TEXT PRIMARY KEY COLLATE NOCASE,
+  added_by TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
