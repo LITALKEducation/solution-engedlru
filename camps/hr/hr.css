@@ -159,3 +159,19 @@ td{vertical-align:middle}
 @media(min-width:760px){.form.cols5{grid-template-columns:1.1fr 1.6fr .6fr .7fr auto;align-items:end}.form.fl{grid-template-columns:1fr 130px 130px}}
 .form.fl{grid-template-columns:1fr 1fr 1fr}.form.fl input{grid-column:1/-1}
 @media(min-width:760px){.form.fl input{grid-column:auto}}
+
+/* admin: assign names to departments */
+.dlg .box.wide{width:min(520px,100%);max-height:88dvh;overflow:auto}
+.dlg .fld,.dlg .chk{display:flex;gap:8px;font-size:14px;margin-top:12px}
+.dlg .fld{flex-direction:column;font-weight:600}.dlg .chk{align-items:center;font-weight:500;cursor:pointer}
+.dlg .chk input{width:20px;height:20px;min-height:0;accent-color:var(--brand)}
+.dlg input[type=search]{margin-top:10px}
+.pickl{margin-top:8px;max-height:46dvh;overflow:auto;border:1px solid var(--line);border-radius:16px}
+.pk{display:flex;gap:12px;align-items:center;padding:10px 12px;border-top:1px solid var(--line);cursor:pointer}
+.pk:first-child{border-top:0}.pk:hover{background:var(--panel)}
+.pk input{width:20px;height:20px;min-height:0;accent-color:var(--brand);flex:none}
+.pk b{display:block;font-size:14px}.pk small{color:var(--mute);font-size:12px}
+.nm{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;margin:2px 4px 2px 0;font-size:13px}
+.nm button{border:0;background:var(--panel);width:22px;height:22px;border-radius:50%;line-height:1;font-size:15px;color:var(--mute);padding:0}
+.nm button:hover{background:#fee2e2;color:#b91c1c}
+.srow .acts{flex-wrap:wrap;justify-content:flex-end}
