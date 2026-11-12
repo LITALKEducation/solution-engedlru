@@ -1,0 +1,30 @@
+name: Check D1 migrations
+
+# Applied migrations are tracked by file name only, so editing or deleting one silently does nothing in production.
+# This check fails a pull request that changes existing files in worker/migrations (new files are fine).
+on:
+  pull_request:
+    paths:
+      - "worker/migrations/**"
+
+permissions:
+  contents: read
+
+jobs:
+  append-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Only new migration files allowed
+        run: |
+          changed=$(git diff --name-status "origin/${{ github.base_ref }}...HEAD" -- worker/migrations | grep -v '^A' || true)
+          if [ -n "$changed" ]; then
+            echo "::error::Existing migration files must not be modified, renamed or deleted. Add a new numbered migration instead."
+            echo "$changed"
+            exit 1
+          fi
+          echo "Only new migration files were added."

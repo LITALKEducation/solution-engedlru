@@ -8,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const YEARS = [1, 2, 3, 4];
 const GENDERS = ['M', 'F'];
-const GL = { M: 'ชาย', F: 'หญิง' };
+const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k] || 'ไม่ระบุเพศ' });   // legacy rows may have no gender yet
 const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
 const TAB = document.body.dataset.tab || 'overview';     // which admin page this is
 const ICON = {
@@ -111,6 +111,7 @@ function renderState() {
 const REASONS = {
   not_university_email: (m) => 'บัญชี Google นี้ (' + esc(m.email) + ') ไม่ใช่อีเมลมหาวิทยาลัย กรุณาเข้าสู่ระบบด้วยอีเมล @lru.ac.th',
   email_not_verified: (m) => 'อีเมล ' + esc(m.email) + ' ยังไม่ได้รับการยืนยันจาก Google',
+  no_gender: () => 'ผู้ดูแลยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อผู้ดูแลเพื่อให้ระบุ',
   not_in_roster: (m) => 'ไม่พบรหัสนักศึกษา ' + esc(m.studentId || '') + ' ในรายชื่อของค่าย กรุณาติดต่อผู้ดูแลเพื่อให้เพิ่มรหัส ชั้นปี และเพศของคุณ'
 };
 function renderAcct(x) {
@@ -287,6 +288,7 @@ async function doAssign(code, ids, force) {
   const r = await post('/camps/admin/selections/assign', { departmentCode: code, studentIds: ids, force: !!force });
   if (!r.ok) { toast(await errMsg(r), true); return false; }
   const d = await r.json(); let assigned = d.assigned;
+  if (d.noGender && d.noGender.length) toast('ข้าม ' + d.noGender.length + ' คนที่ยังไม่ระบุเพศ (' + d.noGender.slice(0, 3).map((x) => x.name).join(', ') + ')', true);
   if (d.full.length && !force) {
     const names = d.full.slice(0, 4).map((x) => x.name).join(', ') + (d.full.length > 4 ? ' และอีก ' + (d.full.length - 4) + ' คน' : '');
     if (await confirmDlg('ฝ่ายเต็มโควตา', 'ที่นั่งของเพศและชั้นปีนี้เต็มแล้ว เพิ่มไม่ได้ ' + d.full.length + ' คน (' + names + ') ต้องการเพิ่มเกินโควตาหรือไม่?', 'เพิ่มเกินโควตา')) {
@@ -319,6 +321,7 @@ function pickerDialog(code) {
 // assign one student from the students page
 async function assignDialog(i) {
   const s = students[i];
+  if (!s.gender) return toast('ยังไม่ได้ระบุเพศของ ' + s.name + ' กด "แก้ไข" เพื่อระบุเพศก่อน', true);
   let r; try { r = await api('/camps/admin/overview'); } catch (e) { return toast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', true); }
   if (!r.ok) return toast(await errMsg(r), true);
   adminData = await r.json();

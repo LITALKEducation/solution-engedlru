@@ -138,8 +138,8 @@ async function departmentsWithSlots(env) {
     env.DB.prepare("SELECT department_code,gender,year,COUNT(*) c FROM camp_selections GROUP BY department_code,gender,year").all()
   ]);
   const q = {}, f = {};
-  for (const r of quotas.results || []) (q[r.department_code] ||= grid())[r.gender][r.year] = r.quota;
-  for (const r of filled.results || []) (f[r.department_code] ||= grid())[r.gender][r.year] = r.c;
+  for (const r of quotas.results || []) if (GENDERS.includes(r.gender)) (q[r.department_code] ||= grid())[r.gender][r.year] = r.quota;
+  for (const r of filled.results || []) if (GENDERS.includes(r.gender)) (f[r.department_code] ||= grid())[r.gender][r.year] = r.c;
   return (deps.results || []).map((d) => {
     const quota = q[d.code] || grid(), fill = f[d.code] || grid(), remaining = grid();
     for (const g of GENDERS) for (const y of YEARS) remaining[g][y] = Math.max(0, quota[g][y] - fill[g][y]);
@@ -161,7 +161,8 @@ async function me(request, env) {
   else {
     student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
     if (!student) reason = "not_in_roster";
-    else selection = await env.DB.prepare("SELECT department_code,selected_at FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
+    else if (!student.gender) reason = "no_gender";
+    if (student) selection = await env.DB.prepare("SELECT department_code,selected_at FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
   }
   return json(request, env, {
     email: w.email, googleName: w.user.name || "", isAdmin: admin, registration: reg,
@@ -175,6 +176,7 @@ async function eligibleStudent(request, env) {
   if (!w.verified) return { response: fail(request, env, "อีเมลนี้ยังไม่ได้รับการยืนยัน", 403, { reason: "email_not_verified" }) };
   const student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
   if (!student) return { response: fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อผู้ดูแล`, 403, { reason: "not_in_roster" }) };
+  if (!student.gender) return { response: fail(request, env, "ผู้ดูแลยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อผู้ดูแล", 403, { reason: "no_gender" }) };
   return { w, student };
 }
 
@@ -376,9 +378,10 @@ async function adminAssign(request, env) {
     const r = await env.DB.prepare(`SELECT student_id,department_code FROM camp_selections WHERE student_id IN (${chunk.map(() => "?").join(",")})`).bind(...chunk).all();
     for (const x of r.results || []) cur.set(x.student_id, x.department_code);
   }
-  let assigned = 0, unchanged = 0; const full = [];
+  let assigned = 0, unchanged = 0; const full = [], noGender = [];
   for (const id of ids) {
     const st = found.get(id); if (!st) continue;
+    if (!st.gender) { noGender.push({ studentId: id, name: st.name }); continue; }
     if (cur.get(id) === code) { unchanged++; continue; }
     if (force) { await upsertSelectionStmt(env, id, code, st.year, st.gender).run(); assigned++; continue; }
     const res = await env.DB.prepare(
@@ -390,8 +393,8 @@ async function adminAssign(request, env) {
     ).bind(id, code, st.year, st.gender, code, st.year, st.gender, code, st.year, st.gender).run();
     if (res?.meta?.changes) assigned++; else full.push({ studentId: id, name: st.name, year: st.year, gender: st.gender });
   }
-  if (assigned) await audit(env, a, "CAMP_ASSIGN", code, { students: ids.filter((id) => found.has(id) && !full.some((f) => f.studentId === id)), force });
-  return json(request, env, { ok: true, assigned, unchanged, full, missing, overQuota: force && assigned ? await countOverQuota(env) : 0 });
+  if (assigned) await audit(env, a, "CAMP_ASSIGN", code, { students: ids.filter((id) => found.has(id) && !full.some((f) => f.studentId === id) && !noGender.some((n) => n.studentId === id)), force });
+  return json(request, env, { ok: true, assigned, unchanged, full, missing, noGender, overQuota: force && assigned ? await countOverQuota(env) : 0 });
 }
 
 async function adminDeleteStudent(request, env) {
