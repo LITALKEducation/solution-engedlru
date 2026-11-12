@@ -100,8 +100,41 @@ async function remove(req, env, idValue) {
   return json(req, env, { ok: true });
 }
 
-async function scan(req, env) {
+async function scanActor(req, env) {
+  const auth = await getAuth0UserFromRequest(req, env);
+  if (!auth.user) return { response: fail(req, env, auth.unavailable ? "ระบบยืนยันตัวตนไม่พร้อมใช้งาน" : "กรุณาเข้าสู่ระบบ", auth.unavailable ? 503 : 401) };
+  const email = clean(auth.user.email || "", 254).toLowerCase();
+  if (!email || auth.user.email_verified !== true) return { response: fail(req, env, "บัญชีต้องยืนยันอีเมลก่อนสแกน", 403) };
+  const assigned = await env.DB.prepare("SELECT email FROM camp_lotto_scanners WHERE email=? AND active=1").bind(email).first();
+  if (assigned) return { email };
+  try {
+    const roles = await getAuth0Roles(env, auth.user.sub);
+    if (roles.some(r => allowed.includes(r))) return { email };
+  } catch (e) { console.error("[lotto] scanner role lookup:", e?.message || e); }
+  return { response: fail(req, env, "บัญชีนี้ยังไม่ได้รับมอบหมายให้เป็นเจ้าหน้าที่สแกน", 403) };
+}
+
+async function listScanners(req, env) {
   const a = await actor(req, env); if (a.response) return a.response;
+  const r = await env.DB.prepare("SELECT email,created_at,active FROM camp_lotto_scanners ORDER BY email").all();
+  return json(req, env, { scanners: r.results || [] });
+}
+async function addScanner(req, env) {
+  const a = await actor(req, env); if (a.response) return a.response;
+  const b = await req.json().catch(() => null), email = clean(b?.email,254).toLowerCase();
+  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) return fail(req, env, "อีเมลไม่ถูกต้อง");
+  await env.DB.prepare("INSERT INTO camp_lotto_scanners (email,added_by) VALUES (?,?) ON CONFLICT(email) DO UPDATE SET active=1,added_by=excluded.added_by").bind(email,a.email).run();
+  return json(req, env, { ok: true });
+}
+async function removeScanner(req, env, value) {
+  const a = await actor(req, env); if (a.response) return a.response;
+  const email = clean(decodeURIComponent(value),254).toLowerCase();
+  await env.DB.prepare("DELETE FROM camp_lotto_scanners WHERE email=?").bind(email).run();
+  return json(req, env, { ok: true });
+}
+
+async function scan(req, env) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
   const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
   if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
   const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
@@ -122,6 +155,10 @@ async function scan(req, env) {
 export async function lotto(req, env, url) {
   try {
     const p=url.pathname, m=req.method;
+    if (m==="GET" && p==="/camps/lotto/admin/scanners") return await listScanners(req,env);
+    if (m==="POST" && p==="/camps/lotto/admin/scanners") return await addScanner(req,env);
+    const scannerDel=p.match(/^\\/camps\\/lotto\\/admin\\/scanners\\/(.+)$/);
+    if (m==="DELETE" && scannerDel) return await removeScanner(req,env,scannerDel[1]);
     if (m==="GET" && p==="/camps/lotto/admin/overview") return await overview(req,env);
     if (m==="GET" && p==="/camps/lotto/admin/students") return await list(req,env,url);
     if (m==="POST" && p==="/camps/lotto/admin/students") return await upsert(req,env);
