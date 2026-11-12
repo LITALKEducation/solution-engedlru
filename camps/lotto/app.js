@@ -1,5 +1,6 @@
 (() => {
-const API='https://engedlru-api.stnetworld.workers.dev', DOMAIN='auth.litalkeducation.com', CLIENT='PGqozL94LzOwstm4pD39W5kvalYRiK7w', REDIRECT=location.origin+'/lotto/';   // this app's own Auth0 callback (Allowed Callback + Logout URLs must list it)
+// This app has its OWN Auth0 application (SPA). Paste its Client ID below (see camps/README.md → "One Auth0 application per system").
+const API='https://engedlru-api.stnetworld.workers.dev', DOMAIN=window.LOTTO_AUTH0_DOMAIN||'auth.litalkeducation.com', CLIENT=window.LOTTO_AUTH0_CLIENT_ID||'PGqozL94LzOwstm4pD39W5kvalYRiK7w', REDIRECT=location.origin+'/lotto/';   // this app's own Auth0 callback (Allowed Callback + Logout URLs must list it)
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let auth=null, scanner=null, rows=[], isAdmin=false;
 function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}

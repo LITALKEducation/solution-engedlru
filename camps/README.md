@@ -40,23 +40,29 @@ The student pages (`/hr/`, `/hr/choose`, `/hr/select`) show only a Google sign-i
 ### Checks (CI)
 `.github/workflows/ci.yml` runs on every pull request touching `worker/` or `camps/`: `npm run check` (every script parses, every local `src`/`href` in `camps/**/*.html` exists, migration names), `npm test` (API tests against in-memory D1 with all migrations applied) and `wrangler deploy --dry-run`. The deploy workflow runs the same checks before it applies migrations.
 
-### How sign-in works (all three apps)
-- One Auth0 application and one Google connection; tokens live in `localStorage`, so signing in on one page signs you in on all of them.
-- **Every page is its own Auth0 callback and logout URL.** Auth0 sends you back to the very page you started from, that page finishes the sign-in itself and nothing hops through another app. A broken page (or app) can therefore never take sign-in down for the others.
-- Add **all** of these to Auth0 → Applications → Settings, in **both** *Allowed Callback URLs* and *Allowed Logout URLs* (comma separated), before deploying. A page that is missing from the list shows Auth0's "callback URL mismatch" error when signing in:
+### One Auth0 application per system
+Budget, HR and Lottery each have **their own Auth0 application**, their own Client ID and their own callback URLs, so a misconfiguration or outage in one can never stop sign-in in another. The Worker validates tokens with Auth0 `/userinfo` and reads roles per **user**, so no Worker change or role change is needed.
 
-```
-https://enged.sorasukt.com/budget/,
-https://enged.sorasukt.com/hr/,
-https://enged.sorasukt.com/hr/choose,
-https://enged.sorasukt.com/hr/select,
-https://enged.sorasukt.com/hr/overview,
-https://enged.sorasukt.com/hr/quota,
-https://enged.sorasukt.com/hr/students,
-https://enged.sorasukt.com/hr/settings,
-https://enged.sorasukt.com/lotto/
-```
+Create three applications in Auth0 (Applications → Create → *Single Page Web Applications*), e.g. `Camps Budget`, `Camps HR`, `Camps Lotto`, and for **each** one:
+1. *Settings → Allowed Web Origins* = `https://enged.sorasukt.com`
+2. *Allowed Callback URLs* and *Allowed Logout URLs* (same list in both) = the URLs below
+3. *Advanced → Grant Types*: Implicit, Authorization Code, **Refresh Token**; and *Refresh Token Rotation* **on** (the apps use refresh tokens)
+4. *Connections*: enable **google-oauth2** (and nothing else you don't want)
+5. Copy the **Client ID** into the one constant of that app:
+
+| System | Callback + logout URLs | Where the Client ID goes |
+|---|---|---|
+| Budget | `https://enged.sorasukt.com/budget/` | `CLIENT_ID` in `budget/assets/budget-v2.js` (or `window.BUDGET_AUTH0_CLIENT_ID`) |
+| HR | `https://enged.sorasukt.com/hr/`, `/hr/choose`, `/hr/select`, `/hr/overview`, `/hr/quota`, `/hr/students`, `/hr/settings` (full URLs, comma separated) | `CLIENT_ID` in `hr/hr.js` (or `window.HR_AUTH0_CLIENT_ID`) |
+| Lottery | `https://enged.sorasukt.com/lotto/` | `CLIENT` in `lotto/app.js` (or `window.LOTTO_AUTH0_CLIENT_ID`) |
+
+Until a system's own Client ID is pasted in, it keeps using the old shared application (that application must keep its previous callback and logout URLs while you migrate; `npm run check` in `worker/` prints a warning while two systems still share an ID). Migrate one system at a time and remove its URLs from the old application afterwards.
+
+Roles (`camp_admin`, `budget_admin`) belong to users, not applications, so they keep working. Because each application has its own token cache, the first time a user opens a second system they go through Auth0 once more; the Auth0 single-sign-on session makes that one click (no new Google prompt). Signing out ends the shared Auth0 session, so the other systems ask for sign-in the next time their token needs refreshing.
+
+### How sign-in works
+- **Every page is its own callback and logout URL.** Auth0 sends you back to the very page you started from, that page finishes the sign-in itself and nothing hops through another page or app.
 - Sign-out and "ใช้บัญชี Google อื่น" return to the same page; the next sign-in then opens Google's account chooser.
 - `?code=` / `?error=` is removed from the address bar even when Auth0 reports an error, and the reason is shown on the sign-in card.
 - When the session is gone (refresh token expired or revoked) student pages fall back to the sign-in card instead of a "server unreachable" message.
-- Adding a new page that signs in? Give it its own URL in this list, and in `PAGE_PATHS` (`hr/hr.js`).
+- Adding a new HR page that signs in? Add its URL to the HR application's list and to `PAGE_PATHS` in `hr/hr.js`.

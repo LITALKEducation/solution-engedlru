@@ -1,7 +1,8 @@
 // ฝ่ายบุคคล — students pick a department and register (Google sign-in, university email);
 // admins manage roster (CSV import), quotas per year and gender, and registration state on separate pages.
 const API = window.CAMPS_API || 'https://engedlru-api.stnetworld.workers.dev';
-const AUTH_DOMAIN = 'auth.litalkeducation.com', CLIENT_ID = 'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
+// This app has its OWN Auth0 application (SPA). Paste its Client ID here (see camps/README.md → "One Auth0 application per system").
+const AUTH_DOMAIN = window.HR_AUTH0_DOMAIN || 'auth.litalkeducation.com', CLIENT_ID = window.HR_AUTH0_CLIENT_ID || 'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
 // Every page is its own Auth0 callback (and logout) URL, so one broken page can never take sign-in down for the others.
 // All of these must be listed in Auth0 -> Allowed Callback URLs and Allowed Logout URLs (see camps/README.md).
 const PAGE_PATHS = { student: { '': '/hr/', choose: '/hr/choose', select: '/hr/select' }, admin: { overview: '/hr/overview', quota: '/hr/quota', students: '/hr/students', settings: '/hr/settings' } };

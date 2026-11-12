@@ -52,5 +52,15 @@ const mig = fs.readdirSync(path.join(root, 'worker/migrations')).filter((f) => f
 for (const f of mig) if (!/^\d{4}_[a-z0-9_]+\.sql$/.test(f)) errors.push(`migration name should look like 0010_description.sql: ${f}`);
 if (new Set(mig).size !== mig.length) errors.push('duplicate migration file names');
 
+// 4. one Auth0 application per system: report (not fail) while two systems still share a Client ID
+const ids = { budget: 'camps/budget/assets/budget-v2.js', hr: 'camps/hr/hr.js', lotto: 'camps/lotto/app.js' };
+const found = {};
+for (const [name, f] of Object.entries(ids)) {
+  const m = /AUTH0_CLIENT_ID\s*\|\|\s*'([A-Za-z0-9]{20,})'/.exec(fs.readFileSync(path.join(root, f), 'utf8'));
+  if (!m) errors.push(`${f}: could not find the Auth0 client id (expected window.<APP>_AUTH0_CLIENT_ID || '<id>')`); else found[name] = m[1];
+}
+const byId = {}; for (const [n, id] of Object.entries(found)) (byId[id] ||= []).push(n);
+for (const [id, names] of Object.entries(byId)) if (names.length > 1) console.warn(`! ${names.join(', ')} still share the Auth0 client id ${id.slice(0, 6)}… — create one Auth0 application per system (camps/README.md)`);
+
 if (errors.length) { console.error(errors.map((e) => '✗ ' + e).join('\n')); process.exit(1); }
 console.log(`ok: ${js.length} scripts parse, camps html references resolve, ${mig.length} migrations named correctly`);
