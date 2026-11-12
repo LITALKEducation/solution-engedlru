@@ -10,30 +10,30 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=1">
+<link rel="stylesheet" href="/assets/site.css?v=2">
+<link rel="stylesheet" href="/hr/hr.css?v=1">
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 </head>
 <body>
 <div class="shell">
 <header class="hero"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i>
 <a class="back" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> กิจกรรมค่าย</a>
-<div class="hero-body"><div class="eyebrow">ฝ่ายบุคคล</div><h1>เลือกฝ่ายในค่าย <span class="chip-soon">เร็วๆ นี้</span></h1><p>ค่ายของเรามีทั้งหมด 5 ฝ่าย ดูหน้าที่ของแต่ละฝ่ายไว้ก่อน แล้วรอเลือกฝ่ายที่ใช่ในระบบที่กำลังจะเปิด</p></div></header>
+<div class="hero-body"><div class="eyebrow">ฝ่ายบุคคล</div><h1>เลือกฝ่ายในค่าย <span id="stateChip" class="state-chip">เร็วๆ นี้</span></h1><p id="heroText">ค่ายของเรามีทั้งหมด 5 ฝ่าย ดูหน้าที่ของแต่ละฝ่ายไว้ก่อน แล้วรอเลือกฝ่ายที่ใช่ในระบบที่กำลังจะเปิด</p></div></header>
 <main>
-<div class="card" style="gap:6px"><h2 style="font-size:18px">ระบบเลือกฝ่ายจะเปิดเร็วๆ นี้</h2><p>ตอนนี้ยังไม่เปิดให้เลือกฝ่าย หน้านี้แสดงรายละเอียดของแต่ละฝ่ายให้ศึกษาล่วงหน้า</p></div>
+<div id="acct" class="card acct"><div class="skeleton"></div></div>
 <h2 class="sec-title">ฝ่ายทั้งหมด <em>5 ฝ่าย</em></h2>
-<div class="depts">
-<div class="dept t1 fade"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V3M4 4h14l-2 4 2 4H4"/></svg></div><div><h3>ฝ่ายอำนวยการ</h3><p>ฝ่ายสำหรับการควบคุมและอำนวยการค่ายทั้งหมด</p></div></div>
-<div class="dept t2 fade"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="6" rx="1.5"/><path d="M17 6h3v5H12v3"/><rect x="10" y="14" width="4" height="7" rx="1"/></svg></div><div><h3>ฝ่ายโครงสร้าง</h3><p>ซ่อมแซม ตกแต่ง และทาสีโรงเรียน</p></div></div>
-<div class="dept t3 fade"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14c2.8.2 4.5 2.1 4.5 5"/></svg></div><div><h3>ฝ่ายสัมพันธ์ชุมชน</h3><p>การสร้างความสัมพันธ์กับชุมชน เรียนรู้วัฒนธรรม</p></div></div>
-<div class="dept t4 fade"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2zM22 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8z"/></svg></div><div><h3>ฝ่ายการสอน</h3><p>สอนนักเรียนให้มีความรู้</p></div></div>
-<div class="dept t5 fade"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v8a2 2 0 0 0 2 2 2 2 0 0 0 2-2V3M7 3v18M17 21V3c-2.5 1.5-4 4.5-4 8h4"/></svg></div><div><h3>ฝ่ายสวัสดิการ</h3><p>ทำอาหาร น้ำ และอำนวยความสะดวกเกี่ยวกับอาหารแก่นักศึกษาตลอดกิจกรรมค่าย</p></div></div>
-</div>
+<div id="depts" class="depts"><div class="skeleton"></div><div class="skeleton"></div></div>
+<section id="adminBox" class="admin hidden"></section>
 <h2 class="sec-title">ระบบจะทำงานอย่างไร</h2>
 <ol class="steps">
-<li><b>นักศึกษาเลือกฝ่าย</b><span>เข้าสู่ระบบด้วยรหัสนักศึกษา แล้วเลือกฝ่ายที่สนใจ</span></li>
-<li><b>เปิดรับตามชั้นปี</b><span>แต่ละฝ่ายกำหนดจำนวนที่ต้องการแยกตามชั้นปี 1, 2, 3 และ 4</span></li>
-<li><b>ดูจำนวนที่ว่าง</b><span>ระบบแสดงว่าแต่ละฝ่ายเหลือกี่ที่ให้สมัครได้ในชั้นปีของคุณ</span></li>
+<li><b>เข้าสู่ระบบด้วย Google</b><span>ใช้อีเมลมหาวิทยาลัย เช่น sb6740102220@lru.ac.th ระบบจะอ่านรหัสนักศึกษาจากอีเมลให้อัตโนมัติ</span></li>
+<li><b>เลือกฝ่ายตามโควตาชั้นปี</b><span>แต่ละฝ่ายกำหนดจำนวนที่รับแยกตามชั้นปี 1, 2, 3 และ 4</span></li>
+<li><b>ดูจำนวนที่ว่าง</b><span>ระบบแสดงว่าแต่ละฝ่ายเหลือกี่ที่ให้สมัครได้ในชั้นปีของคุณ เปลี่ยนฝ่ายได้ตลอดช่วงที่เปิดรับ</span></li>
 </ol>
 </main>
 <footer>© English Education · LRU</footer>
 </div>
+<div id="toast" role="status" aria-live="polite"></div>
+<template id="gicon"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></template>
+<script src="/hr/hr.js?v=1"></script>
 </body></html>

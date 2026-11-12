@@ -72,3 +72,4 @@ footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:
 .fade:nth-child(2){animation-delay:.07s}.fade:nth-child(3){animation-delay:.14s}.fade:nth-child(4){animation-delay:.2s}.fade:nth-child(5){animation-delay:.26s}
 @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.badge.open{background:#dcfce7;color:#15803d}.badge.closed{background:#fee2e2;color:#b91c1c}
