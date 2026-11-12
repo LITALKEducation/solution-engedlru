@@ -23,6 +23,7 @@ export const PEOPLE={
 export function installFetch(){
  globalThis.fetch=async(u,o)=>{u=String(u);const j=x=>new Response(JSON.stringify(x),{headers:{'content-type':'application/json'}});
   if(u.includes('/userinfo')){const t=(o.headers.Authorization||'').replace('Bearer ','');const p=PEOPLE[t];return p?j({sub:p.sub,email:p.email,email_verified:p.email_verified,name:p.name}):new Response('{}',{status:401})}
+  if(u.includes('/users-by-email')){const em=decodeURIComponent(new URL(u).searchParams.get('email')||'');const p=Object.values(PEOPLE).find(x=>x.email===em);return j(p?[{picture:'https://lh3.googleusercontent.com/a/'+p.sub.split('|')[1]}]:[])}
   if(u.includes('/oauth/token'))return j({access_token:'m',expires_in:86400});
   if(u.includes('/roles')){const sub=decodeURIComponent(u.split('/users/')[1].split('/roles')[0]);const p=Object.values(PEOPLE).find(x=>x.sub===sub);return j((p?.roles||[]).map(name=>({name})))}
   return new Response('no',{status:404})};

@@ -6,7 +6,7 @@
 <title>ระบบจับสลาก · Camps</title>
 <link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=3">
+<link rel="stylesheet" href="./style.css?v=4">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -38,6 +38,14 @@
 <footer>© English Education · LRU</footer>
 </main>
 <div id="qrModal" class="modal hidden"><div class="modal-card"><button id="closeQr" class="close">×</button><h2 id="qrTitle">QR Code นักศึกษา</h2><div id="qrCanvas"></div><p id="qrCaption"></p><button id="printQr" class="primary">พิมพ์ QR Code</button></div></div>
+<div id="scanModal" class="modal scanpop hidden" role="dialog" aria-modal="true" aria-labelledby="spName"><div class="scanpop-card" id="spCard">
+<div class="sp-banner" id="spBanner"></div>
+<div class="sp-avatar" id="spAvatar"></div>
+<div class="sp-label" id="spLabel">เลขจับสลาก</div>
+<div class="sp-number" id="spNumber"></div>
+<h2 id="spName"></h2><p id="spMeta"></p>
+<button id="spClose" class="primary">สแกนคนต่อไป</button>
+</div></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=4" defer></script>
+<script src="./app.js?v=5" defer></script>
 </body></html>

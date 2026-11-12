@@ -135,4 +135,21 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:26px 0 0}
  .actions button{flex:1}
  #account{max-width:52%}
 }
+/* scan popup: big draw number + student photo */
+.scanpop{background:#160b0be6;z-index:50}
+.scanpop-card{width:min(520px,100%);max-height:calc(100dvh - 24px);overflow:auto;background:#fff;border-radius:32px;text-align:center;padding:0 24px 26px;animation:pop .22s cubic-bezier(.2,.8,.2,1);box-shadow:0 30px 80px #0006}
+.sp-banner{margin:0 -24px;padding:16px 18px;font-weight:800;font-size:18px;color:#fff;background:var(--ok);border-radius:32px 32px 0 0}
+.scanpop.duplicate .sp-banner{background:var(--warn)}.scanpop.error .sp-banner{background:var(--bad)}
+.sp-avatar{width:132px;height:132px;margin:-4px auto 0;transform:translateY(14px);border-radius:50%;border:6px solid #fff;box-shadow:0 10px 26px #17121233;background:var(--red-l);overflow:hidden;display:grid;place-items:center;font-size:54px;font-weight:800;color:var(--red-d)}
+.sp-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.scanpop.error .sp-avatar{display:none}
+.sp-label{margin-top:26px;font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.08em}
+.scanpop.error .sp-label,.scanpop.error .sp-number{display:none}
+.sp-number{font-size:clamp(96px,26vw,190px);line-height:1;font-weight:800;color:var(--red-d);font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin:2px 0 8px;word-break:break-all}
+.sp-number.long{font-size:clamp(64px,17vw,120px)}.sp-number.xlong{font-size:clamp(44px,11vw,76px)}
+.scanpop.duplicate .sp-number{color:var(--warn)}
+.scanpop h2{font-size:24px;margin:4px 0 2px}
+.scanpop p{color:var(--muted);font-size:15px;margin-bottom:4px}
+.scanpop button{width:100%;margin-top:18px;min-height:56px;font-size:18px;border-radius:18px}
+@media(max-height:640px){.sp-number{font-size:84px}.sp-avatar{width:96px;height:96px;font-size:40px}}
 @media(print){body *{visibility:hidden}#qrModal,#qrModal *{visibility:visible}#qrModal{position:absolute;inset:0;background:#fff}.close,#printQr{display:none!important}.modal-card{box-shadow:none;animation:none}}
