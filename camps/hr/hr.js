@@ -3,10 +3,7 @@
 const API = window.CAMPS_API || 'https://engedlru-api.stnetworld.workers.dev';
 // This app has its OWN Auth0 application (SPA). Paste its Client ID here (see camps/README.md → "One Auth0 application per system").
 const AUTH_DOMAIN = window.HR_AUTH0_DOMAIN || 'auth.litalkeducation.com', CLIENT_ID = window.HR_AUTH0_CLIENT_ID || 'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
-// Every page is its own Auth0 callback (and logout) URL, so one broken page can never take sign-in down for the others.
-// All of these must be listed in Auth0 -> Allowed Callback URLs and Allowed Logout URLs (see camps/README.md).
-const PAGE_PATHS = { student: { '': '/hr/', choose: '/hr/choose', select: '/hr/select' }, admin: { overview: '/hr/overview', quota: '/hr/quota', students: '/hr/students', settings: '/hr/settings' } };
-const HR_URL = location.origin + ((PAGE_PATHS[document.body.dataset.page] || {})[document.body.dataset.tab || (document.body.dataset.page === 'admin' ? 'overview' : '')] || '/hr/');
+const HR_URL = location.origin + '/hr/';          // the HR app's single Auth0 callback + logout URL (its own Auth0 application)
 const CONNECTION = 'google-oauth2';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -84,20 +81,26 @@ async function initAuth() {
     if (!window.auth0) throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ');
     auth0Client = await withTimeout(auth0.createAuth0Client({ domain: AUTH_DOMAIN, clientId: CLIENT_ID, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: HR_URL } }), 12000, 'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
     if (location.search.includes('code=') || location.search.includes('error=')) {
-      try { await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน'); }
+      let callbackResult;
+      try { callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน'); }
       finally { history.replaceState({}, document.title, HR_URL); }   // never leave ?code= / ?error= in the address bar (a reload would replay it)
-      // we are already on this page's own callback URL: nothing to redirect to
+      // Auth0 always lands on /hr/; go back to the HR page where sign-in started (appState first, then this tab's sessionStorage).
+      let back = (callbackResult && callbackResult.appState && callbackResult.appState.returnTo) || '';
+      if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
+      try { sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ }
+      if (typeof back === 'string' && /^\/hr\/[\w\-/]*$/.test(back) && back !== location.pathname) { location.replace(new URL(back, location.origin).href); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
   } catch (e) { console.error(e); authReady = false; authError = e.error_description || e.message; renderAcct({ error: authError }); return null; }
 }
 async function login() {
+  try { sessionStorage.setItem('hrReturn', location.pathname); } catch (e) { /* ignore */ }   // fallback if the Auth0 appState is lost
   const btns = document.querySelectorAll('.gbtn'); btns.forEach((b) => b.disabled = true);
   try {
     const ap = { connection: CONNECTION };
     try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ }
-    await auth0Client.loginWithRedirect({ authorizationParams: ap });
+    await auth0Client.loginWithRedirect({ authorizationParams: ap, appState: { returnTo: location.pathname } });
   } catch (e) { btns.forEach((b) => b.disabled = false); toast(e.message || 'เข้าสู่ระบบไม่สำเร็จ', true); }
 }
 async function logout() { await auth0Client.logout({ logoutParams: { returnTo: HR_URL } }); }
