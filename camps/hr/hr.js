@@ -76,9 +76,22 @@ async function initAuth() {
     if (location.search.includes('code=') || location.search.includes('error=')) {
       const callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน');
       history.replaceState({}, document.title, HR_URL);
-      let back = callbackResult && callbackResult.appState && callbackResult.appState.returnTo;
+      // Cross-app handoff: localStorage is shared by /hr/ and /lotto/ on this origin.
+      // Consume only fresh, same-origin relative destinations to avoid stale redirects or open redirects.
+      let back = '';
+      try {
+        const raw = localStorage.getItem('camps.auth.returnTo');
+        localStorage.removeItem('camps.auth.returnTo');
+        if (raw) {
+          const handoff = JSON.parse(raw);
+          if (handoff && typeof handoff.path === 'string' && Date.now() - Number(handoff.createdAt) < 10 * 60 * 1000) back = handoff.path;
+        }
+      } catch (e) { /* storage may be unavailable */ }
+      if (!back) back = callbackResult && callbackResult.appState && callbackResult.appState.returnTo;
       if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
-      if (back && (back.startsWith('/hr/') || back === '/lotto/' || back === '/camps/lotto/') && !back.startsWith('//') && back !== location.pathname) { location.replace(back); return 'redirect'; }
+      const safeBack = typeof back === 'string' && back.startsWith('/') && !back.startsWith('//') &&
+        (back.startsWith('/hr/') || back === '/lotto/' || back === '/camps/lotto/');
+      if (safeBack && back !== location.pathname) { location.replace(new URL(back, location.origin).href); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
