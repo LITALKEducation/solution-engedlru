@@ -161,14 +161,47 @@ const myYear = () => (me && me.student ? me.student.year : 0);
 const myGender = () => (me && me.student ? me.student.gender : '');
 const myDept = () => (me && me.selection ? me.selection.department_code : null);
 
-function deptCard(d) {
-  const my = myYear(), mg = myGender(), reg = myDept() === d.code, pk = picked === d.code;
-  const yrs = YEARS.map((y) => '<div class="yr' + (y === my ? ' mine' : '') + '"><span class="yl">ปี ' + y + (y === my ? ' (คุณ)' : '') + '</span>' + GENDERS.map((g) => {
+const headOf = (d) => (d.head && d.head.name) || '';
+function yrsHtml(d) {
+  const my = myYear(), mg = myGender();
+  return YEARS.map((y) => '<div class="yr' + (y === my ? ' mine' : '') + '"><span class="yl">ปี ' + y + (y === my ? ' (คุณ)' : '') + '</span>' + GENDERS.map((g) => {
     const q = d.quota[g][y], f = d.filled[g][y], st = slot(q, f);
     return '<div class="gr ' + st.c + (y === my && g === mg ? ' me' : '') + '"><span class="gn">' + GL[g] + '</span><b>' + (q ? f + '/' + q : '–') + '</b><span class="st ' + st.c + '" title="' + esc(st.note) + '">' + st.t + (st.c === 'off' && st.note !== 'ปิดลงทะเบียน' ? ' · ' + (q ? 'เต็ม' : 'ไม่รับ') : '') + '</span></div>';
   }).join('') + '</div>').join('');
+}
+function deptCard(d) {
+  const reg = myDept() === d.code, pk = picked === d.code;
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
-  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-pressed="' + pk + '" onclick="pick(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();pick(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p></div>' + tag + '</div><div class="yrs">' + yrs + '</div></div>';
+  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">หัวหน้าฝ่าย: <b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
+}
+// preview first: tap a department card -> details, head and slots; switch between departments with the chips; then "เลือกฝ่ายนี้"
+let pvDlg = null;
+function preview(code) {
+  if (pvDlg) pvDlg.remove();
+  pvDlg = openDlg('<div id="pvBody"></div>'); pvDlg.classList.add('pv');
+  const close = () => { if (pvDlg) { pvDlg.remove(); pvDlg = null; } document.removeEventListener('keydown', esc2); };
+  const esc2 = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', esc2);
+  pvDlg.addEventListener('mousedown', (e) => { if (e.target === pvDlg) close(); });
+  const draw = (c) => {
+    const d = deps.find((x) => x.code === c); if (!d) return;
+    const reg = myDept() === d.code, y = myYear(), g = myGender(), st = y ? slot(d.quota[g][y], d.filled[g][y]) : null;
+    const head = d.head || {};
+    $('pvBody').innerHTML = '<div class="pvchips" role="tablist">' + deps.map((x) => '<button type="button" role="tab" aria-selected="' + (x.code === c) + '" class="' + (x.code === c ? 'on' : '') + '" data-c="' + x.code + '">' + esc(x.name.replace(/^ฝ่าย/, '')) + '</button>').join('') + '</div>'
+      + '<div class="pvhead ' + (TONE[d.code] || '') + '"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div><h3>' + esc(d.name) + '</h3>' + (reg ? '<span class="tag ok">✓ คุณลงทะเบียนฝ่ายนี้แล้ว</span>' : '') + '</div></div>'
+      + '<div class="pvsec"><b>หน้าที่ของฝ่าย</b><p>' + esc(d.description) + '</p></div>'
+      + '<div class="pvsec"><b>หัวหน้าฝ่าย</b>' + (head.name ? '<p class="pvhd">' + esc(head.name) + '</p>' + (head.contact ? '<p class="muted">ติดต่อ: ' + esc(head.contact) + '</p>' : '') : '<p class="muted">ยังไม่ประกาศ</p>') + '</div>'
+      + '<div class="pvsec"><b>จำนวนที่รับ / ลงทะเบียนแล้ว</b><div class="yrs">' + yrsHtml(d) + '</div>' + (st ? '<p class="muted" style="margin-top:8px">ชั้นปี ' + y + ' ' + GL[g] + ' ของคุณ: ' + esc(st.note) + '</p>' : '') + '</div>'
+      + '<div class="btns"><button class="btn" data-x>ปิด</button>' + (reg ? '' : '<button class="btn primary" data-pick="' + d.code + '">' + (picked === d.code ? '✓ เลือกฝ่ายนี้อยู่' : 'เลือกฝ่ายนี้') + '</button>') + '</div>';
+    const act = $('pvBody').querySelector('.pvchips .on'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center' });
+  };
+  pvDlg.addEventListener('click', (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.c) draw(t.dataset.c);
+    else if (t.hasAttribute('data-x')) close();
+    else if (t.dataset.pick) { setPicked(t.dataset.pick); close(); renderDepts(); const d = deps.find((x) => x.code === t.dataset.pick); toast('เลือก' + (d ? d.name : 'ฝ่าย') + 'แล้ว กด "ลงทะเบียน" ด้านล่างเพื่อยืนยัน'); }
+  });
+  draw(code);
 }
 function renderSummary() {
   if (!deps.length || !$('sumBox')) return;
@@ -359,7 +392,20 @@ async function saveQuota(code) {
 function renderSettings() {
   const s = adminData.registration;
   const opts = [['pending', 'เร็วๆ นี้'], ['open', 'เปิดลงทะเบียน'], ['closed', 'ปิดลงทะเบียน']];
-  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p></div>';
+  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p></div>' + depInfoPanel();
+}
+function depInfoPanel() {
+  return '<div class="panel"><h3>หัวหน้าฝ่ายและหน้าที่ของแต่ละฝ่าย</h3><p class="muted" style="margin-bottom:6px">แสดงให้นักศึกษาเห็นในหน้าเลือกฝ่าย (ตัวอย่างก่อนลงทะเบียน)</p>' + adminData.departments.map((d) => {
+    const h = d.head || {};
+    return '<div class="depinfo"><h4>' + esc(d.name) + '</h4><label>หัวหน้าฝ่าย<input id="dh-' + d.code + '" maxlength="120" value="' + esc(h.name || '') + '" placeholder="ชื่อ-นามสกุล หัวหน้าฝ่าย"></label><label>ช่องทางติดต่อ (ไม่บังคับ)<input id="dc-' + d.code + '" maxlength="200" value="' + esc(h.contact || '') + '" placeholder="เบอร์โทร / LINE ID"></label><label class="full">หน้าที่ของฝ่าย<textarea id="dd-' + d.code + '" maxlength="400">' + esc(d.description || '') + '</textarea></label><div class="qact"><button class="btn primary sm" onclick="saveDepInfo(\'' + d.code + '\')">บันทึก</button></div></div>';
+  }).join('') + '</div>';
+}
+async function saveDepInfo(code) {
+  const body = { departmentCode: code, headName: $('dh-' + code).value, headContact: $('dc-' + code).value, description: $('dd-' + code).value };
+  const r = await post('/camps/admin/department', body);
+  if (!r.ok) return toast(await errMsg(r), true);
+  const d = adminData.departments.find((x) => x.code === code); if (d) { d.head = { name: body.headName.trim(), contact: body.headContact.trim() }; d.description = body.description.trim(); }
+  toast('บันทึกข้อมูลฝ่ายแล้ว');
 }
 async function setState(k) {
   if (k === adminData.registration) return;
@@ -442,7 +488,10 @@ async function readCsvFile(e) {
       text = X.utils.sheet_to_csv(ws, { FS: ',', RS: '\n', blankrows: false });
     } catch (err) { toast('อ่านไฟล์ Excel ไม่ได้ ลองบันทึกเป็น .xlsx หรือ CSV อีกครั้ง', true); e.target.value = ''; return; }
   } else {
-    try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (err) { try { text = new TextDecoder('windows-874').decode(buf); } catch (e2) { text = new TextDecoder().decode(buf); } }
+    const u8 = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
+    if (u8[0] === 0xff && u8[1] === 0xfe) text = new TextDecoder('utf-16le').decode(buf);
+    else if (u8[0] === 0xfe && u8[1] === 0xff) text = new TextDecoder('utf-16be').decode(buf);
+    else try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (err) { try { text = new TextDecoder('windows-874').decode(buf); } catch (e2) { text = new TextDecoder().decode(buf); } }
   }
   $('bulk').value = text; $('csvName').textContent = f.name + ' · ' + text.split(/\r?\n/).filter((l) => l.trim()).length + ' บรรทัด — ตรวจสอบแล้วกด "นำเข้า"'; e.target.value = '';
 }
