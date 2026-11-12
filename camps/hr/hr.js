@@ -265,19 +265,34 @@ function renderBar() {
 async function loadDepartments() {
   if (PAGE !== 'student') return;
   let r;
-  try { r = await pub('/camps/departments'); } catch (e) { if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
+  if (!auth0Client || !me) return;
+  try { r = await api('/camps/departments'); } catch (e) { if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
+  if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { if (!deps.length) $('depts').innerHTML = failBox(await errMsg(r), 'loadDepartments()'); return; }
   const d = await r.json(); deps = d.departments || []; state = d.registration || 'pending';
   renderState(); renderDepts(); if (me) renderAcct();
 }
 async function loadMe() {
   let r;
-  try { r = await api('/camps/me'); } catch (e) { renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
-  if (r.status === 401) { me = null; renderAcct(); return; }
-  if (!r.ok) { renderAcct({ error: await errMsg(r) }); return; }
-  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderDepts(); renderAdmin(); renderNav();
+  try { r = await api('/camps/me'); } catch (e) { renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); renderGate({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
+  if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
+  if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
+  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderNav();
+  if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
 }
+// student pages show nothing until the visitor has signed in with Google
+function renderGate(x) {
+  if (PAGE !== 'student') return;
+  document.body.classList.add('gated');
+  let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
+  if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
+  if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อนใช้งาน</h2><p class="meta">ต้องเข้าสู่ระบบด้วยบัญชี Google อีเมลมหาวิทยาลัย (@lru.ac.th) จึงจะดูข้อมูลฝ่ายและลงทะเบียนได้</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+}
+function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
+let polling = false;
+function startPolling() { if (polling) return; polling = true; setInterval(() => { if (!document.hidden && me) loadDepartments(); }, 30000); }
 async function register() {
   const d = deps.find((x) => x.code === picked); if (!d) return;
   if (!authReady) return toast('ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า', true);
@@ -648,9 +663,10 @@ async function exportRegPdf() {
 // ---------- start ----------
 async function start() {
   renderNav();
-  if (PAGE === 'student') { loadDepartments(); setInterval(() => { if (!document.hidden) loadDepartments(); }, 30000); }
+  if (PAGE === 'student') renderGate({ loading: true });
   const authed = await initAuth();
   if (authed === 'redirect') return;
-  if (authed) await loadMe(); else if (authReady) renderAcct();
+  if (authed) await loadMe();
+  else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: 'ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า' }); }
 }
 window.addEventListener('DOMContentLoaded', start);

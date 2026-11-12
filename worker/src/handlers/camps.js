@@ -190,6 +190,7 @@ async function departmentsWithSlots(env) {
   });
 }
 async function departments(request, env) {
+  const w = await who(request, env); if (w.response) return w.response;   // sign-in required to see anything
   const [list, reg] = await Promise.all([departmentsWithSlots(env), registrationState(env)]);
   return json(request, env, { registration: reg, departments: list });
 }

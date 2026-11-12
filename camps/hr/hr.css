@@ -257,3 +257,8 @@ td{vertical-align:middle}
 .selinfo p{margin:2px 0 0;font-size:14px}.selinfo b{font-size:16px}
 .selreg{background:#dcfce7;color:#15803d;border-radius:14px;padding:10px 14px;font-size:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .selbox>.btn.primary{min-height:52px;font-size:16px}
+
+/* student pages: nothing but the sign-in card until signed in */
+body.gated main>:not(#gate){display:none!important}
+body.gated .hrnav{display:none!important}
+.gate{text-align:center;align-items:center;gap:12px;padding:28px 22px}

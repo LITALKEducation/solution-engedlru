@@ -30,3 +30,7 @@ Columns `รหัสนักศึกษา, ชื่อ-นามสกุ�
 
 ### Database migrations
 `worker/migrations/*.sql` are applied by the deploy workflow (`wrangler d1 migrations apply`) on every push to `main` that touches `worker/**`; it can also be started by hand from the Actions tab (Deploy LITALK Education Worker → Run workflow). Applied migrations are tracked by file name only, so **never edit an existing migration** — add a new numbered file (the `Check D1 migrations` workflow fails pull requests that change existing ones). `0007_camps_gender.sql` upgrades the ฝ่ายบุคคล tables that `0006` created without gender.
+
+
+### Sign-in first
+The student pages (`/hr/`, `/hr/choose`, `/hr/select`) show only a Google sign-in card until the visitor is signed in, and `GET /camps/departments` returns 401 without a token. Only `GET /camps/status` (registration open/closed, used by the home badge) and the head photo images stay public.
