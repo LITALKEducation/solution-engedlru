@@ -269,7 +269,7 @@ function renderOverview() {
   const a = adminData, sumG = (g) => YEARS.reduce((s, y) => s + (a.students[g][y] || 0), 0), total = sumG('M') + sumG('F');
   const rows = a.departments.map((d) => '<tr><td><b>' + esc(d.name) + '</b></td>' + YEARS.map((y) => '<td>' + GENDERS.map((g) => cell(d, g, y)).join('') + '</td>').join('') + '<td>' + GENDERS.map((g) => { const q = YEARS.reduce((s, y) => s + d.quota[g][y], 0), f = YEARS.reduce((s, y) => s + d.filled[g][y], 0); return '<div class="gc"><span>' + (g === 'M' ? 'ช' : 'ญ') + '</span> ' + f + '/' + q + '</div>'; }).join('') + '</td></tr>').join('');
   $('adminBody').innerHTML = '<div class="panel"><h3>ลงทะเบียนแล้ว / โควตา (ช = ชาย · ญ = หญิง)</h3><div class="tbl-wrap"><table><thead><tr><th>ฝ่าย</th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
-    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap"><table><thead><tr><th></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportCsv()">ดาวน์โหลด CSV (รายชื่อ + ฝ่าย)</button></div></div>'
+    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap"><table><thead><tr><th></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportXlsx()">ดาวน์โหลด Excel (รายชื่อ + ฝ่าย)</button> <button class="btn sm" onclick="exportCsv()">CSV</button></div></div>'
     + '<div class="panel" id="regList"><h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="skeleton"></div></div>';
   loadRegList();
 }
@@ -381,8 +381,8 @@ const GENDER_OPTS = '<option value="">เลือก</option><option value="M">
 async function loadStudents() {
   const body = $('adminBody');
   body.innerHTML = '<div class="panel"><h3>เพิ่ม / แก้ไขนักศึกษา</h3><form id="stForm" class="form cols5"><label>รหัสนักศึกษา<input id="stId" required inputmode="numeric" placeholder="6740102220"></label><label>ชื่อ-นามสกุล<input id="stName" required maxlength="200" placeholder="ชื่อ นามสกุล"></label><label>ชั้นปี<select id="stYr" required><option value="">เลือก</option>' + YEARS.map((y) => '<option value="' + y + '">' + y + '</option>').join('') + '</select></label><label>เพศ<select id="stG" required>' + GENDER_OPTS + '</select></label><button class="btn primary" type="submit">บันทึก</button></form><div class="muted" style="margin-top:6px">พิมพ์รหัสแล้วระบบเดาชั้นปีให้จากเลขสองหลักแรก และเดาเพศจากคำนำหน้าชื่อ (นาย / นางสาว) แก้ได้</div></div>'
-    + '<div class="panel"><h3>นำเข้าจากไฟล์ CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ ถ้าบันทึกจาก Excel ให้เลือก "CSV UTF-8"</p>'
-    + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ CSV</label><input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง</button><span id="csvName" class="muted"></span></div>'
+    + '<div class="panel"><h3>นำเข้าจากไฟล์ Excel / CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ รองรับไฟล์ Excel (.xlsx) โดยอ่านจากชีตแรก</p>'
+    + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ Excel / CSV</label><input id="csvFile" type="file" accept=".xlsx,.xls,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง (Excel)</button><span id="csvName" class="muted"></span></div>'
     + '<textarea id="bulk" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย&#10;6840100001,สมหญิง รักเรียน,2,หญิง"></textarea><div style="margin-top:10px"><button class="btn primary sm" id="bulkBtn">นำเข้า</button></div><div id="bulkRes" class="result"></div></div>'
     + '<div class="panel"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><div class="form fl"><input id="stQ" type="search" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
   $('stId').addEventListener('input', () => { const y = suggestYear($('stId').value); if (y && !$('stYr').dataset.touched) $('stYr').value = y; });
@@ -425,19 +425,38 @@ async function clearSel(i) {
   if (!r.ok) return toast(await errMsg(r), true); toast('ล้างการลงทะเบียนแล้ว'); loadStudentList();
 }
 // read a CSV file in the browser (UTF-8, falling back to Thai Windows-874 for old Excel exports) and show it before importing
+let xlsxP = null;
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return xlsxP || (xlsxP = new Promise((res, rej) => { const el = document.createElement('script'); el.src = '/hr/vendor/xlsx.mini.min.js'; el.onload = () => res(window.XLSX); el.onerror = () => { xlsxP = null; rej(new Error('load')); }; document.head.appendChild(el); }));
+}
 async function readCsvFile(e) {
   const f = e.target.files && e.target.files[0]; if (!f) return;
-  if (f.size > 2 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 2 MB', true); e.target.value = ''; return; }
+  if (f.size > 5 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 5 MB', true); e.target.value = ''; return; }
   const buf = await f.arrayBuffer(); let text;
-  try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (err) { try { text = new TextDecoder('windows-874').decode(buf); } catch (e2) { text = new TextDecoder().decode(buf); } }
+  const isExcel = /\.(xlsx|xls)$/i.test(f.name) || (new Uint8Array(buf, 0, 2)[0] === 0x50 && new Uint8Array(buf, 0, 2)[1] === 0x4b) || (new Uint8Array(buf, 0, 4)[0] === 0xd0 && new Uint8Array(buf, 0, 4)[1] === 0xcf);
+  if (isExcel) {
+    try {
+      const X = await loadXlsx(), wb = X.read(buf, { type: 'array' }), ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) throw new Error('empty');
+      text = X.utils.sheet_to_csv(ws, { FS: ',', RS: '\n', blankrows: false });
+    } catch (err) { toast('อ่านไฟล์ Excel ไม่ได้ ลองบันทึกเป็น .xlsx หรือ CSV อีกครั้ง', true); e.target.value = ''; return; }
+  } else {
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (err) { try { text = new TextDecoder('windows-874').decode(buf); } catch (e2) { text = new TextDecoder().decode(buf); } }
+  }
   $('bulk').value = text; $('csvName').textContent = f.name + ' · ' + text.split(/\r?\n/).filter((l) => l.trim()).length + ' บรรทัด — ตรวจสอบแล้วกด "นำเข้า"'; e.target.value = '';
 }
+function saveXlsx(rows, name, widths) {
+  return loadXlsx().then((X) => {
+    const ws = X.utils.aoa_to_sheet(rows); ws['!cols'] = widths.map((w) => ({ wch: w }));
+    const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'นักศึกษา'); X.writeFile(wb, name);
+  }).catch(() => toast('สร้างไฟล์ Excel ไม่ได้', true));
+}
 function downloadTemplate() {
-  const csv = '\ufeffรหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ,ฝ่าย\r\n6740102220,สมชาย ใจดี,3,ชาย,ฝ่ายการสอน\r\n6840100001,สมหญิง รักเรียน,2,หญิง,\r\n';
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students-template.csv'; document.body.appendChild(a); a.click(); a.remove();
+  saveXlsx([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย'], ['6740102220', 'สมชาย ใจดี', 3, 'ชาย', 'ฝ่ายการสอน'], ['6840100001', 'สมหญิง รักเรียน', 2, 'หญิง', '']], 'camp-students-template.xlsx', [16, 26, 8, 8, 18]);
 }
 async function bulkImport() {
-  const text = $('bulk').value.trim(); if (!text) return toast('เลือกไฟล์ CSV หรือวางรายชื่อก่อน', true);
+  const text = $('bulk').value.trim(); if (!text) return toast('เลือกไฟล์ Excel/CSV หรือวางรายชื่อก่อน', true);
   const btn = $('bulkBtn'); btn.disabled = true;
   try {
     const r = await post('/camps/admin/students/bulk', { text });
@@ -447,6 +466,11 @@ async function bulkImport() {
     if (!d.errors.length) { $('bulk').value = ''; $('csvName').textContent = ''; }
     toast('นำเข้าเสร็จแล้ว'); loadStudentList();
   } finally { btn.disabled = false; }
+}
+async function exportXlsx() {
+  const r = await api('/camps/admin/students'); if (!r.ok) return toast(await errMsg(r), true);
+  const list = (await r.json()).students || [];
+  await saveXlsx([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย']].concat(list.map((s) => [String(s.student_id), s.name, s.year, GL[s.gender], s.department_name || ''])), 'camp-students.xlsx', [16, 26, 8, 8, 18]);
 }
 async function exportCsv() {
   const r = await api('/camps/admin/students'); if (!r.ok) return toast(await errMsg(r), true);
