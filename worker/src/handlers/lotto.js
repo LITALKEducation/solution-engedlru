@@ -106,11 +106,10 @@ async function scanActor(req, env) {
   const email = clean(auth.user.email || "", 254).toLowerCase();
   if (!email || auth.user.email_verified !== true) return { response: fail(req, env, "บัญชีต้องยืนยันอีเมลก่อนสแกน", 403) };
   const assigned = await env.DB.prepare("SELECT email FROM camp_lotto_scanners WHERE email=? AND active=1").bind(email).first();
-  if (assigned) return { email };
-  try {
-    const roles = await getAuth0Roles(env, auth.user.sub);
-    if (roles.some(r => allowed.includes(r))) return { email };
-  } catch (e) { console.error("[lotto] scanner role lookup:", e?.message || e); }
+  let isAdmin = false;
+  try { const roles = await getAuth0Roles(env, auth.user.sub); isAdmin = roles.some(r => allowed.includes(r)); }
+  catch (e) { console.error("[lotto] scanner role lookup:", e?.message || e); }
+  if (assigned || isAdmin) return { email, isAdmin };
   return { response: fail(req, env, "บัญชีนี้ยังไม่ได้รับมอบหมายให้เป็นเจ้าหน้าที่สแกน", 403) };
 }
 
@@ -131,6 +130,20 @@ async function removeScanner(req, env, value) {
   const email = clean(decodeURIComponent(value),254).toLowerCase();
   await env.DB.prepare("DELETE FROM camp_lotto_scanners WHERE email=?").bind(email).run();
   return json(req, env, { ok: true });
+}
+
+async function scannerMe(req, env) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
+  return json(req, env, { ok: true, email: a.email, isAdmin: a.isAdmin });
+}
+async function scannerLookup(req, env, url) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
+  const q = clean(url.searchParams.get("q"),100);
+  if (!q) return json(req,env,{students:[]});
+  const r = await env.DB.prepare(
+    "SELECT student_id,student_name,draw_number,created_at,updated_at,checked_at,checked_by FROM camp_lotto_students WHERE student_id LIKE ? OR student_name LIKE ? OR draw_number LIKE ? ORDER BY draw_number LIMIT 100"
+  ).bind(`%${q}%`,`%${q}%`,`%${q}%`).all();
+  return json(req,env,{students:r.results||[]});
 }
 
 async function scan(req, env) {
@@ -159,6 +172,8 @@ export async function lotto(req, env, url) {
     if (m==="POST" && p==="/camps/lotto/admin/scanners") return await addScanner(req,env);
     const scannerDel=p.match(/^\\/camps\\/lotto\\/admin\\/scanners\\/(.+)$/);
     if (m==="DELETE" && scannerDel) return await removeScanner(req,env,scannerDel[1]);
+    if (m==="GET" && p==="/camps/lotto/scanner/me") return await scannerMe(req,env);
+    if (m==="GET" && p==="/camps/lotto/scanner/lookup") return await scannerLookup(req,env,url);
     if (m==="GET" && p==="/camps/lotto/admin/overview") return await overview(req,env);
     if (m==="GET" && p==="/camps/lotto/admin/students") return await list(req,env,url);
     if (m==="POST" && p==="/camps/lotto/admin/students") return await upsert(req,env);
