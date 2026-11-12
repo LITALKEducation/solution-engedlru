@@ -123,6 +123,29 @@ async function fetchAuth0Roles(env, userId) {
   return data.map(role => String(role?.name || "").trim()).filter(Boolean);
 }
 
+// Profile picture of the Auth0 user with this email (Google avatar), for the lottery scan popup. Returns null when the
+// student never signed in, the M2M app lacks read:users, or Auth0 is slow — callers must treat the picture as optional.
+const pictureCache = new Map();
+export async function getAuth0PictureByEmail(env, email) {
+  const key = String(email || "").trim().toLowerCase();
+  if (!key) return null;
+  const hit = pictureCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.promise;
+  const promise = (async () => {
+    const domain = auth0ManagementDomain(env);
+    const token = await getManagementToken(env);
+    const res = await fetch(`https://${domain}/api/v2/users-by-email?email=${encodeURIComponent(key)}&fields=picture&include_fields=true`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`Auth0 picture lookup failed (${res.status})`);
+    const list = await res.json();
+    const pic = Array.isArray(list) ? list.map((u) => u && u.picture).find((x) => typeof x === "string" && /^https:\/\//.test(x)) : null;
+    return pic || null;
+  })();
+  pictureCache.set(key, { exp: Date.now() + 10 * 60_000, promise });
+  if (pictureCache.size > 300) for (const [k, v] of pictureCache) if (v.exp < Date.now()) pictureCache.delete(k);
+  promise.catch(() => pictureCache.delete(key));   // a failed lookup is retried on the next scan
+  return promise;
+}
+
 export async function updateAuth0User(env,userId,payload) {
   const domain = auth0ManagementDomain(env);
   const token = await getManagementToken(env);

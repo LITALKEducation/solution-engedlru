@@ -55,3 +55,8 @@ npm run deploy
 - รหัสนักศึกษาเป็น Primary Key และ QR Code เก็บเพียงรหัสนักศึกษา ไม่ฝังข้อมูลส่วนบุคคล
 - เมื่อถูกตัดสิทธิ์แล้ว จะไม่สามารถลบรายชื่อนั้นผ่านหน้าเว็บได้ เพื่อรักษาความถูกต้องของผลการตรวจสอบ
 - การบันทึกใช้ SQL conditional update (`checked_at IS NULL`) เพื่อป้องกันการสแกนพร้อมกันแล้วบันทึกซ้ำ
+
+## Scan popup (ตัวเลขใหญ่ + รูปจาก Auth0)
+After every scan a popup shows the **draw number in huge type**, the student's name and their **Auth0 profile photo** (green = checked in, amber = already scanned with time and officer, red = error). "สแกนคนต่อไป" (or Enter / Esc / tapping outside) closes it and re-opens the camera when the scan came from the camera.
+
+The photo is looked up by the university email `sb<student id>@lru.ac.th` with the Auth0 Management API (`GET /api/v2/users-by-email`). The M2M application used by the Worker therefore needs the **`read:users`** scope. A student who has never signed in (no Auth0 user) or a lookup failure just shows the student's initial; scanning is never blocked or slowed more than 2.5 s by it.

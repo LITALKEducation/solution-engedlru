@@ -1,5 +1,5 @@
 import { json } from "../lib/cors.js";
-import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
+import { getAuth0UserFromRequest, getAuth0Roles, getAuth0PictureByEmail } from "../lib/auth0.js";
 
 const fail = (req, env, error, status = 400, extra = {}) => json(req, env, { error, ...extra }, status);
 const clean = (v, max = 200) => String(v ?? "").normalize("NFC").replace(/[\u200b-\u200d\u2060\ufeff]/g, "").trim().slice(0, max);
@@ -146,23 +146,31 @@ async function scannerLookup(req, env, url) {
   return json(req,env,{students:r.results||[]});
 }
 
+// Student avatar from Auth0 (university emails are sb<id>@lru.ac.th). Never blocks or fails a scan.
+async function studentPicture(env, id) {
+  try {
+    return await Promise.race([getAuth0PictureByEmail(env, `sb${id}@lru.ac.th`), new Promise((r) => setTimeout(() => r(null), 2500))]);
+  } catch (e) { console.error("[lotto] picture lookup:", e?.message || e); return null; }
+}
+
 async function scan(req, env) {
   const a = await scanActor(req, env); if (a.response) return a.response;
   const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
   if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
   const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
   if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
-  if (row.checked_at) return json(req, env, { ok: false, alreadyChecked: true, student: row }, 409);
+  const picture = await studentPicture(env, id);
+  if (row.checked_at) return json(req, env, { ok: false, alreadyChecked: true, student: row, picture }, 409);
   const result = await env.DB.prepare(
     "UPDATE camp_lotto_students SET checked_at=datetime('now'),checked_by=?,updated_at=datetime('now') WHERE student_id=? AND checked_at IS NULL"
   ).bind(a.email, id).run();
   if (!result?.meta?.changes) {
     const latest = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
-    return json(req, env, { ok: false, alreadyChecked: true, student: latest }, 409);
+    return json(req, env, { ok: false, alreadyChecked: true, student: latest, picture }, 409);
   }
   const updated = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
   await env.DB.prepare("INSERT INTO camp_lotto_scan_logs (student_id,draw_number,actor_email,result) VALUES (?,?,?,'checked')").bind(id,row.draw_number,a.email).run();
-  return json(req, env, { ok: true, student: updated });
+  return json(req, env, { ok: true, student: updated, picture });
 }
 
 export async function lotto(req, env, url) {

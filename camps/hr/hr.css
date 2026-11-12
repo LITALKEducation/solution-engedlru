@@ -262,3 +262,7 @@ td{vertical-align:middle}
 body.gated main>:not(#gate){display:none!important}
 body.gated .hrnav{display:none!important}
 .gate{text-align:center;align-items:center;gap:12px;padding:28px 22px}
+/* iPad: the first head card must not stretch across the grid */
+.depts.heads .dept:first-child{grid-column:auto}
+/* iPad portrait: info cards need the full width for the 4 year columns */
+@media(min-width:760px) and (max-width:1099px){.depts:not(.heads){grid-template-columns:minmax(0,1fr)!important}.depts:not(.heads) .dept:first-child{grid-column:auto}}

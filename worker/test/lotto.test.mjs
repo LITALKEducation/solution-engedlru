@@ -15,7 +15,10 @@ r=await call('admin','POST','/camps/lotto/admin/scanners',{email:'not-an-email'}
 r=await call('admin','GET','/camps/lotto/admin/scanners');ok(r.d.scanners.length===1,'scanner listed');
 r=await call('s1','GET','/camps/lotto/scanner/me');ok(r.s===200&&r.d.isAdmin===false,'assigned scanner allowed (not admin)');
 r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===200&&r.d.ok,'scan checks in');
-r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===409&&r.d.alreadyChecked,'second scan 409 already checked');
+ok(r.d.picture==='https://lh3.googleusercontent.com/a/s1','scan returns the student Auth0 picture: '+r.d.picture);
+r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===409&&r.d.alreadyChecked&&r.d.picture,'second scan 409 already checked (still returns the picture)');
+await call('admin','POST','/camps/lotto/admin/students',{studentId:'6840100005',name:'Never Signed In',drawNumber:'77'});
+r=await call('admin','POST','/camps/lotto/admin/scan',{studentId:'6840100005'});ok(r.s===200&&r.d.picture===null,'student who never signed in: picture null, scan still works');
 r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'9999999999'});ok(r.s===404,'unknown id 404');
 r=await call('s1','GET','/camps/lotto/scanner/lookup?q=สมชาย');ok(r.d.students.length===1,'scanner lookup');
 r=await call('s1','POST','/camps/lotto/admin/students',{studentId:'6740102229',name:'x',drawNumber:'9'});ok(r.s===403,'scanner cannot edit roster');
@@ -23,6 +26,6 @@ r=await call('admin','DELETE','/camps/lotto/admin/students/6740102220');ok(r.s==
 r=await call('admin','DELETE','/camps/lotto/admin/students/6840100001');ok(r.s===200,'delete unchecked');
 r=await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102220%40lru.ac.th');ok(r.s===200,'remove scanner (route regex)');
 r=await call('s1','GET','/camps/lotto/scanner/me');ok(r.s===403,'removed scanner blocked');
-r=await call('admin','GET','/camps/lotto/admin/overview');ok(r.d.total===1&&r.d.checked===1,'overview counts');
+r=await call('admin','GET','/camps/lotto/admin/overview');ok(r.d.total===2&&r.d.checked===2,'overview counts');
 console.log(fl?fl+' FAILED':'all '+pass+' lotto checks passed');
 process.exit(fl?1:0);
