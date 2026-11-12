@@ -78,7 +78,7 @@ async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1
 
 // ---------- account card ----------
 const REASONS = {
-  not_university_email: (m) => 'บัญชี Google นี้ (' + esc(m.email) + ') ไม่ใช่อีเมลมหาวิทยาลัย กรุณาเข้าสู่ระบบด้วยอีเมล @lru.ac.th เช่น sb6740102220@lru.ac.th',
+  not_university_email: (m) => 'บัญชี Google นี้ (' + esc(m.email) + ') ไม่ใช่อีเมลมหาวิทยาลัย กรุณาเข้าสู่ระบบด้วยอีเมล @lru.ac.th',
   email_not_verified: (m) => 'อีเมล ' + esc(m.email) + ' ยังไม่ได้รับการยืนยันจาก Google',
   not_in_roster: (m) => 'ไม่พบรหัสนักศึกษา ' + esc(m.studentId || '') + ' ในรายชื่อของค่าย กรุณาติดต่อผู้ดูแลเพื่อให้เพิ่มรหัสและชั้นปีของคุณ'
 };
@@ -86,7 +86,7 @@ function renderAcct(x) {
   const box = $('acct');
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
   if (!me) {
-    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อเลือกฝ่าย</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th) เช่น sb6740102220@lru.ac.th ระบบจะอ่านรหัสนักศึกษาจากอีเมลให้เอง</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อเลือกฝ่าย</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
     return;
   }
   const adminPill = me.isAdmin ? ' <span class="pill admin">ผู้ดูแล</span>' : '';
