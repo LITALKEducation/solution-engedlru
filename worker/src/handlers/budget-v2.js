@@ -211,9 +211,43 @@ async function adminCategories(request,env,auth){
  try{await env.DB.prepare("INSERT INTO budget_categories (uuid,name,type) VALUES (?,?,?)").bind(uuid,clean(b.name,120),b.type).run();await audit(env,auth,"CATEGORY_CREATED","category",uuid,{name:b.name,type:b.type});return json(request,env,{ok:true,uuid},201);}catch(e){return fail(request,env,"ไม่สามารถสร้างหมวดหมู่ได้: "+e.message,400);}
 }
 
+async function adminUserUpdate(request,env,auth,uuid){
+ const denied=await adminOnly(request,env,auth); if(denied)return denied;
+ const b=await request.json().catch(()=>null); if(!b||typeof b!=="object")return fail(request,env,"ข้อมูลไม่ถูกต้อง");
+ const cur=await env.DB.prepare("SELECT uuid,email,student_id,display_name,enabled FROM budget_users WHERE uuid=?").bind(uuid).first();
+ if(!cur)return fail(request,env,"ไม่พบผู้ใช้",404);
+ const enabled=b.enabled!==undefined?(b.enabled?1:0):cur.enabled;
+ if(enabled===0&&cur.uuid===auth.row.uuid)return fail(request,env,"ปิดสิทธิ์ของตัวเองไม่ได้");
+ const display=b.displayName!==undefined?clean(b.displayName,200):cur.display_name;
+ const student=b.studentId!==undefined?clean(b.studentId,50):cur.student_id;
+ let accounts=null;
+ if(b.accountUuids!==undefined){
+  if(!Array.isArray(b.accountUuids)||b.accountUuids.length>200)return fail(request,env,"รายการบัญชีไม่ถูกต้อง");
+  accounts=[...new Set(b.accountUuids.map(x=>String(x)))];
+  if(accounts.length){
+   const ph=accounts.map(()=>"?").join(",");
+   const ok=await env.DB.prepare(`SELECT uuid FROM budget_accounts WHERE active=1 AND uuid IN (${ph})`).bind(...accounts).all();
+   if((ok.results||[]).length!==accounts.length)return fail(request,env,"มีบัญชีที่ไม่ถูกต้องหรือถูกปิดใช้งาน");
+  }
+ }
+ const before=await env.DB.prepare("SELECT account_uuid FROM budget_account_access WHERE user_uuid=?").bind(uuid).all();
+ const stmts=[env.DB.prepare("UPDATE budget_users SET display_name=?,student_id=?,enabled=?,updated_at=datetime('now') WHERE uuid=?").bind(display,student,enabled,uuid)];
+ if(accounts){
+  stmts.push(env.DB.prepare("DELETE FROM budget_account_access WHERE user_uuid=?").bind(uuid));
+  for(const a of accounts)stmts.push(env.DB.prepare("INSERT INTO budget_account_access (user_uuid,account_uuid) VALUES (?,?)").bind(uuid,a));
+ }
+ stmts.push(env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
+  .bind(crypto.randomUUID(),auth.user.sub,auth.user.email||auth.row.email,"USER_UPDATED","user",uuid,JSON.stringify({email:cur.email,enabled:{from:cur.enabled,to:enabled},accounts:{from:(before.results||[]).map(r=>r.account_uuid),to:accounts}})));
+ await env.DB.batch(stmts);
+ return json(request,env,{ok:true});
+}
+
 async function adminUsers(request,env,auth){
  const denied=await adminOnly(request,env,auth); if(denied)return denied;
- if(request.method==="GET"){const x=await env.DB.prepare("SELECT uuid,auth0_user_id,email,student_id,display_name,enabled FROM budget_users ORDER BY email").all();return json(request,env,{users:x.results||[]});}
+ if(request.method==="GET"){
+  const [x,acc]=await Promise.all([env.DB.prepare("SELECT uuid,email,student_id,display_name,enabled FROM budget_users ORDER BY enabled DESC,email").all(),env.DB.prepare("SELECT user_uuid,account_uuid FROM budget_account_access").all()]);
+  const map={};for(const r of acc.results||[])(map[r.user_uuid]=map[r.user_uuid]||[]).push(r.account_uuid);
+  return json(request,env,{users:(x.results||[]).map(u=>({...u,account_uuids:map[u.uuid]||[]}))});}
  const b=await request.json().catch(()=>null); if(!b?.email)return fail(request,env,"กรุณาระบุอีเมล");
  const email=String(b.email).trim().toLowerCase();
  const existing=await env.DB.prepare("SELECT uuid FROM budget_users WHERE email=?").bind(email).first();
@@ -360,6 +394,7 @@ async function budgetV2Inner(request,env,url,ctx){
   if(url.pathname==="/budget/admin/categories" && (request.method==="GET"||request.method==="POST")) return adminCategories(request,env,auth);
   const catU=url.pathname.match(/^\/budget\/admin\/categories\/([^/]+)$/); if(catU&&request.method==="PATCH") return adminCategoryUpdate(request,env,auth,decodeURIComponent(catU[1]));
   if(url.pathname==="/budget/admin/users" && (request.method==="GET"||request.method==="POST")) return adminUsers(request,env,auth);
+  const userU=url.pathname.match(/^\/budget\/admin\/users\/([^/]+)$/); if(userU&&request.method==="PATCH") return adminUserUpdate(request,env,auth,decodeURIComponent(userU[1]));
   const ev=url.pathname.match(/^\/budget\/transactions\/([^/]+)\/evidence$/); if(ev&&request.method==="GET")return getEvidence(request,env,auth,ev[1]);
   if(request.method==="POST" && url.pathname==="/budget/transactions") return createTransaction(request,env,auth,ctx);
   if(url.pathname==="/budget/notifications" && request.method==="GET") return notificationsList(request,env,auth);

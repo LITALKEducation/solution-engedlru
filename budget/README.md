@@ -98,3 +98,13 @@ The welcome page signs in with Google through Auth0's Google social connection (
 4. Optional: turn off the database connection for this application so Google is the only option.
 
 If a Google account has no access, the app shows its email so the person can send it to an admin, and offers "ใช้บัญชี Google อื่น" (asks Google to show its account chooser).
+
+## Screen sizes
+
+- **Phone (< 768px):** single column with a bottom tab bar and floating "บันทึก" button. Phones must use the installed web app.
+- **iPad / small laptop (768–1023px):** left icon rail, content up to 1160px. Tablets are not forced to install.
+- **Desktop / iPad landscape (≥ 1024px):** full left sidebar with the signed-in user, two-column dashboard, and table views for transactions and donations. Dialogs open as centred cards.
+
+## Editing a user's access
+
+Admin → ผู้ใช้ → tap a user to change their display name, student ID, on/off switch and which accounts they can use. A disabled user is refused at sign-in (message "บัญชีนี้ถูกปิดสิทธิ์ใช้งาน"). Admins can't disable themselves, and users who hold the Auth0 `budget_admin` role always see every account (manage that role in Auth0). Every change is written to the audit log (`USER_UPDATED`).

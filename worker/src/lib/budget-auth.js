@@ -26,12 +26,15 @@ export async function requireBudgetAuth(request,env){
   };
  }
 
- let row=await env.DB.prepare("SELECT * FROM budget_users WHERE auth0_user_id=? AND enabled=1").bind(user.sub).first();
+ // Look the user up whether or not they are enabled, so a disabled user is refused (not re-created).
+ let row=await env.DB.prepare("SELECT * FROM budget_users WHERE auth0_user_id=?").bind(user.sub).first();
  // Match by email only when the identity provider says the address is verified (Google always does).
- if(!row&&email&&user.email_verified===true)row=await env.DB.prepare("SELECT * FROM budget_users WHERE email=? AND enabled=1").bind(email).first();
+ if(!row&&email&&user.email_verified===true)row=await env.DB.prepare("SELECT * FROM budget_users WHERE email=?").bind(email).first();
  if(row && row.auth0_user_id !== user.sub) await env.DB.prepare("UPDATE budget_users SET auth0_user_id=?,updated_at=datetime('now') WHERE uuid=?").bind(user.sub,row.uuid).run();
 
  const isAdmin=roles.includes("budget_admin");
+ // Admins are governed by the Auth0 role (so nobody can lock themselves out); everyone else needs an enabled row.
+ if(row&&!row.enabled&&!isAdmin)return {ok:false,response:json(request,env,{error:"บัญชีนี้ถูกปิดสิทธิ์ใช้งาน กรุณาติดต่อผู้ดูแล",code:"ACCESS_DISABLED"},403)};
  if(!row&&!isAdmin)return {ok:false,response:json(request,env,{error:"บัญชีนี้ไม่ได้รับสิทธิ์ใช้งาน Budget"},403)};
  if(!row&&isAdmin){
   const uuid=crypto.randomUUID();

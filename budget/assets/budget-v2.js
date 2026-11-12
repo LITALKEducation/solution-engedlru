@@ -22,7 +22,7 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
  let n=3;const txs=[{transaction_id:'DEMO-0003',transaction_uuid:'t3',account_uuid:'a2',account_name:'บัญชีธนาคาร',type:'income',is_donation:1,category:'เงินบริจาค',amount:20000,details:'บริจาคโดย คุณสมชาย ใจดี (PromptPay)',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date(Date.now()-864e5).toISOString(),status:'active'},{transaction_id:'DEMO-0002',transaction_uuid:'t2',account_uuid:'a1',account_name:'เงินสดชมรม',type:'expense',category:'อุปกรณ์',amount:850.5,details:'ซื้อกระดาษ A4 และปากกา',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date(Date.now()-2*864e5).toISOString(),status:'active'},{transaction_id:'DEMO-0001',transaction_uuid:'t1',account_uuid:'a1',account_name:'เงินสดชมรม',type:'income',category:'อื่น ๆ',amount:5000,details:'ยอดยกมา',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date(Date.now()-5*864e5).toISOString(),status:'active'}];
  const dons=[{uuid:'d2',transaction_uuid:'t2',transaction_id:'DEMO-D2',account_name:'บัญชีธนาคาร',donor_name:'คุณสมชาย ใจดี',method:'promptpay',amount:1000,donated_at:'2026-11-08',note:'สนับสนุนโครงการ',evidence_uuid:'e',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ'},{uuid:'d1',transaction_uuid:'t1',transaction_id:'DEMO-D1',account_name:'เงินสดชมรม',donor_name:'ไม่ประสงค์ออกนาม',method:'cash',amount:500,donated_at:'2026-11-05',note:'',created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ'}];
  const notifs=[{uuid:'n2',kind:'donation',transaction_id:'DEMO-0003',type:'income',amount:20000,account_name:'บัญชีธนาคาร',title:'บริจาคใหม่ ฿20,000.00',body:'ผู้ช่วย · บัญชีธนาคาร · บริจาคโดย คุณสมชาย ใจดี (PromptPay)',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-36e5).toISOString(),unread:true},{uuid:'n1',kind:'transaction',transaction_id:'DEMO-0002',type:'expense',amount:850.5,account_name:'เงินสดชมรม',title:'เงินออก ฿850.50',body:'ผู้ช่วย · เงินสดชมรม · ซื้อกระดาษ A4 และปากกา',actor_email:'x@y',actor_name:'ผู้ช่วย',created_at:new Date(Date.now()-2*864e5).toISOString(),unread:true}];
- const users=[{email:'demo@example.com',display_name:'ผู้ทดสอบ',student_id:'0000000',enabled:true},{email:'helper@example.com',display_name:'ผู้ช่วย',student_id:'6401234',enabled:true}];
+ const users=[{uuid:'u1',email:'demo@example.com',display_name:'ผู้ทดสอบ',student_id:'0000000',enabled:true,account_uuids:['a1','a2']},{uuid:'u2',email:'helper@example.com',display_name:'ผู้ช่วย',student_id:'6401234',enabled:true,account_uuids:['a1']}];
  const res=o=>({ok:true,status:200,json:async()=>o,blob:async()=>new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#faf3f2"/><text x="300" y="190" font-size="34" text-anchor="middle" fill="#d32f2f" font-family="sans-serif">Demo receipt</text><text x="300" y="240" font-size="20" text-anchor="middle" fill="#82787a" font-family="sans-serif">sample evidence image</text></svg>'],{type:'image/svg+xml'})});
  return async(path,opt={})=>{const u=path.split('?')[0],post=(opt.method||'GET')==='POST';
   if(u==='/budget/meta')return res({accounts:accs,categories:cats.filter(c=>c.active!==0)});
@@ -41,7 +41,8 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
   if(u==='/budget/admin/accounts'&&!post)return res({accounts:accs.map(a=>({...a,description:a.name==='บัญชีธนาคาร'?'บัญชีออมทรัพย์ของชมรม':'เงินสดที่ถือไว้',active:1}))});
    if(u==='/budget/admin/accounts'&&post){const b=JSON.parse(opt.body);if(accs.some(a=>a.name===b.name))return {ok:false,status:400,json:async()=>({error:'ไม่สามารถสร้างบัญชีได้: ชื่อนี้มีอยู่แล้ว'})};accs.push({uuid:'a'+(accs.length+1),name:b.name,currency:'THB'});return res({ok:true})}
    if(u==='/budget/admin/users'&&!post)return res({users:users});
-   if(u==='/budget/admin/users'&&post){const b=JSON.parse(opt.body);if(users.some(x=>x.email===b.email))return {ok:false,status:400,json:async()=>({error:'อีเมลนี้มีอยู่แล้ว'})};users.push({email:b.email,display_name:b.displayName,student_id:b.studentId,enabled:true});return res({ok:true})}
+   if(u==='/budget/admin/users'&&post){const b=JSON.parse(opt.body);if(users.some(x=>x.email===b.email))return {ok:false,status:400,json:async()=>({error:'อีเมลนี้มีอยู่แล้ว'})};users.push({uuid:'u'+(users.length+1),email:b.email,display_name:b.displayName,student_id:b.studentId,enabled:true,account_uuids:b.accountUuids||[]});return res({ok:true})}
+   if(/^\/budget\/admin\/users\//.test(u)&&(opt.method||'')==='PATCH'){const x=users.find(y=>y.uuid===decodeURIComponent(u.split('/').pop()));const b=JSON.parse(opt.body);if(!x)return {ok:false,status:404,json:async()=>({error:'ไม่พบผู้ใช้'})};if(b.enabled===false&&x.email==='demo@example.com')return {ok:false,status:400,json:async()=>({error:'ปิดสิทธิ์ของตัวเองไม่ได้'})};if(b.displayName!==undefined)x.display_name=b.displayName;if(b.studentId!==undefined)x.student_id=b.studentId;if(b.enabled!==undefined)x.enabled=b.enabled;if(b.accountUuids)x.account_uuids=b.accountUuids;return res({ok:true})}
   if(u==='/budget/transactions'&&post){const f=opt.body,acc=accs.find(a=>a.uuid===f.get('accountUuid')),cat=cats.find(c=>c.uuid===f.get('categoryUuid'));n++;const id='DEMO-'+String(n).padStart(4,'0');txs.unshift({transaction_id:id,transaction_uuid:'t'+n,account_uuid:acc.uuid,account_name:acc.name,type:f.get('type'),category:cat.name,amount:Number(f.get('amount')),details:f.get('details'),created_by_email:'demo@example.com',created_by_name:'ผู้ทดสอบ',created_at:new Date().toISOString(),status:'active'});return res({transaction:{transactionId:id,uuid:'demo-'+n,accountUuid:acc.uuid,type:f.get('type'),amount:Number(f.get('amount')),details:f.get('details')},verificationUrl:location.origin+'/verify/?id='+id})}
   if(u.endsWith('/evidence'))return res({});
   return res({ok:true})}})();
@@ -50,9 +51,11 @@ const mock=(()=>{const accs=[{uuid:'a1',name:'เงินสดชมรม',cu
 const UA=navigator.userAgent;
 const IS_IOS=/iPhone|iPad|iPod/i.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const IS_MOBILE=IS_IOS||/Android|Mobile|Windows Phone|webOS|BlackBerry/i.test(UA);
+// iPadOS 13+ reports a Mac user agent with touch, Android tablets omit "Mobile": both count as tablets, not phones
+const IS_PHONE=/iPhone|iPod|Windows Phone|webOS|BlackBerry/i.test(UA)||(/Android/i.test(UA)&&/Mobile/i.test(UA));
 const IN_APP_BROWSER=/Line\/|FBAN|FBAV|Instagram|MicroMessenger|TikTok|; wv\)/i.test(UA);
 const isStandalone=()=>['standalone','fullscreen','minimal-ui'].some(m=>matchMedia('(display-mode: '+m+')').matches)||navigator.standalone===true;
-const needsInstall=()=>!TEST&&IS_MOBILE&&!isStandalone();
+const needsInstall=()=>!TEST&&IS_PHONE&&!isStandalone();
 const icoShare=()=>svgI('<path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),icoDots=()=>svgI('<circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/>');
 function updateGate(){gateRender();const st=$('gateSteps');st.innerHTML=st.innerHTML.replace(/<li>/g,'<li><span>').replace(/<\/li>/g,'</span></li>')}
 function gateRender(){
@@ -80,7 +83,7 @@ async function init(){
   if(!await withTimeout(auth0Client.isAuthenticated(),T,'ตรวจสอบสถานะไม่ทัน')){show('login');return}
   const token=await withTimeout(auth0Client.getTokenSilently(),T,'ขอสิทธิ์เข้าใช้งานไม่ทัน');
   const r=await withTimeout(fetch(API+'/budget/me',{headers:{Authorization:'Bearer '+token}}),15000,'เชื่อมต่อเซิร์ฟเวอร์ไม่ทัน');
-  if(r.status===403){let em='';try{em=(await auth0Client.getUser())?.email||''}catch(e){}const box=$('deniedEmail');box.textContent=em;box.classList.toggle('hidden',!em);show('denied');return}
+  if(r.status===403){let em='';try{const m=(await r.clone().json()).error;if(m)$('deniedText').textContent=m}catch(e){}try{em=(await auth0Client.getUser())?.email||''}catch(e){}const box=$('deniedEmail');box.textContent=em;box.classList.toggle('hidden',!em);show('denied');return}
   if(!r.ok)throw new Error(await errMsg(r));
   me=await r.json();
  }catch(e){console.error(e);loginMsg(e.message||'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง');show('login');return}
@@ -89,7 +92,8 @@ async function init(){
  try{await loadMeta();const q=new URLSearchParams(location.search).get('page');if(['transaction','donation','audit'].includes(q))showPage(q);await loadDashboard()}catch(e){console.error(e);toast('โหลดข้อมูลไม่สำเร็จ',1)}
 }
 function loginMsg(t){const b=$('loginMsg');b.textContent=t;b.classList.toggle('hidden',!t)}
-function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function show(id){['loading','login','gate','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id));if(id==='app')fillSideUser()}
+function fillSideUser(){const n=(me&&(me.name||me.email))||'';$('sideName').textContent=n;$('sideEmail').textContent=(me&&me.email)||'';$('sideAv').textContent=(n.trim()[0]||'?').toUpperCase()}
 // Google sign-in through Auth0's Google social connection (name can be overridden with window.BUDGET_AUTH0_CONNECTION)
 const AUTH_CONNECTION=window.BUDGET_AUTH0_CONNECTION||'google-oauth2';
 async function login(forceChoose){
@@ -152,13 +156,25 @@ function rowHtml(t,src,i){
  const sub=don?mLabel(t.method)+' · '+t.account_name:[timeOf(t.created_at),t.category,t.account_name].filter(Boolean).join(' · ');
  const cap=don?mLabel(t.method):(t.is_donation?'บริจาค':inc?'เงินเข้า':'เงินออก');
  return '<button class="row" onclick="openDetail(\''+src+'\','+i+')"><span class="av '+k+'">'+IC[k]+'</span><span class="rm"><b>'+esc(title)+'</b><small>'+esc(sub)+'</small></span><span class="ra"><b class="amt '+k+'">'+(inc?'+':'-')+'฿'+money(t.amount)+'</b><small>'+esc(cap)+'</small></span></button>'}
+const WIDE=matchMedia('(min-width:1024px)');
+function tableHtml(rows,src,key){
+ const don=src==='don';
+ const head=don?['วันที่','ผู้บริจาค','ช่องทาง','บัญชี','จำนวน']:['วันที่','รายการ','หมวดหมู่','บัญชี','ผู้บันทึก','จำนวน'];
+ const body=rows.map((t,i)=>{const k=don?'donation':(t.is_donation?'donation':t.type),inc=don||t.type==='income',amt='<td class="num amt '+k+'">'+(inc?'+':'-')+'฿'+money(t.amount)+'</td>';
+  const dt='<td class="nw">'+esc(fmtDate(t[key]))+'</td>';
+  return '<tr onclick="openDetail(\''+src+'\','+i+')">'+(don
+   ?dt+'<td class="ttl"><b>'+esc(t.donor_name)+'</b></td><td><span class="pill-t donation">'+mLabel(t.method)+'</span></td><td>'+esc(t.account_name)+'</td>'+amt
+   :dt+'<td class="ttl"><b>'+esc(t.details)+'</b><small>'+esc(t.transaction_id||'')+'</small></td><td>'+(t.is_donation?'<span class="pill-t donation">บริจาค</span> ':'')+esc(t.category)+'</td><td>'+esc(t.account_name)+'</td><td>'+esc(t.created_by_name||t.created_by_email||'')+'</td>'+amt)+'</tr>'}).join('');
+ return '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+head.map((x,i)=>'<th'+(i===head.length-1?' class="num"':'')+'>'+x+'</th>').join('')+'</tr></thead><tbody>'+body+'</tbody></table></div>'}
+function listHtml(rows,src,key){return WIDE.matches&&rows.length?tableHtml(rows,src,key):groupedHtml(rows,src,key)}
 function groupedHtml(rows,src,key){let out='',last='';rows.forEach((t,i)=>{const k=ymd(t[key]);if(k!==last){out+='<div class="day">'+esc(dayLabel(k))+'</div>';last=k}out+=rowHtml(t,src,i)});return out}
 
+WIDE.addEventListener('change',()=>{if(curPage==='audit'&&reportRows.length)renderReport();if(curPage==='donation'&&donRows.length)renderDonations()});
 // ---- navigation ----
 const TITLES={dashboard:'บัญชีของฉัน',transaction:'บันทึกรายการ',donation:'บริจาค',audit:'ธุรกรรม',admin:'ตั้งค่าระบบ'};
 let curPage='dashboard',prevPage='dashboard',lastDash=0;
 function showPage(p){
- curPage=p;document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const pg=$('page-'+p);pg.classList.remove('hidden');{const o=['dashboard','audit','donation','admin'],d=(o.indexOf(p)<0?1:o.indexOf(p)-o.indexOf(prevPage));pg.style.setProperty('--from',(d>=0?8:-8)+'px')}prevPage=p;replay(pg,'enter');pg.classList.add('stagger');clearTimeout(pg._st);pg._st=setTimeout(()=>pg.classList.remove('stagger'),1300);
+ curPage=p;document.body.dataset.page=p;document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const pg=$('page-'+p);pg.classList.remove('hidden');{const o=['dashboard','audit','donation','admin'],d=(o.indexOf(p)<0?1:o.indexOf(p)-o.indexOf(prevPage));pg.style.setProperty('--from',(d>=0?8:-8)+'px')}prevPage=p;replay(pg,'enter');pg.classList.add('stagger');clearTimeout(pg._st);pg._st=setTimeout(()=>pg.classList.remove('stagger'),1300);
  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
  $('pageTitle').textContent=TITLES[p]||'';$('topLeft').innerHTML=p==='dashboard'?IC.menu:IC.back;$('topLeft').setAttribute('aria-label',p==='dashboard'?'เมนู':'ย้อนกลับ');
  $('fab').classList.toggle('gone',p==='transaction'||(p==='donation'&&!$('donForm').classList.contains('hidden')));
@@ -320,7 +336,7 @@ function renderReport(){const af=$('filterAccount').value;let rows=reportRows;
  if(af)rows=rows.filter(x=>x.account_uuid===af);
  if(repType==='donation')rows=rows.filter(x=>x.is_donation);else if(repType==='income')rows=rows.filter(x=>x.type==='income'&&!x.is_donation);else if(repType)rows=rows.filter(x=>x.type===repType);
  const q=repQ.trim().toLowerCase();if(q)rows=rows.filter(x=>[x.transaction_id,x.details,x.account_name,x.category,x.note,x.created_by_name,x.created_by_email].join(' ').toLowerCase().includes(q));
- lists.rep=rows;$('reportCards').innerHTML=groupedHtml(rows,'rep','created_at')||'<div class="empty">ไม่พบรายการ</div>';$('repCount').textContent=rows.length+' รายการ'}
+ lists.rep=rows;$('reportCards').innerHTML=listHtml(rows,'rep','created_at')||'<div class="empty">ไม่พบรายการ</div>';$('repCount').textContent=rows.length+' รายการ'}
 $('filterAccount').addEventListener('change',renderReport);
 $('repSearch').addEventListener('input',e=>{repQ=e.target.value;renderReport()});
 $('filtBtn').addEventListener('click',()=>$('filterPanel').classList.toggle('hidden'));
@@ -357,7 +373,7 @@ async function exportPdf(){try{await needPdf()}catch(e){return toast(e.message,1
  doc.save('budget-report-'+new Date().toISOString().slice(0,10)+'.pdf')}
 window.addEventListener('DOMContentLoaded',init);
 // ---- Settings (tabs sliding / accordion / toggle / modal / error shake — transitions.dev patterns) ----
-const ADM_TABS=['accounts','categories','users'];let admTab='accounts',cats=[];
+const ADM_TABS=['accounts','categories','users'];let admTab='accounts',cats=[],admUsers=[];
 const TYPE_LABEL={income:'เงินเข้า',expense:'เงินออก',both:'ทั้งสองประเภท'},RESERVED_CAT='เงินบริจาค';
 const accOpen={expense:true,income:true,both:true,hidden:false};
 const ICO_EDIT=svgI('<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>');
@@ -379,8 +395,11 @@ async function loadAdminAccounts(){
 async function loadAdminUsers(){
  let r;try{r=await api('/budget/admin/users')}catch(e){$('users').innerHTML=failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้','loadAdminUsers()');return}
  if(!r.ok){$('users').innerHTML=failBox(await errMsg(r),'loadAdminUsers()');return}
- const list=(await r.json()).users||[];
- $('users').innerHTML=list.map(x=>'<div class="adm-row"><span class="av">'+esc(((x.display_name||x.email||'?').trim()[0]||'?').toUpperCase())+'</span><div class="cm"><b>'+esc(x.display_name||x.email)+'</b><small>'+esc(x.email)+(x.student_id?' · '+esc(x.student_id):'')+'</small></div><span class="pill-t '+(x.enabled?'income':'expense')+'">'+(x.enabled?'เปิดใช้':'ปิด')+'</span></div>').join('')||'<div class="empty">ยังไม่มีผู้ใช้</div>'}
+ admUsers=(await r.json()).users||[];
+ const names=Object.fromEntries(((meta&&meta.accounts)||[]).map(a=>[a.uuid,a.name]));
+ $('users').innerHTML=admUsers.map((x,i)=>{const n=(x.account_uuids||[]).length;
+  return '<div class="adm-row click" role="button" tabindex="0" onclick="editUser('+i+')" onkeydown="if(event.key===\'Enter\')editUser('+i+')"><span class="av">'+esc(((x.display_name||x.email||'?').trim()[0]||'?').toUpperCase())+'</span><div class="cm"><b>'+esc(x.display_name||x.email)+'</b><small>'+esc(x.email)+(x.student_id?' · '+esc(x.student_id):'')+'</small></div><div class="meta2"><span class="pill-t '+(x.enabled?'income':'expense')+'">'+(x.enabled?'เปิดใช้':'ปิดสิทธิ์')+'</span><small>'+(n?n+' บัญชี':'ไม่มีบัญชี')+'</small></div>'+svgI('<path d="M9 6l6 6-6 6"/>').replace('<svg','<svg class="chev"')+'</div>'}).join('')||'<div class="empty">ยังไม่มีผู้ใช้</div>'
+}
 function openAdd(id,focusId){openModal(id);setTimeout(()=>{const f=$(focusId);if(f)f.focus()},260)}
 // -- categories: accordion groups + toggle switches
 async function loadCats(){
@@ -411,6 +430,25 @@ async function toggleCat(i,btn){const c=cats[i];if(!c||btn.disabled)return;const
 $('catEditForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('catEditSave');b.disabled=true;
  try{const res=await patchCat($('catEditId').value,{name:$('catEditName').value,type:$('catEditType').value});
   if(res.ok){hideModal('catEdit');toast('บันทึกหมวดหมู่แล้ว')}else formError($('catEditName'),res.msg)}finally{b.disabled=false}});
+
+// -- edit a user's access (name, student id, enabled, accounts)
+function setSwitch(btn,on,anim){if(anim)btn.classList.add('is-init');btn.setAttribute('data-on',on?'true':'false')}
+function editUser(i){const u=admUsers[i];if(!u)return;
+ $('euId').value=u.uuid;$('euEmail').textContent=u.email;$('euAv').textContent=((u.display_name||u.email||'?').trim()[0]||'?').toUpperCase();
+ $('euName').value=u.display_name||'';$('euStudent').value=u.student_id||'';
+ const self=me&&u.email&&me.email&&u.email.toLowerCase()===me.email.toLowerCase();
+ setSwitch($('euEnabled'),!!u.enabled,false);$('euEnabled').disabled=!!self;
+ $('euNote').textContent=self?'บัญชีของคุณเอง — ปิดสิทธิ์ตัวเองไม่ได้':'ผู้ดูแล (budget_admin) เห็นทุกบัญชีเสมอ จัดการบทบาทใน Auth0';
+ const have=new Set(u.account_uuids||[]);
+ $('euAccounts').innerHTML=((meta&&meta.accounts)||[]).map(a=>'<label><input type="checkbox" value="'+esc(a.uuid)+'"'+(have.has(a.uuid)?' checked':'')+'> '+esc(a.name)+'</label>').join('')||'<div class="empty sm">ยังไม่มีบัญชี</div>';
+ $('euErr').closest('.t-input-wrap').classList.remove('is-error');
+ openModal('editUser')}
+$('euEnabled').addEventListener('click',()=>{const b=$('euEnabled');if(b.disabled)return;setSwitch(b,b.getAttribute('data-on')!=='true',true);$('euEnabledHint').textContent=b.getAttribute('data-on')==='true'?'ผู้ใช้เข้าสู่ระบบและใช้งานได้':'ผู้ใช้จะเข้าใช้งานไม่ได้จนกว่าจะเปิดอีกครั้ง'});
+$('editUserForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('euSave');b.disabled=true;
+ try{const accounts=[...$('euAccounts').querySelectorAll('input:checked')].map(x=>x.value);
+  const r=await api('/budget/admin/users/'+encodeURIComponent($('euId').value),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayName:$('euName').value,studentId:$('euStudent').value,enabled:$('euEnabled').getAttribute('data-on')==='true',accountUuids:accounts})});
+  if(!r.ok){const wrap=$('euErr').closest('.t-input-wrap');$('euErr').textContent=await errMsg(r);wrap.classList.add('is-error');shake($('euSave'));return}
+  hideModal('editUser');toast('บันทึกสิทธิ์ผู้ใช้แล้ว');await loadAdminUsers()}finally{b.disabled=false}});
 // -- add forms (modals)
 async function postJson(path,body){const r=await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return r.ok?{ok:true}:{ok:false,msg:await errMsg(r)}}
 $('accountForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,b=f.querySelector('.cta');b.disabled=true;
@@ -467,7 +505,7 @@ async function loadDonations(){
  renderDonations()}
 function renderDonations(){const q=donQ.trim().toLowerCase();
  const rows=donRows.filter(x=>(!donM||x.method===donM)&&(!q||String(x.donor_name).toLowerCase().includes(q)));
- lists.don=rows;$('donList').innerHTML=groupedHtml(rows,'don','donated_at')||'<div class="empty">ยังไม่มีรายการบริจาค</div>'}
+ lists.don=rows;$('donList').innerHTML=listHtml(rows,'don','donated_at')||'<div class="empty">ยังไม่มีรายการบริจาค</div>'}
 $('donSearch').addEventListener('input',e=>{donQ=e.target.value;renderDonations()});
 $('donChips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;donM=b.dataset.v;document.querySelectorAll('#donChips .chip').forEach(x=>x.classList.toggle('on',x===b));renderDonations()});
 
