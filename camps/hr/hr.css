@@ -222,3 +222,12 @@ td{vertical-align:middle}
 .depinfo label{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--mute)}
 .depinfo textarea{min-height:60px}
 @media(min-width:900px){.depinfo{grid-template-columns:1fr 1fr}.depinfo h4,.depinfo .full,.depinfo .qact{grid-column:1/-1}}
+
+/* head photo */
+.hav{flex:none;border-radius:50%;object-fit:cover;background:var(--brand-l);display:inline-grid;place-items:center;font-weight:800;color:var(--brand-d)}
+.hav.sm{width:26px;height:26px;font-size:12px}.hav.lg{width:72px;height:72px;font-size:28px}
+.dept .hd{display:flex;align-items:center;gap:8px}
+.pvperson{display:flex;align-items:center;gap:14px}
+.pvperson p{margin:0}
+.phrow{display:flex;align-items:center;gap:14px}.phbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hidden{display:none!important}
