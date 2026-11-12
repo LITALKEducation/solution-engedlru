@@ -280,7 +280,7 @@ async function loadRegList() {
   let r; try { r = await api('/camps/admin/students'); } catch (e) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadRegList()'); return; }
   if (!r.ok) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox(await errMsg(r), 'loadRegList()'); return; }
   allStudents = (await r.json()).students || [];
-  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><p class="muted" style="margin:-4px 0 8px">ผู้ดูแลเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
+  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="filerow" style="margin:0 0 8px"><button class="btn sm primary" type="button" onclick="exportRegXlsx()">ส่งออก Excel (แยกฝ่าย)</button><button class="btn sm primary" type="button" onclick="exportRegPdf()">ส่งออก PDF (แยกฝ่าย)</button></div><p class="muted" style="margin:-4px 0 8px">ผู้ดูแลเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
     const mem = allStudents.filter((x) => x.department_code === d.code);
     return '<details class="reg" data-code="' + d.code + '"' + (openReg.has(d.code) ? ' open' : '') + ' ontoggle="regToggle(this)"><summary><b>' + esc(d.name) + '</b> <span class="muted">' + mem.length + ' คน</span></summary>' + (mem.length ? YEARS.map((y) => GENDERS.map((g) => {
       const m = mem.filter((x) => x.year === y && x.gender === g); return m.length ? '<div class="regy"><span class="pill">ปี ' + y + ' ' + GL[g] + ' · ' + m.length + '/' + d.quota[g][y] + '</span> ' + m.map((x) => '<span class="nm">' + esc(x.name) + '<button type="button" aria-label="นำ ' + esc(x.name) + ' ออก" title="นำออกจากฝ่าย" onclick="removeFrom(\'' + x.student_id + '\')">×</button></span>').join('') + '</div>' : '';
@@ -478,6 +478,59 @@ async function exportCsv() {
   const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const csv = '﻿' + ['รหัสนักศึกษา,ชื่อ,ชั้นปี,เพศ,ฝ่าย'].concat(list.map((s) => [q(s.student_id), q(s.name), s.year, q(GL[s.gender]), q(s.department_name || '')].join(','))).join('\r\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ---------- export registrations by department (Excel / PDF) ----------
+const loadJs = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(el); });
+async function regGroups() {
+  const r = await api('/camps/admin/students'); if (!r.ok) { toast(await errMsg(r), true); return null; }
+  if (!adminData) { const o = await api('/camps/admin/overview'); if (o.ok) adminData = await o.json(); }
+  const list = ((await r.json()).students || []).filter((s) => s.department_code);
+  const order = (adminData ? adminData.departments : []).map((d) => ({ code: d.code, name: d.name }));
+  for (const s of list) if (!order.some((d) => d.code === s.department_code)) order.push({ code: s.department_code, name: s.department_name || s.department_code });
+  const gi = (g) => (g === 'M' ? 0 : g === 'F' ? 1 : 2);
+  const groups = order.map((d) => ({ ...d, people: list.filter((s) => s.department_code === d.code).sort((a, b) => a.year - b.year || gi(a.gender) - gi(b.gender) || String(a.student_id).localeCompare(String(b.student_id))) }));
+  return { groups, total: list.length };
+}
+const regSummary = (groups) => groups.map((g) => { const n = (y, x) => g.people.filter((p) => p.year === y && (!x || p.gender === x)).length; return [g.name, g.people.length, g.people.filter((p) => p.gender === 'M').length, g.people.filter((p) => p.gender === 'F').length].concat(YEARS.map((y) => n(y))); });
+const SUM_HEAD = ['ฝ่าย', 'รวม', 'ชาย', 'หญิง'].concat(YEARS.map((y) => 'ปี ' + y));
+const stamp = () => new Date().toISOString().slice(0, 10);
+async function exportRegXlsx() {
+  const d = await regGroups(); if (!d) return;
+  if (!d.total) return toast('ยังไม่มีผู้ลงทะเบียน', true);
+  try {
+    const X = await loadXlsx(), wb = X.utils.book_new(), used = new Set(['สรุป', 'ทั้งหมด']);
+    const add = (name, rows, w) => { const ws = X.utils.aoa_to_sheet(rows); ws['!cols'] = w.map((x) => ({ wch: x })); X.utils.book_append_sheet(wb, ws, name); };
+    add('สรุป', [SUM_HEAD].concat(regSummary(d.groups), [['รวมทั้งหมด', d.total, d.groups.reduce((s, g) => s + g.people.filter((p) => p.gender === 'M').length, 0), d.groups.reduce((s, g) => s + g.people.filter((p) => p.gender === 'F').length, 0)].concat(YEARS.map((y) => d.groups.reduce((s, g) => s + g.people.filter((p) => p.year === y).length, 0)))]), [26, 8, 8, 8, 8, 8, 8, 8]);
+    const row = (p, i) => [i + 1, String(p.student_id), p.name, p.year, GL[p.gender]];
+    add('ทั้งหมด', [['ฝ่าย', 'ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']].concat(d.groups.flatMap((g) => g.people.map((p, i) => [g.name].concat(row(p, i))))), [26, 7, 16, 28, 8, 8]);
+    d.groups.forEach((g) => { let n = g.name.replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 28) || 'ฝ่าย', k = 2, base = n; while (used.has(n)) n = base.slice(0, 26) + ' ' + k++; used.add(n); add(n, [['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']].concat(g.people.map(row)), [7, 16, 28, 8, 8]); });
+    X.writeFile(wb, 'camp-registrations-' + stamp() + '.xlsx');
+  } catch (e) { toast('สร้างไฟล์ Excel ไม่ได้', true); }
+}
+let thFonts = null;
+async function exportRegPdf() {
+  const d = await regGroups(); if (!d) return;
+  if (!d.total) return toast('ยังไม่มีผู้ลงทะเบียน', true);
+  try {
+    if (!window.jspdf) { await loadJs('/hr/vendor/jspdf.umd.min.js'); await loadJs('/hr/vendor/jspdf.plugin.autotable.min.js'); }
+    const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
+    if (!thFonts) thFonts = { n: await b64('/budget/assets/fonts/Sarabun-Regular.ttf'), b: await b64('/budget/assets/fonts/Sarabun-Bold.ttf') };
+    const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.addFileToVFS('Sarabun-Regular.ttf', thFonts.n); doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
+    doc.addFileToVFS('Sarabun-Bold.ttf', thFonts.b); doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold'); doc.setFont('Sarabun', 'normal');
+    const styles = { font: 'Sarabun', fontSize: 11, cellPadding: 2 }, headStyles = { font: 'Sarabun', fontStyle: 'bold', fillColor: [211, 47, 47] };
+    doc.setFont('Sarabun', 'bold'); doc.setFontSize(20); doc.text('รายชื่อผู้ลงทะเบียนแต่ละฝ่าย', 14, 18);
+    doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียนทั้งหมด ' + d.total + ' คน · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH'), 14, 25);
+    doc.autoTable({ startY: 30, head: [SUM_HEAD], body: regSummary(d.groups), styles, headStyles, columnStyles: { 0: { cellWidth: 52 } } });
+    d.groups.forEach((g) => {
+      doc.addPage(); doc.setFont('Sarabun', 'bold'); doc.setFontSize(16); doc.text(g.name, 14, 18);
+      doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียน ' + g.people.length + ' คน (ชาย ' + g.people.filter((p) => p.gender === 'M').length + ' · หญิง ' + g.people.filter((p) => p.gender === 'F').length + ')', 14, 25);
+      doc.autoTable({ startY: 30, head: [['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']], body: g.people.length ? g.people.map((p, i) => [i + 1, String(p.student_id), p.name, p.year, GL[p.gender]]) : [[{ content: 'ยังไม่มีผู้ลงทะเบียน', colSpan: 5, styles: { halign: 'center' } }]], styles, headStyles, columnStyles: { 0: { cellWidth: 16 }, 3: { cellWidth: 16 }, 4: { cellWidth: 20 } } });
+    });
+    const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, 196, 290, { align: 'right' }); }
+    doc.save('camp-registrations-' + stamp() + '.pdf');
+  } catch (e) { toast('สร้างไฟล์ PDF ไม่ได้', true); }
 }
 
 // ---------- start ----------
