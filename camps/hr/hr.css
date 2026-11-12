@@ -175,3 +175,17 @@ td{vertical-align:middle}
 .nm button{border:0;background:var(--panel);width:22px;height:22px;border-radius:50%;line-height:1;font-size:15px;color:var(--mute);padding:0}
 .nm button:hover{background:#fee2e2;color:#b91c1c}
 .srow .acts{flex-wrap:wrap;justify-content:flex-end}
+
+/* signed-in user shown at the top of the page */
+.herotop{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.herotop .back{margin-bottom:0}
+.userchip{margin-left:auto;max-width:100%;min-width:0}
+.uc{display:flex;align-items:center;gap:10px;background:#ffffff26;border-radius:999px;padding:5px 6px;max-width:100%}
+.avatar.sm{width:34px;height:34px;font-size:15px;background:#fff;color:var(--brand-d)}
+.ut{min-width:0;display:flex;flex-direction:column;line-height:1.25;color:#fff}
+.ut b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
+.ut small{font-size:11px;opacity:.92;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
+.ut .pill.admin{margin-left:4px;font-size:10px;padding:1px 7px}
+.chipbtn{border:0;border-radius:999px;background:#fff;color:var(--brand-d);font-weight:700;font-size:13px;padding:8px 16px;flex:none;cursor:pointer}
+.chipbtn:active{transform:scale(.97)}
+@media(min-width:760px){.ut b,.ut small{max-width:320px}}

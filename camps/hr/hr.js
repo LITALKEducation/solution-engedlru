@@ -114,7 +114,18 @@ const REASONS = {
   no_gender: () => 'ผู้ดูแลยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อผู้ดูแลเพื่อให้ระบุ',
   not_in_roster: (m) => 'ไม่พบรหัสนักศึกษา ' + esc(m.studentId || '') + ' ในรายชื่อของค่าย กรุณาติดต่อผู้ดูแลเพื่อให้เพิ่มรหัส ชั้นปี และเพศของคุณ'
 };
+// who is signed in, shown at the top of every HR page
+function renderUserChip(x) {
+  const el = $('userChip'); if (!el) return;
+  if ((x && x.error) || (!authReady && !me)) { el.innerHTML = ''; return; }
+  if (!me) { el.innerHTML = '<button class="chipbtn" onclick="login()">เข้าสู่ระบบ</button>'; return; }
+  const st = me.student, name = st ? st.name : (me.googleName || me.email);
+  const dep = me.selection && deps.find((d) => d.code === me.selection.department_code);
+  const sub = (st ? 'ปี ' + st.year + ' · ' + GL[st.gender] + ' · ' + st.student_id : me.email) + (dep ? ' · ' + dep.name : '');
+  el.innerHTML = '<div class="uc"><span class="avatar sm">' + esc((name || '?').trim()[0].toUpperCase()) + '</span><div class="ut"><b>' + esc(name) + (me.isAdmin ? ' <span class="pill admin">ผู้ดูแล</span>' : '') + '</b><small>' + esc(sub) + '</small></div><button class="chipbtn" onclick="logout()" aria-label="ออกจากระบบ">ออก</button></div>';
+}
 function renderAcct(x) {
+  renderUserChip(x);
   const box = $('acct');
   if (!box) { if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
