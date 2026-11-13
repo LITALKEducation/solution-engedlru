@@ -14,14 +14,14 @@
 <header class="hero"><i class="orb3"></i>
  <div class="herotop">
   <a class="back" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> กิจกรรมค่าย</a>
-  <span id="account" class="account">กำลังตรวจสอบ…</span>
+  <span id="account" class="account">กำลังโหลด…</span>
  </div>
- <div class="hero-body"><div class="eyebrow">ระบบ AKA · ชื่อที่เรียกกันในค่าย</div><h1>ตั้งชื่อค่ายของคุณ <span id="heroChip" class="state-chip hidden"></span></h1><p>ตั้งชื่อเล่นและ AKA ให้เพื่อนในค่ายเรียก เปลี่ยนได้ตลอดเวลาจนกว่าผู้ดูแลจะปิดรับการตั้งชื่อ</p></div>
+ <div class="hero-body"><div class="eyebrow">AKA · ชื่อที่เรียกกันในค่าย</div><h1>ตั้งชื่อค่ายของคุณ <span id="heroChip" class="state-chip hidden"></span></h1><p>ตั้งชื่อเล่นกับ AKA ของตัวเอง แก้ได้จนกว่าจะปิดรับ</p></div>
 </header>
 <main>
  <section id="login" class="card hidden">
   <h1>เข้าสู่ระบบ</h1>
-  <p>ใช้บัญชี Google อีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อตั้งชื่อ AKA ของคุณ</p>
+  <p>เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อตั้งชื่อของคุณ</p>
   <button id="loginBtn" class="btn primary">เข้าสู่ระบบด้วย Google</button>
  </section>
 
@@ -43,7 +43,7 @@
      <form id="nameForm" novalidate>
       <label for="nick">ชื่อเล่น <small>(ไม่เกิน 30 ตัวอักษร)</small></label>
       <input id="nick" maxlength="30" autocomplete="off" placeholder="เช่น ชาย">
-      <label for="akaName">AKA — ชื่อที่เรียกกันในค่าย <small>(ไม่เกิน 40 ตัวอักษร)</small></label>
+      <label for="akaName">AKA <small>(ชื่อที่ใช้เรียกกันในค่าย ไม่เกิน 40 ตัวอักษร)</small></label>
       <input id="akaName" maxlength="40" autocomplete="off" placeholder="เช่น หมีขาว">
       <div class="nametag" aria-live="polite"><div class="nt-top">Hello · เรียกฉันว่า</div><div class="nt-body" id="preview"></div></div>
       <div class="row"><button id="saveBtn" class="btn primary" type="submit">บันทึกชื่อ</button></div>
@@ -72,13 +72,13 @@
    <div class="grid2">
     <div class="card">
      <h2>เปิด-ปิดรับการตั้งชื่อ</h2>
-     <p class="hint">นักศึกษาตั้งและเปลี่ยนชื่อได้ตลอดเวลา จนกว่าผู้ดูแลจะปิดรับการตั้งชื่อ (ผู้ดูแลยังแก้ไขชื่อให้ได้เสมอ)</p>
+     <p class="hint">นักศึกษาตั้งและแก้ชื่อได้จนกว่าจะปิดรับ ปิดแล้วแอดมินยังแก้ชื่อให้ได้ที่แท็บรายชื่อ</p>
      <div id="progress" class="progress"></div>
      <div class="seg" role="group" aria-label="สถานะการตั้งชื่อ"><button id="stOpen" type="button">เปิดรับการตั้งชื่อ</button><button id="stClosed" type="button">ปิดรับการตั้งชื่อ</button></div>
     </div>
     <div class="card" id="schedCard">
-     <h2>ตั้งเวลาเปิด-ปิดรับอัตโนมัติ</h2>
-     <p class="hint">เลือกวันและเวลาที่จะเปิดและปิดรับการตั้งชื่อ หรือให้นับถอยหลังว่าจะเปิดในอีกกี่ชั่วโมง นักศึกษาจะเห็นเวลานับถอยหลังที่หัวหน้าเว็บ ขณะตั้งเวลา ปุ่มเปิด/ปิดด้านบนจะยังไม่มีผล</p>
+     <h2>ตั้งเวลาเปิด–ปิดรับ</h2>
+     <p class="hint">ตั้งวันเวลาเปิด–ปิดไว้ล่วงหน้า หรือกดนับถอยหลัง นักศึกษาจะเห็นเวลาที่เหลือด้านบนของหน้า ระหว่างตั้งเวลา ปุ่มเปิด/ปิดด้านบนจะไม่ทำงาน</p>
      <div class="schedstate" id="schedState"></div>
      <div class="seg" role="group" aria-label="วิธีตั้งเวลา"><button type="button" id="scModeDT">กำหนดวันและเวลา</button><button type="button" id="scModeCD">นับถอยหลัง</button></div>
      <div id="scDT">
@@ -88,13 +88,13 @@
      <div id="scCD" class="hidden">
       <div class="two"><label>เริ่มเปิดในอีก (ชั่วโมง)<input type="number" id="cdInH" min="0" max="2160" placeholder="0"></label><label>และ (นาที)<input type="number" id="cdInM" min="0" max="59" placeholder="0"></label></div>
       <div class="two"><label>เปิดรับนาน (ชั่วโมง)<input type="number" id="cdForH" min="0" max="2160" placeholder="เว้นว่าง = ไม่ปิดเอง"></label><label>และ (นาที)<input type="number" id="cdForM" min="0" max="59" placeholder="0"></label></div>
-      <p class="hint">ใส่ 0 ชั่วโมง 0 นาที = เปิดทันที ระบบจะเปิดและปิดตามเวลาเองแม้ปิดหน้านี้ไว้</p>
+      <p class="hint">ใส่ 0 = เปิดเลย ปิดหน้านี้ไปแล้วก็ยังเปิด–ปิดตามเวลา</p>
      </div>
      <div class="row"><button id="scSave" class="btn primary" type="button">บันทึกเวลา</button><button id="scStop" class="btn hidden" type="button">หยุดตั้งเวลา</button></div>
     </div>
     <div class="card">
      <h2>ส่งออกรายชื่อ</h2>
-     <p class="hint">ได้รายชื่อแยกตามฝ่าย เรียงจากปี 4 ลงมาถึงปี 1 มี 4 ช่อง: <b>รหัสนักศึกษา · ชื่อ-สกุล · ชื่อเล่น · AKA</b> คนที่ยังไม่เลือกฝ่ายจะอยู่ท้ายสุด</p>
+     <p class="hint">ได้ไฟล์แยกตามฝ่าย เรียงจากปี 4 ถึงปี 1 มี 4 ช่อง: <b>รหัสนักศึกษา · ชื่อ-สกุล · ชื่อเล่น · AKA</b> คนที่ยังไม่เลือกฝ่ายอยู่ท้ายสุด</p>
      <label class="chk"><input type="checkbox" id="onlyNamed"> เฉพาะผู้ที่ตั้งชื่อแล้ว</label>
      <div class="row"><button id="exportXlsx" class="btn primary" type="button">ดาวน์โหลด Excel</button><button id="exportPdf" class="btn" type="button">ดาวน์โหลด PDF</button></div>
      <div id="exportPreview" class="small"></div>
@@ -114,5 +114,5 @@
  </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=1" defer></script>
+<script src="./app.js?v=2" defer></script>
 </body></html>

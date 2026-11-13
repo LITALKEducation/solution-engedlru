@@ -7,9 +7,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const GENDER = { M: 'ชาย', F: 'หญิง' };
 const AUTH_GONE = ['login_required', 'missing_refresh_token', 'invalid_grant', 'consent_required', 'interaction_required'];
 const REASONS = {
-  not_university_email: 'บัญชี Google นี้ไม่ใช่อีเมลมหาวิทยาลัย (@lru.ac.th) กรุณาเข้าสู่ระบบด้วยอีเมลมหาวิทยาลัยของคุณ',
-  email_not_verified: 'อีเมลของบัญชีนี้ยังไม่ได้ยืนยัน กรุณายืนยันอีเมลกับ Google ก่อน',
-  not_in_roster: 'ไม่พบรหัสนักศึกษาของคุณในรายชื่อ กรุณาติดต่อผู้ดูแล'
+  not_university_email: 'ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ลองออกจากระบบแล้วเข้าใหม่ด้วยอีเมลนั้น',
+  email_not_verified: 'อีเมลนี้ยังไม่ได้ยืนยันกับ Google',
+  not_in_roster: 'ไม่พบรหัสของคุณในรายชื่อ ลองแจ้งแอดมิน'
 };
 let auth = null, me = null, isAdmin = false, schedule = null, srvOff = 0;
 
@@ -35,15 +35,15 @@ async function init() {
     if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } finally { history.replaceState({}, document.title, REDIRECT); } }
     if (!(await auth.isAuthenticated())) { $('login').classList.remove('hidden'); $('account').textContent = 'ยังไม่ได้เข้าสู่ระบบ'; return; }
     await loadMe();
-    $('account').innerHTML = '<span class="em">' + esc(me.email) + '</span>' + (isAdmin ? '<span class="badge">ผู้ดูแล</span>' : '') + '<button id="logoutBtn" class="link" type="button">ออก</button>';
+    $('account').innerHTML = '<span class="em">' + esc(me.email) + '</span>' + (isAdmin ? '<span class="badge">แอดมิน</span>' : '') + '<button id="logoutBtn" class="link" type="button">ออก</button>';
     $('logoutBtn').onclick = signOut;
     document.querySelectorAll('.adm').forEach((b) => b.classList.toggle('hidden', !isAdmin));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     renderMe();
   } catch (e) {
     $('login').classList.remove('hidden');
-    if (AUTH_GONE.includes(e.error)) { $('account').textContent = 'เซสชันหมดอายุ'; return; }
-    $('login').querySelector('p').textContent = e.message || 'ไม่สามารถเชื่อมต่อระบบได้'; $('account').textContent = 'เกิดข้อผิดพลาด';
+    if (AUTH_GONE.includes(e.error)) { $('account').textContent = 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่'; return; }
+    $('login').querySelector('p').textContent = e.message || 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง'; $('account').textContent = 'เกิดข้อผิดพลาด';
   }
 }
 async function loadMe() { me = await data('GET', '/camps/aka/me'); isAdmin = !!me.isAdmin; applyInfo(me); }
@@ -85,9 +85,9 @@ const CHIP = { open: ['เปิดรับการตั้งชื่อ', 
 function setChip(state) { const c = $('heroChip'), v = CHIP[state] || CHIP.closed; c.textContent = v[0]; c.className = 'state-chip ' + v[1]; }
 function renderMe() {
   const st = me.state, open = st === 'open'; setChip(st);
-  $('stateBanner').innerHTML = open ? '<div class="banner ok"><b>เปิดรับการตั้งชื่อ</b><span>ตั้งชื่อและเปลี่ยนชื่อได้ตลอดเวลา จนกว่าจะปิดรับ</span></div>'
-    : st === 'pending' ? '<div class="banner warn"><b>ยังไม่ถึงเวลาเปิดรับ</b><span>เมื่อถึงเวลา หน้านี้จะเปิดให้ตั้งชื่อเอง</span></div>'
-    : '<div class="banner warn"><b>ปิดรับการตั้งชื่อแล้ว</b><span>เปลี่ยนชื่อเองไม่ได้แล้ว หากต้องการแก้ไขให้ติดต่อผู้ดูแล</span></div>';
+  $('stateBanner').innerHTML = open ? '<div class="banner ok"><b>ตั้งชื่อได้แล้ว</b><span>แก้ไขได้จนกว่าจะปิดรับ</span></div>'
+    : st === 'pending' ? '<div class="banner warn"><b>ยังไม่เปิดรับ</b><span>รอถึงเวลา แล้วกลับมาตั้งชื่อได้เลย</span></div>'
+    : '<div class="banner warn"><b>ปิดรับแล้ว</b><span>ถ้าอยากแก้ชื่อ ให้แจ้งแอดมิน</span></div>';
   if (me.reason) { $('meBody').classList.add('hidden'); $('meProblem').classList.remove('hidden'); $('meProblem').innerHTML = '<div class="banner bad"><b>ตั้งชื่อไม่ได้</b><span>' + esc(REASONS[me.reason] || 'ไม่พบข้อมูลนักศึกษา') + '</span></div>' + (me.reason !== 'not_in_roster' || !isAdmin ? '<div class="row"><button class="btn" id="switchBtn" type="button">ใช้บัญชี Google อื่น</button></div>' : ''); const sw = $('switchBtn'); if (sw) sw.onclick = signOut; return; }
   $('meProblem').classList.add('hidden'); $('meBody').classList.remove('hidden');
   const s = me.student;
@@ -157,12 +157,12 @@ async function loadSettings() {
     $('stOpen').classList.toggle('on', o.manual === 'open'); $('stClosed').classList.toggle('on', o.manual === 'closed');
     renderSchedule();
     const rows = await exportRows(false);
-    $('exportPreview').innerHTML = rows.length ? rows.map((g) => esc(g.name) + ' ' + g.people.length + ' คน').join(' · ') : 'ยังไม่มีรายชื่อในระบบ';
+    $('exportPreview').innerHTML = rows.length ? rows.map((g) => esc(g.name) + ' ' + g.people.length + ' คน').join(' · ') : 'ยังไม่มีรายชื่อ';
   } catch (e) { toast(e.message, true); }
 }
 async function setState(state) {
   if (overview && overview.manual === state) return;
-  if (!confirm(state === 'closed' ? 'ปิดรับการตั้งชื่อ? นักศึกษาจะเปลี่ยนชื่อไม่ได้อีก (ผู้ดูแลยังแก้ไขได้)' : 'เปิดรับการตั้งชื่ออีกครั้ง?')) return;
+  if (!confirm(state === 'closed' ? 'ปิดรับการตั้งชื่อ? นักศึกษาจะแก้ชื่อเองไม่ได้อีก' : 'เปิดรับการตั้งชื่ออีกครั้ง?')) return;
   try { await data('POST', '/camps/aka/admin/state', { state }); toast(state === 'closed' ? 'ปิดรับการตั้งชื่อแล้ว' : 'เปิดรับการตั้งชื่อแล้ว'); loadSettings(); }
   catch (e) { toast(e.message, true); }
 }
@@ -179,7 +179,7 @@ function renderSchedule() {
   $('scOpen').value = cd ? '' : toLocalInput(sc.openAt); $('scClose').value = cd ? '' : toLocalInput(sc.closeAt);
   const word = { pending: 'ยังไม่เปิด', open: 'เปิดรับอยู่', closed: 'ปิดรับแล้ว' }[overview.state];
   $('schedState').className = 'schedstate' + (sc.enabled ? ' on' : '');
-  $('schedState').textContent = sc.enabled ? 'ตั้งเวลาอยู่ · ตอนนี้' + word + (sc.openAt != null ? ' · เปิด ' + fmtWhen(sc.openAt) : '') + (sc.closeAt != null ? ' · ปิด ' + fmtWhen(sc.closeAt) : '') : 'ยังไม่ได้ตั้งเวลา';
+  $('schedState').textContent = sc.enabled ? 'กำลังตั้งเวลา · ตอนนี้' + word + (sc.openAt != null ? ' · เปิด ' + fmtWhen(sc.openAt) : '') + (sc.closeAt != null ? ' · ปิด ' + fmtWhen(sc.closeAt) : '') : 'ยังไม่ได้ตั้งเวลา';
   $('scStop').classList.toggle('hidden', !sc.enabled);
 }
 $('scModeDT').onclick = () => showMode(false); $('scModeCD').onclick = () => showMode(true);
@@ -195,7 +195,7 @@ $('scSave').onclick = () => {
   if (openAt == null && closeAt == null) return toast('ใส่เวลาเปิดหรือเวลาปิดอย่างน้อยหนึ่งอย่าง', true);
   return saveSchedule({ enabled: true, mode: 'datetime', openAt, closeAt }, 'บันทึกเวลาแล้ว');
 };
-$('scStop').onclick = () => { if (confirm('หยุดตั้งเวลา? การเปิด-ปิดรับจะกลับไปใช้ปุ่มเปิด/ปิดแทน')) saveSchedule({ enabled: false, mode: (overview.schedule || {}).mode }, 'หยุดตั้งเวลาแล้ว'); };
+$('scStop').onclick = () => { if (confirm('หยุดตั้งเวลา? แล้วใช้ปุ่มเปิด/ปิดแทน')) saveSchedule({ enabled: false, mode: (overview.schedule || {}).mode }, 'หยุดตั้งเวลาแล้ว'); };
 
 // groups by department (HR order, "ยังไม่เลือกฝ่าย" last); inside a department: year 4 -> 1, then student id (the server already sorts this way)
 async function exportRows(onlyNamed) {
@@ -225,7 +225,7 @@ $('exportXlsx').onclick = async () => {
       used.add(n); X.utils.book_append_sheet(wb, ws, n);
     }
     X.writeFile(wb, 'aka-by-department-' + stamp() + '.xlsx');
-  } catch (e) { toast('สร้างไฟล์ Excel ไม่ได้', true); }
+  } catch (e) { toast('ดาวน์โหลดไม่สำเร็จ ลองใหม่อีกครั้ง', true); }
 };
 let fonts = null;
 $('exportPdf').onclick = async () => {
@@ -247,7 +247,7 @@ $('exportPdf').onclick = async () => {
     });
     const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, 196, 290, { align: 'right' }); }
     doc.save('aka-by-department-' + stamp() + '.pdf');
-  } catch (e) { toast('สร้างไฟล์ PDF ไม่ได้', true); }
+  } catch (e) { toast('ดาวน์โหลดไม่สำเร็จ ลองใหม่อีกครั้ง', true); }
 };
 
 init();

@@ -188,7 +188,7 @@ function topLeft(){
  if(curPage==='transaction'&&!$('txStep2').classList.contains('hidden'))return goTx(1);
  if(curPage==='donation'&&!$('donForm').classList.contains('hidden')){if(!$('donStep2').classList.contains('hidden'))return goDon(1);return toggleDonForm(false)}
  showPage('dashboard')}
-function openMenu(){const n=me?.name||me?.email||'';$('userName').textContent=n;$('menuEmail').textContent=me?.email||'';$('menuAv').textContent=(n.trim()[0]||'?').toUpperCase();$('menuRole').textContent=me?.isAdmin?'ผู้ดูแล (budget_admin)':'ผู้ใช้';openModal('menu')}
+function openMenu(){const n=me?.name||me?.email||'';$('userName').textContent=n;$('menuEmail').textContent=me?.email||'';$('menuAv').textContent=(n.trim()[0]||'?').toUpperCase();$('menuRole').textContent=me?.isAdmin?'แอดมิน (budget_admin)':'ผู้ใช้';openModal('menu')}
 function closeMenu(){hideModal('menu')}
 
 async function loadMeta(){
@@ -440,7 +440,7 @@ function editUser(i){const u=admUsers[i];if(!u)return;
  $('euName').value=u.display_name||'';$('euStudent').value=u.student_id||'';
  const self=me&&u.email&&me.email&&u.email.toLowerCase()===me.email.toLowerCase();
  setSwitch($('euEnabled'),!!u.enabled,false);$('euEnabled').disabled=!!self;
- $('euNote').textContent=self?'บัญชีของคุณเอง — ปิดสิทธิ์ตัวเองไม่ได้':'ผู้ดูแล (budget_admin) เห็นทุกบัญชีเสมอ จัดการบทบาทใน Auth0';
+ $('euNote').textContent=self?'บัญชีของคุณเอง — ปิดสิทธิ์ตัวเองไม่ได้':'แอดมิน (budget_admin) เห็นทุกบัญชีเสมอ จัดการบทบาทใน Auth0';
  const have=new Set(u.account_uuids||[]);
  $('euAccounts').innerHTML=((meta&&meta.accounts)||[]).map(a=>'<label><input type="checkbox" value="'+esc(a.uuid)+'"'+(have.has(a.uuid)?' checked':'')+'> '+esc(a.name)+'</label>').join('')||'<div class="empty sm">ยังไม่มีบัญชี</div>';
  $('euErr').closest('.t-input-wrap').classList.remove('is-error');

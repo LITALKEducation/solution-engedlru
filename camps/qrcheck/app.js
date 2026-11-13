@@ -36,16 +36,16 @@ async function init() {
     if (!(await auth.isAuthenticated())) { $('login').classList.remove('hidden'); $('account').textContent = 'ยังไม่ได้เข้าสู่ระบบ'; return; }
     const u = await auth.getUser();
     const me = await data('/camps/qrcheck/me'); isAdmin = !!me.isAdmin; myEmail = me.email || u.email || '';
-    $('account').innerHTML = esc(u.email || me.email) + (isAdmin ? ' <span class="badge info">ผู้ดูแล</span>' : '') + ' · <button id="logoutBtn" class="link" type="button">ออกจากระบบ</button>';
+    $('account').innerHTML = esc(u.email || me.email) + (isAdmin ? ' <span class="badge info">แอดมิน</span>' : '') + ' · <button id="logoutBtn" class="link" type="button">ออกจากระบบ</button>';
     $('logoutBtn').onclick = signOut;
     document.querySelectorAll('.adm').forEach((b) => b.classList.toggle('hidden', !isAdmin));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     await loadChecks();
   } catch (e) {
     $('login').classList.remove('hidden');
-    if (AUTH_GONE.includes(e.error)) { $('account').textContent = 'เซสชันหมดอายุ'; return; }
-    if (e.status === 403) { $('login').querySelector('p').textContent = 'บัญชีนี้ยังไม่ได้รับมอบหมายให้ใช้ระบบเช็ค QR กรุณาติดต่อผู้ดูแล หรือเปลี่ยนบัญชี'; $('account').innerHTML = 'ไม่มีสิทธิ์ · <button id="logoutBtn" class="link" type="button">เปลี่ยนบัญชี</button>'; $('logoutBtn').onclick = signOut; return; }
-    $('login').querySelector('p').textContent = e.message || 'ไม่สามารถเชื่อมต่อระบบได้'; $('account').textContent = 'เกิดข้อผิดพลาด';
+    if (AUTH_GONE.includes(e.error)) { $('account').textContent = 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่'; return; }
+    if (e.status === 403) { $('login').querySelector('p').textContent = 'บัญชีนี้ยังไม่มีสิทธิ์ใช้งาน ลองเปลี่ยนบัญชี หรือแจ้งแอดมิน'; $('account').innerHTML = 'ไม่มีสิทธิ์ · <button id="logoutBtn" class="link" type="button">เปลี่ยนบัญชี</button>'; $('logoutBtn').onclick = signOut; return; }
+    $('login').querySelector('p').textContent = e.message || 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง'; $('account').textContent = 'เกิดข้อผิดพลาด';
   }
 }
 function signOut() { try { sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: REDIRECT } }); }
@@ -70,17 +70,17 @@ async function loadChecks() {
 }
 function showCheckInfo() {
   const c = curCheck();
-  $('checkInfo').innerHTML = c ? esc(c.description || '') + ' <span class="badge ' + (c.kind === 'aka' ? 'info' : 'muted') + '">' + KIND[c.kind] + '</span>' + (c.requireRegistered ? ' <span class="badge muted">ต้องเลือกฝ่ายแล้ว</span>' : '') : (isAdmin ? 'เพิ่มรายการตรวจที่แท็บ “ตั้งค่า”' : 'ติดต่อผู้ดูแลให้เพิ่มรายการตรวจ');
+  $('checkInfo').innerHTML = c ? esc(c.description || '') + ' <span class="badge ' + (c.kind === 'aka' ? 'info' : 'muted') + '">' + KIND[c.kind] + '</span>' + (c.requireRegistered ? ' <span class="badge muted">ต้องเลือกฝ่ายแล้ว</span>' : '') : (isAdmin ? 'เพิ่มรายการตรวจที่แท็บ “ตั้งค่า”' : 'ยังไม่มีรายการตรวจ แจ้งแอดมินให้เพิ่ม');
 }
 $('checkSel').onchange = () => { checkId = Number($('checkSel').value) || null; try { localStorage.setItem('qrcheck.check', String(checkId)); } catch (e) { /* ignore */ } showCheckInfo(); if (cur) lookup(cur.student.studentId, false, true, true); };
 
 async function startCamera() {
-  if (!window.Html5Qrcode) return toast('โหลดเครื่องมือสแกนไม่สำเร็จ กรุณารีเฟรชหน้า', true);
+  if (!window.Html5Qrcode) return toast('โหลดตัวสแกนไม่สำเร็จ ลองรีเฟรชหน้า', true);
   try {
     camera = new Html5Qrcode('reader');
     await camera.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, async (text) => { await stopCamera(); lookup(text, true); }, () => {});
     $('camStart').classList.add('hidden'); $('camStop').classList.remove('hidden');
-  } catch (e) { toast('เปิดกล้องไม่ได้ กรุณาอนุญาตการใช้กล้อง หรือกรอกรหัสนักศึกษาแทน', true); }
+  } catch (e) { toast('เปิดกล้องไม่ได้ ลองอนุญาตกล้อง หรือกรอกรหัสนักศึกษาแทน', true); }
 }
 async function stopCamera() { if (camera) { try { await camera.stop(); } catch (e) { /* ignore */ } camera = null; } $('camStart').classList.remove('hidden'); $('camStop').classList.add('hidden'); }
 $('camStart').onclick = startCamera; $('camStop').onclick = stopCamera;
@@ -96,7 +96,7 @@ async function lookup(value, fromCamera, quiet, readOnly) {
 }
 function renderProblem(e, id) {
   const nf = e.data && e.data.code === 'NOT_FOUND';
-  $('result').innerHTML = '<div class="banner bad big"><b>' + (nf ? 'ไม่พบรายชื่อนี้' : 'ตรวจสอบไม่ได้') + '</b><span>' + esc(e.message) + '</span></div>' + (nf ? '<p class="hint">รหัสที่สแกน: <b>' + esc(e.data.studentId || id) + '</b> ไม่มีอยู่ในรายชื่อนักศึกษา จึงไม่ได้บันทึกการตรวจ ลองสแกนใหม่ หรือแจ้งผู้ดูแล</p>' : '') + nextButton();
+  $('result').innerHTML = '<div class="banner bad big"><b>' + (nf ? 'ไม่พบรายชื่อนี้' : 'ตรวจสอบไม่ได้') + '</b><span>' + esc(e.message) + '</span></div>' + (nf ? '<p class="hint">รหัสที่สแกน: <b>' + esc(e.data.studentId || id) + '</b> ไม่มีรหัสนี้ในรายชื่อ จึงยังไม่ได้บันทึก ลองสแกนใหม่อีกครั้ง</p>' : '') + nextButton();
   bindNext();
 }
 const nextButton = () => '<div class="row end"><button id="nextBtn" class="btn primary" type="button">ตรวจคนต่อไป</button></div>';
@@ -113,10 +113,10 @@ function renderResult(d, quiet) {
   if (d.blocked) h = '<div class="banner bad big"><b>บันทึกไม่ได้</b><span>' + esc(d.blocked) + ' (รายการตรวจ “' + esc(c.name) + '” ต้องเลือกฝ่ายก่อน)</span></div>';
   else if (!r) h = '<div class="banner big"><b>ยังไม่ได้ตรวจ</b><span>รายการตรวจ “' + esc(c.name) + '” ยังไม่มีการบันทึกของนักศึกษาคนนี้</span></div>';
   else if (r.result === 'fail') h = '<div class="banner bad big"><b>ตรวจแล้ว · ไม่ผ่าน</b><span>' + esc(c.name) + ' · ' + esc(fmt(r.checked_at)) + ' · ' + esc(r.checked_by) + '</span></div>';
-  else if (d.justRecorded) h = '<div class="banner ok big"><b>ตรวจแล้ว</b><span>บันทึกผลการตรวจ “' + esc(c.name) + '” เรียบร้อย · ' + esc(fmt(r.checked_at)) + ' · ' + esc(r.checked_by) + '</span></div>';
+  else if (d.justRecorded) h = '<div class="banner ok big"><b>ตรวจแล้ว</b><span>บันทึกการตรวจ “' + esc(c.name) + '” แล้ว · ' + esc(fmt(r.checked_at)) + ' · ' + esc(r.checked_by) + '</span></div>';
   else h = '<div class="banner warn big"><b>ตรวจแล้ว (บันทึกไว้ก่อนหน้านี้)</b><span>' + esc(c.name) + ' · เมื่อ ' + esc(fmt(r.checked_at)) + ' โดย ' + esc(r.checked_by) + ' · ไม่ได้บันทึกซ้ำ</span></div>';
   // 2. who it is (from the registration database)
-  h += '<div class="person">' + photo + '<div><div class="pname">' + esc(s.name) + '</div><div class="pid">รหัสนักศึกษา ' + esc(s.studentId) + ' · พบรายชื่อในการลงทะเบียน</div></div></div>'
+  h += '<div class="person">' + photo + '<div><div class="pname">' + esc(s.name) + '</div><div class="pid">รหัสนักศึกษา ' + esc(s.studentId) + ' · พบรายชื่อ</div></div></div>'
     + '<dl class="kv"><dt>ชั้นปี</dt><dd>ปี ' + esc(s.year) + '</dd><dt>เพศ</dt><dd>' + esc(GENDER[s.gender] || '—') + '</dd><dt>ฝ่าย</dt><dd>' + (s.departmentName ? esc(s.departmentName) : '<span class="muted-t">ยังไม่ได้ลงทะเบียนเลือกฝ่าย</span>') + '</dd>'
     + (d.aka ? '<dt>ชื่อเล่น</dt><dd>' + esc(d.aka.nickname || '—') + '</dd><dt>AKA</dt><dd>' + esc(d.aka.aka || '—') + '</dd>' : '') + (r ? '<dt>ผลการตรวจ</dt><dd>' + badge(r.result) + (r.reference ? ' · ข้อความบนป้าย <b>' + esc(r.reference) + '</b>' : '') + (r.note ? '<div class="small">หมายเหตุ: ' + esc(r.note) + '</div>' : '') + (r.updated_at ? '<div class="small">แก้ไขล่าสุด ' + esc(fmt(r.updated_at)) + ' โดย ' + esc(r.updated_by || '—') + '</div>' : '') + '</dd>' : '') + '</dl>';
   if (c.kind === 'aka') h += d.aka && d.aka.aka
@@ -125,7 +125,7 @@ function renderResult(d, quiet) {
   // 3. actions
   if (!r && !d.blocked) h += '<div class="row end"><button id="recNow" class="btn ok" type="button">บันทึกว่าตรวจแล้ว</button></div>';
   if (canRefine) h += refineForm(c, r, !mine && isAdmin);
-  else if (r && !isAdmin) h += '<p class="hint">แก้ไขผลได้เฉพาะผู้ที่บันทึก หรือผู้ดูแล</p>';
+  else if (r && !isAdmin) h += '<p class="hint">แก้ผลได้เฉพาะคนที่บันทึกไว้ หรือแอดมิน</p>';
   if (d.history && d.history.length) h += '<h3 class="mt">ประวัติการตรวจของนักศึกษา</h3><ul class="hist">' + d.history.map((x) => '<li><span>' + esc(x.name) + '</span>' + badge(x.result) + '<small>' + esc(fmtShort(x.checked_at)) + '</small></li>').join('') + '</ul>';
   h += nextButton();
   $('result').innerHTML = h; bindNext(); bindActions();
@@ -135,7 +135,7 @@ function renderResult(d, quiet) {
 // optional follow-up on a recorded check: badge code (AKA), note, or change the result
 function refineForm(c, r, byAdmin) {
   const open = c.kind === 'aka' && !r.reference ? ' open' : '';
-  return '<details class="refine"' + open + '><summary>' + (c.kind === 'aka' ? 'บันทึกข้อความบนป้าย / หมายเหตุ / เปลี่ยนผล' : 'หมายเหตุ / เปลี่ยนผลการตรวจ') + (byAdmin ? ' (ผู้ดูแล)' : '') + '</summary><form id="recForm" novalidate>'
+  return '<details class="refine"' + open + '><summary>' + (c.kind === 'aka' ? 'บันทึกข้อความบนป้าย / หมายเหตุ / เปลี่ยนผล' : 'หมายเหตุ / เปลี่ยนผลการตรวจ') + (byAdmin ? ' (แอดมิน)' : '') + '</summary><form id="recForm" novalidate>'
     + (c.kind === 'aka' ? '<label>ข้อความบนป้าย (ชื่อ AKA ที่เห็นบนป้าย)<input id="recRef" maxlength="60" autocomplete="off" placeholder="พิมพ์สิ่งที่เห็นบนป้าย" value="' + esc(r.reference) + '"></label>' : '')
     + '<label>หมายเหตุ <small>(จำเป็นเมื่อเปลี่ยนเป็นไม่ผ่าน)</small><input id="recNote" maxlength="300" autocomplete="off" placeholder="เช่น ชื่อบนป้ายไม่ตรง" value="' + esc(r.note) + '"></label>'
     + '<div class="row"><button type="button" id="recSave" class="btn primary">บันทึกข้อมูล</button>' + (r.result === 'pass' ? '<button type="button" id="recFail" class="btn danger">เปลี่ยนเป็นไม่ผ่าน</button>' : '<button type="button" id="recPass" class="btn ok">เปลี่ยนเป็นผ่าน</button>') + '</div></form></details>';
@@ -189,7 +189,7 @@ $('exportBtn').onclick = async () => {
       .concat(resultRows.map((x) => [x.check_name, String(x.student_id), x.name || '', x.year || '', GENDER[x.gender] || '', x.department_name || '', x.result === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน', x.reference || '', x.note || '', fmt(x.checked_at), x.checked_by, x.updated_at ? fmt(x.updated_at) : '', x.updated_by || '']));
     const ws = X.utils.aoa_to_sheet(rows); ws['!cols'] = [22, 15, 26, 8, 8, 18, 9, 16, 28, 18, 28, 18, 28].map((w) => ({ wch: w }));
     const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'ผลการตรวจ'); X.writeFile(wb, 'qr-check-results-' + new Date().toISOString().slice(0, 10) + '.xlsx');
-  } catch (e) { toast('สร้างไฟล์ Excel ไม่ได้', true); }
+  } catch (e) { toast('ดาวน์โหลดไม่สำเร็จ ลองใหม่อีกครั้ง', true); }
 };
 
 // ---------- 3. settings (admin) ----------
@@ -208,8 +208,8 @@ async function loadSettings() {
       try { await send('PATCH', '/camps/qrcheck/admin/checks/' + c.id, { name, description, sortOrder: Number(order) }); toast('บันทึกแล้ว'); loadSettings(); loadChecks(); } catch (e) { toast(e.message, true); }
     });
     const o = await data('/camps/qrcheck/admin/officers');
-    $('officersTable').innerHTML = o.officers.length ? '<thead><tr><th>อีเมล</th><th>เพิ่มโดย</th><th>เมื่อ</th><th></th></tr></thead><tbody>' + o.officers.map((x) => '<tr><td data-l="อีเมล">' + esc(x.email) + '</td><td data-l="เพิ่มโดย">' + esc(x.added_by) + '</td><td data-l="เมื่อ">' + esc(fmtShort(x.created_at)) + '</td><td class="act"><button class="btn sm danger" data-rm="' + esc(x.email) + '">ถอนสิทธิ์</button></td></tr>').join('') + '</tbody>' : '<tbody><tr><td class="empty" data-l="">ยังไม่มีเจ้าหน้าที่ที่ได้รับมอบหมาย (ผู้ดูแลใช้ได้เสมอ)</td></tr></tbody>';
-    $('officersTable').querySelectorAll('[data-rm]').forEach((b) => b.onclick = async () => { if (!confirm('ถอนสิทธิ์ ' + b.dataset.rm + ' ?')) return; try { await send('DELETE', '/camps/qrcheck/admin/officers/' + encodeURIComponent(b.dataset.rm)); toast('ถอนสิทธิ์แล้ว'); loadSettings(); } catch (e) { toast(e.message, true); } });
+    $('officersTable').innerHTML = o.officers.length ? '<thead><tr><th>อีเมล</th><th>เพิ่มโดย</th><th>เมื่อ</th><th></th></tr></thead><tbody>' + o.officers.map((x) => '<tr><td data-l="อีเมล">' + esc(x.email) + '</td><td data-l="เพิ่มโดย">' + esc(x.added_by) + '</td><td data-l="เมื่อ">' + esc(fmtShort(x.created_at)) + '</td><td class="act"><button class="btn sm danger" data-rm="' + esc(x.email) + '">เอาออก</button></td></tr>').join('') + '</tbody>' : '<tbody><tr><td class="empty" data-l="">ยังไม่มีเจ้าหน้าที่ที่อยู่ในรายชื่อ (แอดมินใช้ได้เสมอ)</td></tr></tbody>';
+    $('officersTable').querySelectorAll('[data-rm]').forEach((b) => b.onclick = async () => { if (!confirm('เอา ' + b.dataset.rm + ' ออกจากรายชื่อ?')) return; try { await send('DELETE', '/camps/qrcheck/admin/officers/' + encodeURIComponent(b.dataset.rm)); toast('เอาออกแล้ว'); loadSettings(); } catch (e) { toast(e.message, true); } });
   } catch (e) { toast(e.message, true); }
 }
 $('checkForm').onsubmit = async (e) => {
@@ -219,7 +219,7 @@ $('checkForm').onsubmit = async (e) => {
 };
 $('officerForm').onsubmit = async (e) => {
   e.preventDefault();
-  try { await send('POST', '/camps/qrcheck/admin/officers', { email: $('oEmail').value }); $('officerForm').reset(); toast('เพิ่มเจ้าหน้าที่แล้ว'); loadSettings(); }
+  try { await send('POST', '/camps/qrcheck/admin/officers', { email: $('oEmail').value }); $('officerForm').reset(); toast('เพิ่มแล้ว'); loadSettings(); }
   catch (er) { toast(er.message, true); }
 };
 

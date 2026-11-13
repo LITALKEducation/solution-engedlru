@@ -25,8 +25,8 @@ async function requireAdmin(req, env) {
   const w = await who(req, env); if (w.response) return w;
   let ok = false;
   try { ok = (await getAuth0Roles(env, w.user.sub)).some((r) => ADMIN_ROLES.includes(r)); }
-  catch (e) { return { response: fail(req, env, "ตรวจสอบสิทธิ์ผู้ดูแลไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
-  if (!ok) return { response: fail(req, env, "ต้องเป็นผู้ดูแลระบบ", 403) };
+  catch (e) { return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
+  if (!ok) return { response: fail(req, env, "ต้องเป็นแอดมิน", 403) };
   return w;
 }
 // ---------- naming state: manual open / closed, plus an optional automatic schedule ----------
@@ -90,7 +90,7 @@ async function save(req, env) {
   const w = await who(req, env); if (w.response) return w.response;
   if (!w.studentId || !w.verified) return fail(req, env, "ต้องใช้บัญชีอีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403, { code: "NOT_STUDENT" });
   const st = await env.DB.prepare("SELECT student_id FROM camp_students WHERE student_id=?").bind(w.studentId).first();
-  if (!st) return fail(req, env, `ไม่พบรหัสนักศึกษา ${w.studentId} ในรายชื่อ กรุณาติดต่อผู้ดูแล`, 403, { code: "NOT_IN_ROSTER" });
+  if (!st) return fail(req, env, `ไม่พบรหัสนักศึกษา ${w.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403, { code: "NOT_IN_ROSTER" });
   const cur = await state(env);
   if (cur === "pending") return fail(req, env, "ยังไม่ถึงเวลาเปิดรับการตั้งชื่อ", 403, { code: "NOT_OPEN" });
   if (cur !== "open") return fail(req, env, "ปิดรับการตั้งชื่อแล้ว", 403, { code: "CLOSED" });
@@ -186,7 +186,7 @@ export async function aka(req, env, url) {
     return fail(req, env, "Not Found", 404);
   } catch (e) {
     console.error("[aka] error:", e?.message || e);
-    if (/no such (table|column)/i.test(String(e?.message))) return fail(req, env, "ระบบ AKA ยังไม่พร้อมใช้งาน กรุณาแจ้งผู้ดูแล", 503, { code: "MIGRATION_REQUIRED" });
+    if (/no such (table|column)/i.test(String(e?.message))) return fail(req, env, "ระบบ AKA ยังไม่พร้อมใช้งาน กรุณาแจ้งแอดมิน", 503, { code: "MIGRATION_REQUIRED" });
     return fail(req, env, "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง", 500);
   }
 }

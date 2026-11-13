@@ -20,9 +20,9 @@ async function actor(req, env, { adminOnly = false } = {}) {
   const email = clean(a.user.email || "", 254).toLowerCase();
   let isAdmin = false;
   try { isAdmin = (await getAuth0Roles(env, a.user.sub)).some((r) => ADMIN_ROLES.includes(r)); }
-  catch (e) { console.error("[qrcheck] role lookup:", e?.message || e); if (adminOnly) return { response: fail(req, env, "ตรวจสอบสิทธิ์ผู้ดูแลไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
+  catch (e) { console.error("[qrcheck] role lookup:", e?.message || e); if (adminOnly) return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
   if (isAdmin) return { user: a.user, email: email || "unknown", isAdmin: true };
-  if (adminOnly) return { response: fail(req, env, "ต้องเป็นผู้ดูแลระบบ", 403) };
+  if (adminOnly) return { response: fail(req, env, "ต้องเป็นแอดมิน", 403) };
   if (!email || a.user.email_verified !== true) return { response: fail(req, env, "บัญชีต้องยืนยันอีเมลก่อนใช้งาน", 403) };
   const o = await env.DB.prepare("SELECT email FROM camp_qr_officers WHERE email=?").bind(email).first();
   if (!o) return { response: fail(req, env, "บัญชีนี้ยังไม่ได้รับอนุญาตให้ใช้ระบบเช็ค QR", 403) };
@@ -123,7 +123,7 @@ async function record(req, env) {
   const overwrite = b?.overwrite === true;
   if (overwrite && !a.isAdmin) {   // officers may only correct what they recorded themselves
     const own = await env.DB.prepare(RESULT_SQL).bind(check.id, id).first();
-    if (!own || String(own.checked_by).toLowerCase() !== a.email) return fail(req, env, "แก้ไขได้เฉพาะผลที่คุณบันทึกเอง (หรือผู้ดูแล)", 403);
+    if (!own || String(own.checked_by).toLowerCase() !== a.email) return fail(req, env, "แก้ไขได้เฉพาะผลที่คุณบันทึกเอง (หรือแอดมิน)", 403);
   }
   let changed;
   if (overwrite) {
@@ -257,7 +257,7 @@ export async function qrcheck(req, env, url) {
     return fail(req, env, "Not Found", 404);
   } catch (e) {
     console.error("[qrcheck] error:", e?.message || e);
-    if (/no such (table|column)/i.test(String(e?.message))) return fail(req, env, "ระบบเช็ค QR ยังไม่พร้อมใช้งาน กรุณาแจ้งผู้ดูแล", 503, { code: "MIGRATION_REQUIRED" });
+    if (/no such (table|column)/i.test(String(e?.message))) return fail(req, env, "ระบบเช็ค QR ยังไม่พร้อมใช้งาน กรุณาแจ้งแอดมิน", 503, { code: "MIGRATION_REQUIRED" });
     return fail(req, env, "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง", 500);
   }
 }

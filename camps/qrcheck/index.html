@@ -16,13 +16,13 @@
  <div class="top-in">
   <a class="back" href="/" aria-label="กลับไปหน้ากิจกรรมค่าย">‹ กิจกรรมค่าย</a>
   <div class="title"><b>ระบบเช็ค QR</b><small>English Education · LRU</small></div>
-  <span id="account" class="account">กำลังตรวจสอบ…</span>
+  <span id="account" class="account">กำลังโหลด…</span>
  </div>
 </header>
 <main>
  <section id="login" class="card hidden">
   <h1>เข้าสู่ระบบ</h1>
-  <p>ใช้บัญชี Google มหาวิทยาลัยที่ผู้ดูแลอนุญาตให้ใช้งานระบบนี้</p>
+  <p>เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัยที่ได้รับสิทธิ์</p>
   <button id="loginBtn" class="btn primary">เข้าสู่ระบบด้วย Google</button>
  </section>
 
@@ -45,7 +45,7 @@
      </div>
      <div class="block">
       <h2><span class="step">2</span> สแกน QR หรือกรอกรหัสนักศึกษา</h2>
-      <p class="hint">เมื่อสแกนแล้วพบรายชื่อนักศึกษา ระบบจะ<b>บันทึกว่า “ตรวจแล้ว”</b> ให้ทันที</p>
+      <p class="hint">สแกนแล้วจะ<b>บันทึกว่า “ตรวจแล้ว”</b> ให้เลย</p>
       <div id="reader"></div>
       <div class="row"><button id="camStart" class="btn primary">เปิดกล้องสแกน</button><button id="camStop" class="btn hidden">ปิดกล้อง</button></div>
       <div class="or"><span>หรือ</span></div>
@@ -81,22 +81,22 @@
   <section id="view-settings" class="view hidden">
    <div class="card">
     <h2>รายการตรวจ</h2>
-    <p class="hint">เพิ่มรายการที่ต้องตรวจ เช่น ตรวจครั้งที่ 1 หรือ ตรวจสอบป้ายกับ AKA เจ้าหน้าที่เลือกรายการก่อนสแกน และผลของแต่ละรายการจะแยกกัน</p>
+    <p class="hint">เพิ่มสิ่งที่ต้องตรวจ เช่น ตรวจครั้งที่ 1 หรือ ตรวจป้ายกับ AKA เลือกรายการก่อนสแกน ผลของแต่ละรายการแยกกัน</p>
     <div class="table-wrap"><table id="checksTable"></table></div>
     <form id="checkForm" class="formgrid">
      <h3>เพิ่มรายการตรวจ</h3>
      <label>ชื่อรายการ<input id="cName" required maxlength="80" placeholder="เช่น ตรวจครั้งที่ 3"></label>
      <label>คำอธิบาย (ไม่บังคับ)<input id="cDesc" maxlength="300" placeholder="สั้น ๆ ให้เจ้าหน้าที่เข้าใจ"></label>
      <label>ประเภท<select id="cKind"><option value="manual">ตรวจทั่วไป</option><option value="aka">เทียบป้ายกับ AKA</option></select></label>
-     <label class="chk"><input type="checkbox" id="cReq" checked> ต้องลงทะเบียนเลือกฝ่ายแล้วจึงจะตรวจได้</label>
+     <label class="chk"><input type="checkbox" id="cReq" checked> ต้องเลือกฝ่ายแล้วถึงจะตรวจได้</label>
      <div><button class="btn primary" type="submit">เพิ่มรายการตรวจ</button></div>
     </form>
-    <p class="hint">ประเภท “เทียบป้ายกับ AKA”: หน้าตรวจจะแสดงชื่อ AKA ที่นักศึกษาตั้งไว้เป็นกรอบเด่น ให้เจ้าหน้าที่เทียบกับป้ายที่นักศึกษาสวมอยู่ แล้วกดบันทึกผล (ถ้าไม่ตรงพิมพ์ข้อความบนป้ายไว้ได้)</p>
+    <p class="hint">รายการแบบ “เทียบป้ายกับ AKA” จะโชว์ชื่อ AKA ของนักศึกษา ให้ดูเทียบกับป้ายที่ใส่อยู่ แล้วกดผลได้เลย ถ้าไม่ตรงพิมพ์สิ่งที่เห็นบนป้ายไว้ได้</p>
    </div>
    <div class="card">
-    <h2>เจ้าหน้าที่ผู้ตรวจ</h2>
-    <p class="hint">เพิ่มอีเมลมหาวิทยาลัยของเจ้าหน้าที่ที่จะบันทึกผลการตรวจ ผู้ดูแลใช้งานได้อยู่แล้วโดยไม่ต้องเพิ่ม</p>
-    <form id="officerForm" class="row"><input id="oEmail" type="email" required placeholder="อีเมลเจ้าหน้าที่ เช่น sb6740102221@lru.ac.th"><button class="btn primary" type="submit">เพิ่ม</button></form>
+    <h2>คนช่วยตรวจ</h2>
+    <p class="hint">ใส่อีเมลมหาวิทยาลัยของคนที่จะช่วยตรวจ (แอดมินใช้ได้อยู่แล้ว)</p>
+    <form id="officerForm" class="row"><input id="oEmail" type="email" required placeholder="อีเมล เช่น sb6740102221@lru.ac.th"><button class="btn primary" type="submit">เพิ่ม</button></form>
     <div class="table-wrap"><table id="officersTable"></table></div>
    </div>
   </section>
@@ -104,5 +104,5 @@
  <footer>© English Education · LRU</footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=5" defer></script>
+<script src="./app.js?v=6" defer></script>
 </body></html>

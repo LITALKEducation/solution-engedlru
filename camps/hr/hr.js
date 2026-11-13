@@ -24,9 +24,9 @@ const ICON = {
 const TONE = { direction: 't1', structure: 't2', community: 't3', teaching: 't4', welfare: 't5' };
 const svg = (p) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
 const STATE_TEXT = {
-  pending: ['เร็วๆ นี้', 'ค่ายของเรามีทั้งหมด 5 ฝ่าย ดูหน้าที่และจำนวนที่รับของแต่ละฝ่ายไว้ก่อน แล้วรอลงทะเบียนในระบบที่กำลังจะเปิด'],
-  open: ['เปิดลงทะเบียน', 'แตะเลือกฝ่ายที่สนใจ ดูจำนวนที่ลงทะเบียนแล้วและที่ว่างของแต่ละชั้นปี แล้วกดปุ่มลงทะเบียน'],
-  closed: ['ปิดลงทะเบียนแล้ว', 'ปิดการลงทะเบียนแล้ว ยังดูรายละเอียดและจำนวนผู้ลงทะเบียนของแต่ละฝ่ายได้ตามปกติ']
+  pending: ['เร็วๆ นี้', 'ค่ายมี 5 ฝ่าย ดูหน้าที่และจำนวนที่รับไว้ก่อน แล้วรอวันเปิดลงทะเบียน'],
+  open: ['เปิดลงทะเบียน', 'แตะฝ่ายที่สนใจ ดูที่ว่างของแต่ละชั้นปี แล้วกดลงทะเบียน'],
+  closed: ['ปิดลงทะเบียนแล้ว', 'ปิดลงทะเบียนแล้ว ยังดูรายละเอียดของแต่ละฝ่ายได้']
 };
 const ADMIN_PAGES = [['overview', 'ภาพรวม', '/hr/overview'], ['quota', 'โควตา', '/hr/quota'], ['students', 'นักศึกษา', '/hr/students'], ['settings', 'ตั้งค่า', '/hr/settings']];
 
@@ -66,7 +66,7 @@ async function api(path, opt = {}) {
   const go = async (fresh) => {
     let t;
     try { t = await auth0Client.getTokenSilently(fresh ? { cacheMode: 'off' } : undefined); }
-    catch (e) { if (sessionGone(e)) throw Object.assign(new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง'), { authGone: true }); throw e; }
+    catch (e) { if (sessionGone(e)) throw Object.assign(new Error('เข้าสู่ระบบหมดอายุ ลองเข้าใหม่อีกครั้ง'), { authGone: true }); throw e; }
     return fetch(API + path, { ...opt, headers: { ...(opt.headers || {}), Authorization: 'Bearer ' + t } });
   };
   let r = await go(false);
@@ -79,11 +79,11 @@ const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Typ
 let authError = '';
 async function initAuth() {
   try {
-    if (!window.auth0) throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ');
-    auth0Client = await withTimeout(auth0.createAuth0Client({ domain: AUTH_DOMAIN, clientId: CLIENT_ID, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: HR_URL } }), 12000, 'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
+    if (!window.auth0) throw new Error('โหลดหน้าเข้าสู่ระบบไม่สำเร็จ');
+    auth0Client = await withTimeout(auth0.createAuth0Client({ domain: AUTH_DOMAIN, clientId: CLIENT_ID, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: HR_URL } }), 12000, 'เชื่อมต่อช้าเกินไป ลองใหม่อีกครั้ง');
     if (location.search.includes('code=') || location.search.includes('error=')) {
       let callbackResult;
-      try { callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'ยืนยันการเข้าสู่ระบบไม่ทัน'); }
+      try { callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'เข้าสู่ระบบช้าเกินไป ลองใหม่อีกครั้ง'); }
       finally { history.replaceState({}, document.title, HR_URL); }   // never leave ?code= / ?error= in the address bar (a reload would replay it)
       // Auth0 always lands on /hr/; go back to the HR page where sign-in started (appState first, then this tab's sessionStorage).
       let back = (callbackResult && callbackResult.appState && callbackResult.appState.returnTo) || '';
@@ -111,7 +111,7 @@ async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1
 function renderNav() {
   const el = $('hrNav'); if (!el) return;
   let html = '<a href="/hr/" class="' + (PAGE === 'student' && !CHOOSE && !SELECT ? 'on' : '') + '">ภาพรวมฝ่าย</a><a href="/hr/choose" class="' + (CHOOSE ? 'on' : '') + '">เลือกฝ่าย</a><a href="/hr/select" class="' + (SELECT ? 'on' : '') + '">เลือกเลย</a>';
-  if (me && me.isAdmin) html += '<span class="sep">ผู้ดูแล</span>' + ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="adm ' + (PAGE === 'admin' && TAB === k ? 'on' : '') + '">' + l + '</a>').join('');
+  if (me && me.isAdmin) html += '<span class="sep">แอดมิน</span>' + ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="adm ' + (PAGE === 'admin' && TAB === k ? 'on' : '') + '">' + l + '</a>').join('');
   el.innerHTML = html;
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
 }
@@ -123,10 +123,10 @@ function renderState() {
 
 // ---------- account card (student page) ----------
 const REASONS = {
-  not_university_email: (m) => 'บัญชี Google นี้ (' + esc(m.email) + ') ไม่ใช่อีเมลมหาวิทยาลัย กรุณาเข้าสู่ระบบด้วยอีเมล @lru.ac.th',
-  email_not_verified: (m) => 'อีเมล ' + esc(m.email) + ' ยังไม่ได้รับการยืนยันจาก Google',
-  no_gender: () => 'ผู้ดูแลยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อผู้ดูแลเพื่อให้ระบุ',
-  not_in_roster: (m) => 'ไม่พบรหัสนักศึกษา ' + esc(m.studentId || '') + ' ในรายชื่อของค่าย กรุณาติดต่อผู้ดูแลเพื่อให้เพิ่มรหัส ชั้นปี และเพศของคุณ'
+  not_university_email: (m) => 'บัญชี Google นี้ (' + esc(m.email) + ') ไม่ใช่อีเมลมหาวิทยาลัย ลองเข้าสู่ระบบด้วยอีเมล @lru.ac.th',
+  email_not_verified: (m) => 'อีเมล ' + esc(m.email) + ' ยังไม่ได้ยืนยันกับ Google',
+  no_gender: () => 'ในรายชื่อยังไม่มีเพศของคุณ แจ้งแอดมินให้เพิ่มให้หน่อย',
+  not_in_roster: (m) => 'ไม่พบรหัสนักศึกษา ' + esc(m.studentId || '') + ' ในรายชื่อของค่าย แจ้งแอดมินให้เพิ่มรหัส ชั้นปี และเพศของคุณ'
 };
 // who is signed in, shown at the top of every HR page
 function renderUserChip(x) {
@@ -136,7 +136,7 @@ function renderUserChip(x) {
   const st = me.student, name = st ? st.name : (me.googleName || me.email);
   const dep = me.selection && deps.find((d) => d.code === me.selection.department_code);
   const sub = (st ? 'ปี ' + st.year + ' · ' + GL[st.gender] + ' · ' + st.student_id : me.email) + (dep ? ' · ' + dep.name : '');
-  el.innerHTML = '<div class="uc"><span class="avatar sm">' + esc((name || '?').trim()[0].toUpperCase()) + '</span><div class="ut"><b>' + esc(name) + (me.isAdmin ? ' <span class="pill admin">ผู้ดูแล</span>' : '') + '</b><small>' + esc(sub) + '</small></div><button class="chipbtn" onclick="logout()" aria-label="ออกจากระบบ">ออก</button></div>';
+  el.innerHTML = '<div class="uc"><span class="avatar sm">' + esc((name || '?').trim()[0].toUpperCase()) + '</span><div class="ut"><b>' + esc(name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</b><small>' + esc(sub) + '</small></div><button class="chipbtn" onclick="logout()" aria-label="ออกจากระบบ">ออก</button></div>';
 }
 function renderAcct(x) {
   renderUserChip(x);
@@ -147,7 +147,7 @@ function renderAcct(x) {
     box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
     return;
   }
-  const adminPill = me.isAdmin ? ' <span class="pill admin">ผู้ดูแล</span>' : '';
+  const adminPill = me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '';
   if (me.reason) {
     const warn = me.isAdmin && me.reason !== 'not_in_roster' ? '' : '<div class="warn">' + REASONS[me.reason](me) + '</div>';
     box.innerHTML = '<div class="row"><div class="avatar">' + esc((me.googleName || me.email || '?').trim()[0].toUpperCase()) + '</div><div><h2>' + esc(me.googleName || me.email) + adminPill + '</h2><div class="meta">' + esc(me.email) + '</div></div></div>' + warn
@@ -320,7 +320,7 @@ function renderGeoNote() {
   let el = $('geoBox');
   if (!geo.enabled) { if (el) el.remove(); return; }
   if (!el) { el = document.createElement('div'); el.id = 'geoBox'; el.className = 'geobox'; host.appendChild(el); }
-  el.innerHTML = '<span aria-hidden="true">📍</span><span>ต้องอยู่ในรัศมี <b>' + esc(geo.radius) + ' เมตร</b>' + (geo.name ? ' จาก <b>' + esc(geo.name) + '</b>' : ' จากสถานที่ลงทะเบียน') + ' จึงจะลงทะเบียนได้ (เบราว์เซอร์จะขอใช้ตำแหน่งตอนกดลงทะเบียน)</span>';
+  el.innerHTML = '<span aria-hidden="true">📍</span><span>ลงทะเบียนได้เมื่ออยู่ในรัศมี <b>' + esc(geo.radius) + ' เมตร</b>' + (geo.name ? ' จาก <b>' + esc(geo.name) + '</b>' : ' จากสถานที่ลงทะเบียน') + ' (ตอนกดลงทะเบียน เครื่องจะขอใช้ตำแหน่ง)</span>';
 }
 function getPosition() {
   return new Promise((res, rej) => {
@@ -344,14 +344,14 @@ function renderGate(x) {
   let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
   if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
   if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
-  g.innerHTML = '<h2>เข้าสู่ระบบก่อนใช้งาน</h2><p class="meta">ต้องเข้าสู่ระบบด้วยบัญชี Google อีเมลมหาวิทยาลัย (@lru.ac.th) จึงจะดูข้อมูลฝ่ายและลงทะเบียนได้</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อดูฝ่ายและลงทะเบียน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
 function startPolling() { if (polling) return; polling = true; setInterval(() => { if (!document.hidden && me) loadDepartments(); }, 30000); }
 async function register() {
   const d = deps.find((x) => x.code === picked); if (!d) return;
-  if (!authReady) return toast('ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า', true);
+  if (!authReady) return toast('เข้าสู่ระบบไม่ได้ในตอนนี้ ลองรีเฟรชหน้า', true);
   if (!me) { try { sessionStorage.setItem('hrResume', '1'); } catch (e) { /* ignore */ } return login(); }
   if (me.reason) {
     const sw = !me.isAdmin;
@@ -367,9 +367,9 @@ async function register() {
     toast('กำลังตรวจสอบตำแหน่งของคุณ…');
     try { const p = await getPosition(); body.lat = p.coords.latitude; body.lng = p.coords.longitude; body.accuracy = p.coords.accuracy; }
     catch (e) {
-      const msg = e && e.code === 1 ? 'เว็บยังไม่ได้รับอนุญาตให้ใช้ตำแหน่งของคุณ กรุณาเปิดการเข้าถึงตำแหน่ง (Location) สำหรับเว็บนี้ในการตั้งค่าเบราว์เซอร์หรือเครื่อง แล้วกดลงทะเบียนอีกครั้ง'
-        : e && e.code === 0 ? 'อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง'
-        : 'หาตำแหน่งของคุณไม่ได้ (สัญญาณ GPS อ่อนหรือหมดเวลา) ลองออกไปที่โล่งหรือเปิด GPS แล้วกดลงทะเบียนอีกครั้ง';
+      const msg = e && e.code === 1 ? 'ยังใช้ตำแหน่งของคุณไม่ได้ ลองอนุญาตให้เว็บนี้ใช้ตำแหน่งในการตั้งค่า แล้วกดลงทะเบียนอีกครั้ง'
+        : e && e.code === 0 ? 'เครื่องนี้ระบุตำแหน่งไม่ได้'
+        : 'หาตำแหน่งไม่เจอ ลองไปที่โล่งหรือเปิด GPS แล้วกดอีกครั้ง';
       await infoDlg('ตรวจสอบตำแหน่งไม่ได้', msg, 'ตกลง'); return;
     }
   }
@@ -390,11 +390,11 @@ async function unselect() {
 }
 
 // ---------- admin pages ----------
-const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธิ์ผู้ดูแล</h2><div class="warn">บัญชี ' + esc(m.email) + ' ไม่ได้รับสิทธิ์ผู้ดูแลฝ่ายบุคคล กรุณาติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์</div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary sm" href="/hr/">กลับไปหน้าลงทะเบียน</a><button class="btn sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div></div>';
+const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธิ์แอดมิน</h2><div class="warn">บัญชี ' + esc(m.email) + ' ยังไม่มีสิทธิ์แอดมินฝ่ายบุคคล ลองขอสิทธิ์จากแอดมิน</div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary sm" href="/hr/">กลับไปหน้าลงทะเบียน</a><button class="btn sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div></div>';
 function renderAdmin(x) {
   const box = $('adminBox'); if (!box) return;
   if (x && x.error) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button></div>'; return; }
-  if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบผู้ดูแล</h2><p class="meta">ต้องเข้าสู่ระบบด้วยบัญชี Google ที่ได้รับสิทธิ์ผู้ดูแล</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '</div>'; return; }
+  if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบ</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลที่มีสิทธิ์แอดมิน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '</div>'; return; }
   if (!me.isAdmin) { box.innerHTML = NO_PERM(me); return; }
   box.innerHTML = '<div id="adminBody"><div class="skeleton"></div></div>';
   loadAdminPage();
@@ -424,7 +424,7 @@ async function loadRegList() {
   let r; try { r = await api('/camps/admin/students'); } catch (e) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadRegList()'); return; }
   if (!r.ok) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox(await errMsg(r), 'loadRegList()'); return; }
   allStudents = (await r.json()).students || [];
-  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="filerow" style="margin:0 0 8px"><button class="btn sm primary" type="button" onclick="exportRegXlsx()">ส่งออก Excel (แยกฝ่าย)</button><button class="btn sm primary" type="button" onclick="exportRegPdf()">ส่งออก PDF (แยกฝ่าย)</button></div><p class="muted" style="margin:-4px 0 8px">ผู้ดูแลเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
+  box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="filerow" style="margin:0 0 8px"><button class="btn sm primary" type="button" onclick="exportRegXlsx()">ส่งออก Excel (แยกฝ่าย)</button><button class="btn sm primary" type="button" onclick="exportRegPdf()">ส่งออก PDF (แยกฝ่าย)</button></div><p class="muted" style="margin:-4px 0 8px">แอดมินเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
     const mem = allStudents.filter((x) => x.department_code === d.code);
     return '<details class="reg" data-code="' + d.code + '"' + (openReg.has(d.code) ? ' open' : '') + ' ontoggle="regToggle(this)"><summary><b>' + esc(d.name) + '</b> <span class="muted">' + mem.length + ' คน</span></summary>' + (mem.length ? YEARS.map((y) => GENDERS.map((g) => {
       const m = mem.filter((x) => x.year === y && x.gender === g); return m.length ? '<div class="regy"><span class="pill">ปี ' + y + ' ' + GL[g] + ' · ' + m.length + '/' + d.quota[g][y] + '</span> ' + m.map((x) => '<span class="nm">' + esc(x.name) + '<button type="button" aria-label="นำ ' + esc(x.name) + ' ออก" title="นำออกจากฝ่าย" onclick="removeFrom(\'' + x.student_id + '\')">×</button></span>').join('') + '</div>' : '';
@@ -503,7 +503,7 @@ async function saveQuota(code) {
 function renderSettings() {
   const s = adminData.manual || adminData.registration, auto = adminData.schedule && adminData.schedule.enabled;
   const opts = [['pending', 'เร็วๆ นี้'], ['open', 'เปิดลงทะเบียน'], ['closed', 'ปิดลงทะเบียน']];
-  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p>' + (auto ? '<div class="warn" style="margin-top:10px">ตอนนี้ระบบเปิด-ปิดอัตโนมัติทำงานอยู่ ปุ่มด้านบนจึงยังไม่มีผลจนกว่าจะหยุดระบบอัตโนมัติ</div>' : '') + '</div>' + schedulePanel() + geoPanel() + depInfoPanel();
+  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (แอดมินยังล้างการลงทะเบียนรายคนได้)</p>' + (auto ? '<div class="warn" style="margin-top:10px">กำลังตั้งเวลาเปิด–ปิดอยู่ ปุ่มด้านบนจึงยังไม่ทำงาน หยุดตั้งเวลาก่อนถึงจะใช้ได้</div>' : '') + '</div>' + schedulePanel() + geoPanel() + depInfoPanel();
   bindSettings();
 }
 // local <input type="datetime-local"> value <-> epoch ms
@@ -512,16 +512,16 @@ const fromLocalInput = (v) => (v ? new Date(v).getTime() : null);
 const fmtWhen = (ms) => new Date(ms).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'medium' });
 function schedulePanel() {
   const sc = adminData.schedule || {}, cd = sc.mode === 'countdown';
-  return '<div class="panel" id="schedPanel"><h3>เปิด-ปิดลงทะเบียนอัตโนมัติ</h3><p class="muted" style="margin-bottom:8px">เมื่อเปิดใช้ ระบบจะเปิดและปิดการลงทะเบียนตามเวลาเอง (ไม่ใช้สถานะที่กดเองด้านบน) นักศึกษาจะเห็นตัวนับถอยหลังบนหน้าเว็บ</p>'
+  return '<div class="panel" id="schedPanel"><h3>ตั้งเวลาเปิด–ปิดลงทะเบียน</h3><p class="muted" style="margin-bottom:8px">ตั้งวันเวลาเปิด–ปิดลงทะเบียนไว้ล่วงหน้า นักศึกษาจะเห็นเวลาที่เหลือด้านบนของหน้า ระหว่างตั้งเวลา ปุ่มเปิด/ปิดด้านบนจะไม่ทำงาน</p>'
     + '<div class="schedstate" id="schedState"></div>'
     + '<div class="seg" style="margin:10px 0"><button type="button" id="scModeDT" class="' + (cd ? '' : 'on') + '">กำหนดวันที่และเวลา</button><button type="button" id="scModeCD" class="' + (cd ? 'on' : '') + '">นับถอยหลัง</button></div>'
-    + '<div id="scDT" class="' + (cd ? 'hidden' : '') + '"><div class="form cols"><label>เปิดลงทะเบียนเมื่อ<input type="datetime-local" id="scOpen" value="' + toLocalInput(cd ? null : sc.openAt) + '"></label><label>ปิดลงทะเบียนเมื่อ<input type="datetime-local" id="scClose" value="' + toLocalInput(cd ? null : sc.closeAt) + '"></label></div><p class="muted">เว้นว่างเวลาเปิด = เปิดทันที · เว้นว่างเวลาปิด = ไม่ปิดอัตโนมัติ (ใช้เวลาตามเครื่องของคุณ)</p></div>'
-    + '<div id="scCD" class="' + (cd ? '' : 'hidden') + '"><div class="form cols"><label>เริ่มเปิดในอีก (ชั่วโมง)<input type="number" id="cdInH" min="0" max="2160" placeholder="0"></label><label>และ (นาที)<input type="number" id="cdInM" min="0" max="59" placeholder="0"></label><label>เปิดรับนาน (ชั่วโมง)<input type="number" id="cdForH" min="0" max="2160" placeholder="ว่าง = ไม่ปิด"></label><label>และ (นาที)<input type="number" id="cdForM" min="0" max="59" placeholder="0"></label></div><p class="muted">กด "เริ่มนับถอยหลัง" แล้วระบบจะคำนวณเวลาเปิด-ปิดจากตอนนี้ (0 ชั่วโมง 0 นาที = เปิดทันที) เมื่อครบเวลาจะเปลี่ยนสถานะเองแม้ปิดหน้านี้</p></div>'
-    + '<div class="qact"><button class="btn primary sm" type="button" id="scSave">' + (cd ? 'เริ่มนับถอยหลัง' : 'บันทึกและเปิดใช้') + '</button>' + (sc.enabled ? '<button class="btn sm" type="button" id="scStop">หยุดระบบอัตโนมัติ</button>' : '') + '</div></div>';
+    + '<div id="scDT" class="' + (cd ? 'hidden' : '') + '"><div class="form cols"><label>เปิดลงทะเบียนเมื่อ<input type="datetime-local" id="scOpen" value="' + toLocalInput(cd ? null : sc.openAt) + '"></label><label>ปิดลงทะเบียนเมื่อ<input type="datetime-local" id="scClose" value="' + toLocalInput(cd ? null : sc.closeAt) + '"></label></div><p class="muted">ไม่ใส่เวลาเปิด = เปิดเลย · ไม่ใส่เวลาปิด = ไม่ปิดเอง (ใช้เวลาตามเครื่องของคุณ)</p></div>'
+    + '<div id="scCD" class="' + (cd ? '' : 'hidden') + '"><div class="form cols"><label>เริ่มเปิดในอีก (ชั่วโมง)<input type="number" id="cdInH" min="0" max="2160" placeholder="0"></label><label>และ (นาที)<input type="number" id="cdInM" min="0" max="59" placeholder="0"></label><label>เปิดรับนาน (ชั่วโมง)<input type="number" id="cdForH" min="0" max="2160" placeholder="ว่าง = ไม่ปิด"></label><label>และ (นาที)<input type="number" id="cdForM" min="0" max="59" placeholder="0"></label></div><p class="muted">กด "เริ่มนับถอยหลัง" แล้วนับเวลาจากตอนนี้ (ใส่ 0 = เปิดเลย) ปิดหน้านี้ไปแล้วก็ยังเปิด–ปิดตามเวลา</p></div>'
+    + '<div class="qact"><button class="btn primary sm" type="button" id="scSave">' + (cd ? 'เริ่มนับถอยหลัง' : 'บันทึกและเปิดใช้') + '</button>' + (sc.enabled ? '<button class="btn sm" type="button" id="scStop">หยุดตั้งเวลา</button>' : '') + '</div></div>';
 }
 function geoPanel() {
   const g = adminData.geo || {};
-  return '<div class="panel" id="geoPanel"><h3>ตรวจสอบตำแหน่งก่อนลงทะเบียน</h3><p class="muted" style="margin-bottom:8px">เมื่อเปิดใช้ นักศึกษาต้องอยู่ในรัศมีที่กำหนดจากจุดที่ตั้งจึงจะลงทะเบียนได้ (ยอมให้ตำแหน่งคลาดเคลื่อนได้เล็กน้อย) หมายเหตุ: ตำแหน่งมาจากโทรศัพท์ของนักศึกษา จึงเป็นเพียงการกันเบื้องต้น</p>'
+  return '<div class="panel" id="geoPanel"><h3>ตรวจสอบตำแหน่งก่อนลงทะเบียน</h3><p class="muted" style="margin-bottom:8px">นักศึกษาต้องอยู่ในรัศมีที่ตั้งจากจุดนี้ถึงจะลงทะเบียนได้ (คลาดเคลื่อนได้เล็กน้อย) ตำแหน่งมาจากโทรศัพท์ของนักศึกษา จึงเป็นเพียงการกันเบื้องต้น</p>'
     + '<label class="chk" style="margin:6px 0"><input type="checkbox" id="geoOn"' + (g.enabled ? ' checked' : '') + '> เปิดการตรวจสอบตำแหน่ง</label>'
     + '<div class="form cols"><label>ชื่อสถานที่ (แสดงให้นักศึกษาเห็น)<input id="geoName" maxlength="120" value="' + esc(g.name || '') + '" placeholder="เช่น โรงเรียนบ้านตัวอย่าง"></label><label>ละติจูด<input type="number" id="geoLat" step="any" min="-90" max="90" value="' + (g.lat ?? '') + '" placeholder="16.700000"></label><label>ลองจิจูด<input type="number" id="geoLng" step="any" min="-180" max="180" value="' + (g.lng ?? '') + '" placeholder="101.250000"></label><label>รัศมี (เมตร)<input type="number" id="geoRad" min="10" max="100000" step="1" value="' + (g.radius ?? 200) + '"></label></div>'
     + '<div class="qact"><button class="btn sm" type="button" id="geoHere">ใช้ตำแหน่งปัจจุบันของฉัน</button><a class="btn sm" id="geoMap" target="_blank" rel="noopener" href="#">เปิดดูใน Google Maps</a><button class="btn primary sm" type="button" id="geoSave">บันทึก</button></div></div>';
@@ -530,9 +530,9 @@ function bindSettings() {
   const upd = () => {
     const sc = adminData.schedule || {}, el = $('schedState'); if (!el) return;
     const now = Date.now() + srvOff;
-    let t = 'ระบบอัตโนมัติ: ปิดใช้งาน';
+    let t = 'ยังไม่ได้ตั้งเวลา';
     if (sc.enabled) {
-      t = 'ระบบอัตโนมัติ: เปิดใช้งาน · ตอนนี้ ' + ({ pending: 'ยังไม่เปิด', open: 'เปิดลงทะเบียน', closed: 'ปิดลงทะเบียนแล้ว' }[adminData.registration] || '') + (sc.openAt != null ? ' · เปิด ' + fmtWhen(sc.openAt) : '') + (sc.closeAt != null ? ' · ปิด ' + fmtWhen(sc.closeAt) : '');
+      t = 'กำลังตั้งเวลา · ตอนนี้ ' + ({ pending: 'ยังไม่เปิด', open: 'เปิดลงทะเบียน', closed: 'ปิดลงทะเบียนแล้ว' }[adminData.registration] || '') + (sc.openAt != null ? ' · เปิด ' + fmtWhen(sc.openAt) : '') + (sc.closeAt != null ? ' · ปิด ' + fmtWhen(sc.closeAt) : '');
     } else if (sc.openAt != null || sc.closeAt != null) t += ' (มีเวลาที่ตั้งไว้ครั้งก่อน)';
     el.textContent = t; el.className = 'schedstate' + (sc.enabled ? ' on' : '');
     const lat = $('geoLat') && Number($('geoLat').value), lng = $('geoLng') && Number($('geoLng').value), a = $('geoMap');
@@ -558,7 +558,7 @@ function bindSettings() {
     if (openAt == null && closeAt == null) return toast('กำหนดเวลาเปิดหรือเวลาปิดอย่างน้อยหนึ่งอย่าง', true);
     return saveSched({ enabled: true, mode: 'datetime', openAt, closeAt }, 'บันทึกเวลาเปิด-ปิดแล้ว');
   };
-  if ($('scStop')) $('scStop').onclick = async () => { if (await confirmDlg('หยุดระบบอัตโนมัติ?', 'สถานะจะกลับไปใช้ค่าที่กดเอง', 'หยุด')) saveSched({ enabled: false, mode: (adminData.schedule || {}).mode }, 'หยุดระบบอัตโนมัติแล้ว'); };
+  if ($('scStop')) $('scStop').onclick = async () => { if (await confirmDlg('หยุดตั้งเวลา?', 'สถานะจะกลับไปใช้ค่าที่กดเอง', 'หยุด')) saveSched({ enabled: false, mode: (adminData.schedule || {}).mode }, 'หยุดตั้งเวลาแล้ว'); };
   $('geoHere').onclick = async () => {
     try { const p = await getPosition(); $('geoLat').value = p.coords.latitude.toFixed(6); $('geoLng').value = p.coords.longitude.toFixed(6); upd(); toast('ใช้ตำแหน่งปัจจุบัน (ความแม่นยำ ±' + Math.round(p.coords.accuracy) + ' ม.)'); }
     catch (e) { toast(e && e.code === 1 ? 'ไม่ได้อนุญาตให้ใช้ตำแหน่ง' : 'หาตำแหน่งไม่ได้', true); }
@@ -574,7 +574,7 @@ function bindSettings() {
 function depInfoPanel() {
   return '<div class="panel"><h3>หัวหน้าฝ่ายและหน้าที่ของแต่ละฝ่าย</h3><p class="muted" style="margin-bottom:6px">แสดงให้นักศึกษาเห็นในหน้าเลือกฝ่าย (ตัวอย่างก่อนลงทะเบียน)</p>' + adminData.departments.map((d) => {
     const h = d.head || {};
-    return '<div class="depinfo"><h4>' + esc(d.name) + '</h4><label>หัวหน้าฝ่าย<input id="dh-' + d.code + '" maxlength="120" value="' + esc(h.name || '') + '" placeholder="ชื่อ-นามสกุล หัวหน้าฝ่าย"></label><label>ช่องทางติดต่อ (ไม่บังคับ)<input id="dc-' + d.code + '" maxlength="200" value="' + esc(h.contact || '') + '" placeholder="เบอร์โทร / LINE ID"></label><div class="full phrow"><span id="dp-' + d.code + '">' + avatar(d, 'lg') + '</span><div class="phbtns"><label class="btn sm ghost" for="df-' + d.code + '">' + (h.photo ? 'เปลี่ยนรูปหัวหน้าฝ่าย' : 'อัปโหลดรูปหัวหน้าฝ่าย') + '</label><input id="df-' + d.code + '" type="file" accept="image/*" class="hidden" onchange="uploadHeadPhoto(\'' + d.code + '\', this)">' + (h.photo ? '<button class="btn sm" type="button" onclick="deleteHeadPhoto(\'' + d.code + '\')">ลบรูป</button>' : '') + '<span class="muted">ระบบย่อรูปเป็นสี่เหลี่ยมจัตุรัสให้อัตโนมัติ</span></div></div><label class="full">หน้าที่ของฝ่าย<textarea id="dd-' + d.code + '" maxlength="400">' + esc(d.description || '') + '</textarea></label><div class="qact"><button class="btn primary sm" onclick="saveDepInfo(\'' + d.code + '\')">บันทึก</button></div></div>';
+    return '<div class="depinfo"><h4>' + esc(d.name) + '</h4><label>หัวหน้าฝ่าย<input id="dh-' + d.code + '" maxlength="120" value="' + esc(h.name || '') + '" placeholder="ชื่อ-นามสกุล หัวหน้าฝ่าย"></label><label>ช่องทางติดต่อ (ไม่บังคับ)<input id="dc-' + d.code + '" maxlength="200" value="' + esc(h.contact || '') + '" placeholder="เบอร์โทร / LINE ID"></label><div class="full phrow"><span id="dp-' + d.code + '">' + avatar(d, 'lg') + '</span><div class="phbtns"><label class="btn sm ghost" for="df-' + d.code + '">' + (h.photo ? 'เปลี่ยนรูปหัวหน้าฝ่าย' : 'อัปโหลดรูปหัวหน้าฝ่าย') + '</label><input id="df-' + d.code + '" type="file" accept="image/*" class="hidden" onchange="uploadHeadPhoto(\'' + d.code + '\', this)">' + (h.photo ? '<button class="btn sm" type="button" onclick="deleteHeadPhoto(\'' + d.code + '\')">ลบรูป</button>' : '') + '<span class="muted">ระบบย่อรูปเป็นสี่เหลี่ยมจัตุรัสให้</span></div></div><label class="full">หน้าที่ของฝ่าย<textarea id="dd-' + d.code + '" maxlength="400">' + esc(d.description || '') + '</textarea></label><div class="qact"><button class="btn primary sm" onclick="saveDepInfo(\'' + d.code + '\')">บันทึก</button></div></div>';
   }).join('') + '</div>';
 }
 // resize / centre-crop to a 480px square JPEG in the browser, then upload the bytes
@@ -796,7 +796,7 @@ async function exportRegPdf() {
 // any other call that finds the session gone (e.g. saving a quota after a long idle) -> back to sign-in instead of a silent failure
 window.addEventListener('unhandledrejection', (ev) => {
   if (!sessionGone(ev.reason)) return;
-  ev.preventDefault(); me = null; toast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง', true);
+  ev.preventDefault(); me = null; toast('เข้าสู่ระบบหมดอายุ ลองเข้าใหม่อีกครั้ง', true);
   renderAcct(); renderGate();
 });
 
@@ -807,6 +807,6 @@ async function start() {
   const authed = await initAuth();
   if (authed === 'redirect') return;
   if (authed) await loadMe();
-  else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: authError || 'ระบบเข้าสู่ระบบยังไม่พร้อม ลองรีเฟรชหน้า' }); }
+  else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: authError || 'เข้าสู่ระบบไม่ได้ในตอนนี้ ลองรีเฟรชหน้า' }); }
 }
 window.addEventListener('DOMContentLoaded', start);
