@@ -1,19 +1,30 @@
 # Camps · ระบบเช็ค QR (`/qrcheck/`)
 
-A separate system (own page, own Auth0 application and callback `https://enged.sorasukt.com/qrcheck/`) for the officers who scan student QR codes. The roster, draw numbers and officer assignment stay in `/lotto/`; the API is the same Worker (`/camps/lotto/*`), so a problem in one page cannot take down the other.
+A formal, plain tool for checking a student's QR code against the data the other Camps systems already hold, and recording the result of each check. It is **separate from the lottery system** (`/lotto/`): own page, own Auth0 application and callback (`https://enged.sorasukt.com/qrcheck/`), own tables. The two share the student data model (QR = student id) but not their results.
 
-Who can use it: admins (`camp_admin` / `budget_admin`) and the officers an admin assigned in `/lotto/` → เจ้าหน้าที่สแกน (verified email required). Admins also see the stats row.
+## What it does
+1. **Choose the check** (admin-defined), e.g. *ตรวจครั้งที่ 1* or *ตรวจสอบป้ายกับ AKA*.
+2. **Scan the QR** with the camera or type the student id (Thai digits and `sb<id>@lru.ac.th` are accepted).
+3. **Check the data and record the result.** The page shows what the registration database says: name, year, gender and the **department** the student chose in the HR system (`camp_students`, `camp_selections`, `camp_departments`), plus the Auth0 photo when there is one. A QR that is not in that database shows a red "ไม่พบในฐานข้อมูลลงทะเบียน". The officer then records **ผ่าน** or **ไม่ผ่าน** (a reason is required for ไม่ผ่าน).
 
-## Scan → found in the database → check in → open the gift
-With the switch **"เช็คชื่อและเปิดของขวัญอัตโนมัติ"** on (default) one scan does everything:
-1. the QR is looked up in the roster (`camp_lotto_students`) — a QR that is not there gives a red **"ไม่พบในฐานข้อมูล"** (and a QR that is not a student id is explained);
-2. if it is there the student is **checked in right away** (green "พบในฐานข้อมูล · เช็คชื่อสำเร็จ"; "เช็คชื่อไปแล้ว" if scanned before);
-3. a gift box 🎁 is shown and the draw number stays hidden until someone taps **เปิดของขวัญ**, which reveals the number in huge type. A gift can be opened **once** (`POST /camps/lotto/scanner/gift/open`, only after check-in; who and when are stored in `gift_opened_at` / `gift_opened_by`, migration `0010`, and logged as `gift_opened` in `camp_lotto_scan_logs`). Scanning again shows it as already opened, with the number, time and officer.
+Rules: one result per student per check; once recorded an officer cannot record it again (the page shows who and when); only an admin can correct it (the edit keeps who/when). A check can require that the student has already chosen a department (default). The student's history of other checks is listed under the result.
 
-Every popup shows the student's name and **Auth0 profile photo** (looked up with the Management API by the university email `sb<student id>@lru.ac.th`, cached 10 min, 2.5 s cap; the M2M application needs the `read:users` scope; without a photo the initial is shown). "สแกนคนต่อไป" / Enter / Esc / tap outside closes the popup and re-opens the camera when the scan came from the camera.
+### AKA (future system)
+AKA is not connected yet. The check type **"เทียบป้ายกับ AKA"** adds a field for the **badge code**; officers compare the badge by hand today and the code is stored (`camp_qr_results.reference`, searchable and in the Excel export) so it can be matched automatically when AKA is connected.
 
-## Read-only mode
-Switch the toggle off to only *look* (`GET /camps/lotto/scanner/verify?studentId=…`, never writes): red **"เช็คแล้ว · ตัดสิทธิ์แล้ว"** with the number, time and officer, or green **"ยังไม่ได้เช็ค · ใช้สิทธิ์ได้"** with an optional "เช็คชื่อตอนนี้" button that does the normal check-in and offers the gift.
+## Who can use it
+- **Admins** (`camp_admin` / `budget_admin`): everything, including the tabs below.
+- **Officers**: accounts with a verified email that an admin added under *ตั้งค่า → เจ้าหน้าที่ผู้ตรวจ* (`camp_qr_officers`). They only see the *ตรวจ QR* tab. This list is independent from the lottery scanners.
+
+## Tabs
+| Tab | For | Content |
+|---|---|---|
+| ตรวจ QR | everyone | the three steps above |
+| ผลการตรวจ | admins | summary per check (checked / passed / failed / still to check among registered students), filterable result list (check, result, name / id / badge code), **Excel export** |
+| ตั้งค่า | admins | add / rename / reorder / deactivate / delete checks (a check with results can only be deactivated), manage officers |
+
+## API (`/camps/qrcheck/*`, Worker handler `handlers/qrcheck.js`, migration `0011_camps_qrcheck.sql`)
+`GET me` · `GET checks` (`?all=1` for admins) · `POST lookup` (read-only) · `POST record` · admin: `GET|POST admin/checks`, `PATCH|DELETE admin/checks/:id`, `GET admin/results`, `GET|POST admin/officers`, `DELETE admin/officers/:email`. Every write is audited in `budget_audit_logs` (`entity_type = qrcheck`). The migration seeds the two example checks; admins can rename or remove them.
 
 ## Files
-`index.html`, `app.js` (its own Client ID constant `CLIENT`, or `window.QRCHECK_AUTH0_CLIENT_ID`), `style.css`; camera scanning uses `html5-qrcode` from unpkg.
+`index.html`, `app.js` (its own Client ID constant `CLIENT`, or `window.QRCHECK_AUTH0_CLIENT_ID`), `style.css`, `vendor/xlsx.mini.min.js` (Excel export, loaded on demand). Camera scanning uses `html5-qrcode` from unpkg.

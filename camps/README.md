@@ -5,8 +5,8 @@ Cloudflare Pages project, root directory `camps`, no build command.
 | Path | What |
 | --- | --- |
 | `/` | Camps home: choose **งบประมาณ** (finance) or **ฝ่ายบุคคล** (coming soon). Plain web page. |
-| `/lotto/` | Lottery roster, draw numbers, status list and scanner-officer assignment (admins). See `lotto/README.md`. |
-| `/qrcheck/` | ระบบเช็ค QR — scan a QR, find it in the roster, check the student in and open the gift. A separate system with its own Auth0 application. See `qrcheck/README.md`. |
+| `/lotto/` | **Lottery scanning system.** Admins and assigned officers scan a student's QR to verify the draw number and mark them as registered (check in, then open the gift); roster / draw-number management for admins. See `lotto/README.md`. |
+| `/qrcheck/` | **ระบบเช็ค QR.** Looks the student up in the HR registration data (name, year, department) and records the result of admin-defined checks (ตรวจครั้งที่ 1, ตรวจสอบป้ายกับ AKA, …). Separate system with its own Auth0 application. See `qrcheck/README.md`. |
 | `/hr/` | ฝ่ายบุคคล · ภาพรวมฝ่าย: the 5 departments (duties, head with photo/contact, slots per year and gender). Plain web page (not a web app). |
 | `/hr/select` | ฝ่ายบุคคล · เลือกเลย: a single dropdown of the departments with a register button (shows the duties, head and your slot for the chosen one). |
 | `/hr/choose` | ฝ่ายบุคคล · เลือกฝ่าย: shows only the head of each department; tap one to preview, pick it and register (Google sign-in). |

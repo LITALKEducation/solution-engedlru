@@ -183,11 +183,3 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:26px 0 0}
 @keyframes reveal{from{transform:scale(.2) rotate(-10deg);opacity:0}to{transform:none;opacity:1}}
 @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(print){body *{visibility:hidden}#qrModal,#qrModal *{visibility:visible}#qrModal{position:absolute;inset:0;background:#fff}.close,#printQr{display:none!important}.modal-card{box-shadow:none;animation:none}}
-
-/* link to the separate QR check system */
-.qrlink{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:12px 18px;margin:0 0 16px;box-shadow:0 8px 24px #1712120d;transition:transform .15s,box-shadow .15s}
-.qrlink:hover{transform:translateY(-2px);box-shadow:0 12px 30px #17121220}
-.qrlink>span:first-child{font-size:28px;width:48px;height:48px;border-radius:14px;background:var(--red-l);display:grid;place-items:center}
-.qrlink>span:nth-child(2){flex:1;display:grid}.qrlink small{color:var(--muted);font-size:13px}.qrlink>span:last-child{font-size:28px;color:var(--red)}
-a.btnlink{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;font-weight:700}
-.inlinelink{color:var(--red);font-weight:700;text-decoration:underline}
