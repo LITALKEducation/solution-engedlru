@@ -39,5 +39,20 @@ r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=9999999999');ok(r
 r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=hello');ok(r.s===400,'verify: not a student QR 400');
 r=await call('s3','GET','/camps/lotto/scanner/verify?studentId=6840300001');ok(r.s===403,'verify: unassigned account refused');
 await call('admin','DELETE','/camps/lotto/admin/students/6840300001');await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102221%40lru.ac.th');
+// gift: open once, only after check-in
+await call('admin','POST','/camps/lotto/admin/scanners',{email:'sb6740102221@lru.ac.th'});
+await call('admin','POST','/camps/lotto/admin/students',{studentId:'6840400001',name:'Gift Tester',drawNumber:'555'});
+r=await call('s2','POST','/camps/lotto/scanner/gift/open',{studentId:'6840400001'});ok(r.s===409&&r.d.code==='NOT_CHECKED_IN'&&r.d.student.draw_number===null,'gift: not before check-in, and the draw number is not leaked');
+r=await call('s3','POST','/camps/lotto/scanner/gift/open',{studentId:'6840400001'});ok(r.s===403,'gift: unassigned account refused');
+r=await call('s2','POST','/camps/lotto/scanner/gift/open',{studentId:'9999999999'});ok(r.s===404,'gift: unknown id 404');
+r=await call('s2','POST','/camps/lotto/admin/scan',{studentId:'6840400001'});ok(r.s===200&&r.d.student.gift_opened_at===null,'check-in; gift still closed');
+r=await call('s2','POST','/camps/lotto/scanner/gift/open',{studentId:'6840400001'});ok(r.s===200&&r.d.firstTime===true&&r.d.student.gift_opened_by==='sb6740102221@lru.ac.th'&&r.d.student.draw_number==='555','gift opens for a checked-in student (first time, by whom)');
+r=await call('s2','POST','/camps/lotto/scanner/gift/open',{studentId:'6840400001'});ok(r.s===200&&r.d.firstTime===false&&r.d.student.gift_opened_at,'second open is idempotent (firstTime false, keeps who/when)');
+r=await call('s2','POST','/camps/lotto/admin/scan',{studentId:'6840400001'});ok(r.s===409&&r.d.student.gift_opened_at,'scan reports the gift as already opened');
+r=await call('admin','GET','/camps/lotto/admin/overview');ok(r.d.gifts===1,'overview counts opened gifts: '+r.d.gifts);
+r=await call('admin','GET','/camps/lotto/admin/students?q=6840400001');ok(r.d.students[0].gift_opened_at&&r.d.students[0].gift_opened_by,'roster rows carry the gift fields');
+ok(env.DB&&true,'(db)');
+{const logs=await env.DB.prepare("SELECT result FROM camp_lotto_scan_logs WHERE student_id='6840400001' ORDER BY id").all();ok(logs.results.map(x=>x.result).join()==='checked,gift_opened','scan log: checked, then gift_opened exactly once');}
+await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102221%40lru.ac.th');
 console.log(fl?fl+' FAILED':'all '+pass+' lotto checks passed');
 process.exit(fl?1:0);

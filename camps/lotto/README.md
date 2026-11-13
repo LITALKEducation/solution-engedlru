@@ -70,3 +70,10 @@ The **ตรวจสอบสถานะ** tab has its own camera / manual inp
 - **green "ยังไม่ได้เช็ค · ใช้สิทธิ์ได้"** — with an optional "เช็คชื่อตอนนี้" button that does the normal check-in;
 - red error for a QR that is not in the roster or is not a student id.
 The camera restarts after each popup, like on the check-in tab, and is stopped when you change tab.
+
+## Scan → found in the database → check in → open the gift
+The **ตรวจสอบสถานะ** tab (switch "เช็คชื่อและเปิดของขวัญอัตโนมัติ", on by default) does everything in one scan:
+1. the QR is looked up in the roster (`camp_lotto_students`) — a QR that is not there gives a red **"ไม่พบในฐานข้อมูล"**;
+2. if it is there the student is **checked in right away** (green "พบในฐานข้อมูล · เช็คชื่อสำเร็จ"; "เช็คชื่อไปแล้ว" if scanned before);
+3. a gift box 🎁 is shown and the draw number stays hidden until someone taps **เปิดของขวัญ**, which reveals the number in huge type. A gift can be opened **once** (`POST /camps/lotto/scanner/gift/open`, only after check-in; who and when are stored in `gift_opened_at` / `gift_opened_by`, migration `0010`, and logged as `gift_opened` in `camp_lotto_scan_logs`). Scanning again shows it as already opened, with the number, time and officer.
+Switching the toggle off gives the read-only status lookup described above (no check-in, no gift). The stats row has a fourth card, "เปิดของขวัญแล้ว", and the roster shows a 🎁 chip for opened gifts.
