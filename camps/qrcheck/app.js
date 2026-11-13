@@ -22,6 +22,8 @@ async function data(path, opt) {
 }
 const send = (method, path, body) => data(path, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
 const fmt = (s) => (s ? new Date(String(s).replace(' ', 'T') + 'Z').toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
+const fmtShort = (s) => (s ? new Date(String(s).replace(' ', 'T') + 'Z').toLocaleString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+const PLACEHOLDER = '<div class="placeholder"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 12h8"/></svg><p>ยังไม่มีข้อมูล<br>สแกน QR หรือกรอกรหัสนักศึกษาเพื่อเริ่มตรวจ</p></div>';
 const badge = (r) => '<span class="badge ' + (r === 'pass' ? 'ok' : 'bad') + '">' + (r === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน') + '</span>';
 const KIND = { manual: 'ตรวจทั่วไป', aka: 'เทียบป้ายกับ AKA' };
 const curCheck = () => checks.find((c) => c.id === checkId);
@@ -98,7 +100,7 @@ function renderProblem(e, id) {
   bindNext();
 }
 const nextButton = () => '<div class="row end"><button id="nextBtn" class="btn primary" type="button">ตรวจคนต่อไป</button></div>';
-function bindNext() { const b = $('nextBtn'); if (b) b.onclick = () => { cur = null; $('result').innerHTML = '<p class="empty">ยังไม่มีข้อมูล สแกน QR หรือกรอกรหัสนักศึกษาเพื่อเริ่มตรวจ</p>'; $('sid').value = ''; if (cameraMode) { cameraMode = false; startCamera(); } else $('sid').focus(); }; }
+function bindNext() { const b = $('nextBtn'); if (b) b.onclick = () => { cur = null; $('result').innerHTML = PLACEHOLDER; $('sid').value = ''; if (cameraMode) { cameraMode = false; startCamera(); } else $('sid').focus(); }; }
 
 function renderResult(d, quiet) {
   const s = d.student, c = d.check, r = d.result;
@@ -121,7 +123,7 @@ function renderResult(d, quiet) {
   if (!r && !d.blocked) h += '<div class="row end"><button id="recNow" class="btn ok" type="button">บันทึกว่าตรวจแล้ว</button></div>';
   if (canRefine) h += refineForm(c, r, !mine && isAdmin);
   else if (r && !isAdmin) h += '<p class="hint">แก้ไขผลได้เฉพาะผู้ที่บันทึก หรือผู้ดูแล</p>';
-  if (d.history && d.history.length) h += '<h3 class="mt">ประวัติการตรวจของนักศึกษา</h3><ul class="hist">' + d.history.map((x) => '<li><span>' + esc(x.name) + '</span>' + badge(x.result) + '<small>' + esc(fmt(x.checked_at)) + '</small></li>').join('') + '</ul>';
+  if (d.history && d.history.length) h += '<h3 class="mt">ประวัติการตรวจของนักศึกษา</h3><ul class="hist">' + d.history.map((x) => '<li><span>' + esc(x.name) + '</span>' + badge(x.result) + '<small>' + esc(fmtShort(x.checked_at)) + '</small></li>').join('') + '</ul>';
   h += nextButton();
   $('result').innerHTML = h; bindNext(); bindActions();
   const im = document.querySelector('#result img.avatar'); if (im) im.onerror = () => { const sp = document.createElement('span'); sp.className = 'avatar ph'; sp.textContent = initial; im.replaceWith(sp); };
@@ -156,9 +158,9 @@ let resultRows = [];
 async function loadResults() {
   try {
     const d = await data('/camps/qrcheck/admin/checks');
-    $('sumTable').innerHTML = '<thead><tr><th>รายการตรวจ</th><th>ประเภท</th><th class="num">ตรวจแล้ว</th><th class="num">ผ่าน</th><th class="num">ไม่ผ่าน</th><th class="num">ยังไม่ตรวจ (จากผู้ลงทะเบียนฝ่าย)</th></tr></thead><tbody>'
+    $('sumTable').innerHTML = '<thead><tr><th>รายการตรวจ</th><th>ประเภท</th><th class="num">ตรวจแล้ว</th><th class="num">ผ่าน</th><th class="num">ไม่ผ่าน</th><th class="num">ยังไม่ตรวจ*</th></tr></thead><tbody>'
       + d.checks.map((c) => '<tr><td data-l="รายการตรวจ"><b>' + esc(c.name) + '</b>' + (c.active ? '' : ' <span class="badge muted">ปิดใช้งาน</span>') + '</td><td data-l="ประเภท">' + KIND[c.kind] + '</td><td class="num" data-l="ตรวจแล้ว">' + c.results + '</td><td class="num" data-l="ผ่าน">' + c.passed + '</td><td class="num" data-l="ไม่ผ่าน">' + c.failed + '</td><td class="num" data-l="ยังไม่ตรวจ">' + Math.max(0, d.registered - c.results) + '</td></tr>').join('') + '</tbody>'
-      + '<tfoot><tr><td colspan="6" class="small">ฐานข้อมูลลงทะเบียน: นักศึกษาในรายชื่อ ' + d.roster + ' คน · เลือกฝ่ายแล้ว ' + d.registered + ' คน</td></tr></tfoot>';
+      + '<tfoot><tr><td colspan="6" class="small">ฐานข้อมูลลงทะเบียน: นักศึกษาในรายชื่อ ' + d.roster + ' คน · เลือกฝ่ายแล้ว ' + d.registered + ' คน · *ยังไม่ตรวจ นับจากผู้ที่เลือกฝ่ายแล้ว</td></tr></tfoot>';
     const sel = $('fCheck'), keep = sel.value;
     sel.innerHTML = '<option value="">ทุกรายการ</option>' + d.checks.map((c) => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join(''); sel.value = keep;
     await loadResultRows();
@@ -169,7 +171,7 @@ async function loadResultRows() {
   try {
     resultRows = (await data('/camps/qrcheck/admin/results?' + q)).results || [];
     $('resTable').innerHTML = resultRows.length ? '<thead><tr><th>รายการตรวจ</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ชั้นปี</th><th>ฝ่าย</th><th>ผล</th><th>รหัสป้าย</th><th>หมายเหตุ</th><th>เวลา</th><th>ผู้ตรวจ</th></tr></thead><tbody>'
-      + resultRows.map((x) => '<tr><td data-l="รายการตรวจ">' + esc(x.check_name) + '</td><td data-l="รหัส">' + esc(x.student_id) + '</td><td data-l="ชื่อ">' + esc(x.name || '—') + '</td><td data-l="ชั้นปี">' + esc(x.year || '—') + '</td><td data-l="ฝ่าย">' + esc(x.department_name || '—') + '</td><td data-l="ผล">' + badge(x.result) + '</td><td data-l="รหัสป้าย">' + esc(x.reference || '—') + '</td><td data-l="หมายเหตุ">' + esc(x.note || '—') + '</td><td data-l="เวลา">' + esc(fmt(x.updated_at || x.checked_at)) + '</td><td data-l="ผู้ตรวจ">' + esc(x.updated_by || x.checked_by) + '</td></tr>').join('') + '</tbody>'
+      + resultRows.map((x) => '<tr><td data-l="รายการตรวจ">' + esc(x.check_name) + '</td><td data-l="รหัส">' + esc(x.student_id) + '</td><td data-l="ชื่อ">' + esc(x.name || '—') + '</td><td data-l="ชั้นปี">' + esc(x.year || '—') + '</td><td data-l="ฝ่าย">' + esc(x.department_name || '—') + '</td><td data-l="ผล">' + badge(x.result) + '</td><td data-l="รหัสป้าย">' + esc(x.reference || '—') + '</td><td data-l="หมายเหตุ">' + esc(x.note || '—') + '</td><td data-l="เวลา">' + esc(fmtShort(x.updated_at || x.checked_at)) + '</td><td data-l="ผู้ตรวจ">' + esc(x.updated_by || x.checked_by) + '</td></tr>').join('') + '</tbody>'
       : '<tbody><tr><td class="empty">ไม่พบผลการตรวจ</td></tr></tbody>';
   } catch (e) { toast(e.message, true); }
 }
@@ -203,7 +205,7 @@ async function loadSettings() {
       try { await send('PATCH', '/camps/qrcheck/admin/checks/' + c.id, { name, description, sortOrder: Number(order) }); toast('บันทึกแล้ว'); loadSettings(); loadChecks(); } catch (e) { toast(e.message, true); }
     });
     const o = await data('/camps/qrcheck/admin/officers');
-    $('officersTable').innerHTML = o.officers.length ? '<thead><tr><th>อีเมล</th><th>เพิ่มโดย</th><th>เมื่อ</th><th></th></tr></thead><tbody>' + o.officers.map((x) => '<tr><td data-l="อีเมล">' + esc(x.email) + '</td><td data-l="เพิ่มโดย">' + esc(x.added_by) + '</td><td data-l="เมื่อ">' + esc(fmt(x.created_at)) + '</td><td class="act"><button class="btn sm danger" data-rm="' + esc(x.email) + '">ถอนสิทธิ์</button></td></tr>').join('') + '</tbody>' : '<tbody><tr><td class="empty">ยังไม่มีเจ้าหน้าที่ที่ได้รับมอบหมาย (ผู้ดูแลใช้ได้เสมอ)</td></tr></tbody>';
+    $('officersTable').innerHTML = o.officers.length ? '<thead><tr><th>อีเมล</th><th>เพิ่มโดย</th><th>เมื่อ</th><th></th></tr></thead><tbody>' + o.officers.map((x) => '<tr><td data-l="อีเมล">' + esc(x.email) + '</td><td data-l="เพิ่มโดย">' + esc(x.added_by) + '</td><td data-l="เมื่อ">' + esc(fmtShort(x.created_at)) + '</td><td class="act"><button class="btn sm danger" data-rm="' + esc(x.email) + '">ถอนสิทธิ์</button></td></tr>').join('') + '</tbody>' : '<tbody><tr><td class="empty" data-l="">ยังไม่มีเจ้าหน้าที่ที่ได้รับมอบหมาย (ผู้ดูแลใช้ได้เสมอ)</td></tr></tbody>';
     $('officersTable').querySelectorAll('[data-rm]').forEach((b) => b.onclick = async () => { if (!confirm('ถอนสิทธิ์ ' + b.dataset.rm + ' ?')) return; try { await send('DELETE', '/camps/qrcheck/admin/officers/' + encodeURIComponent(b.dataset.rm)); toast('ถอนสิทธิ์แล้ว'); loadSettings(); } catch (e) { toast(e.message, true); } });
   } catch (e) { toast(e.message, true); }
 }
