@@ -88,27 +88,52 @@ async function handleScan(value,fromCamera){cameraScan=!!fromCamera;const id=Str
 function showScanResult(x,duplicate,picture){$('scanResult').className='result '+(duplicate?'duplicate':'success');$('scanResult').innerHTML='<b>'+(duplicate?'สแกนไปแล้ว · ตัดสิทธิ์แล้ว':'ตรวจสอบสำเร็จ · ตัดสิทธิ์แล้ว')+'</b>'+esc(x.student_name)+'<small>รหัส '+esc(x.student_id)+' · เลขจับสลาก '+esc(x.draw_number)+'</small><small>เวลา '+esc(fmt(x.checked_at))+' · เจ้าหน้าที่ '+esc(x.checked_by)+'</small>';showPopup({kind:duplicate?'duplicate':'success',student:x,picture});if(isAdmin){refreshStats();refresh($('search').value)}}
 // popup after every scan: the draw number in huge type + the student's Auth0 (Google) photo
 function showPopup({kind,student,picture,message,id}){
- const m=$('scanModal');m.classList.remove('hidden','success','duplicate','error');m.classList.add(kind);
+ const m=$('scanModal');m.classList.remove('hidden','success','duplicate','error','checked','unchecked');m.classList.add(kind);$('spAction').classList.add('hidden');$('spAction').onclick=null;
  const num=$('spNumber');
- if(kind==='error'){$('spBanner').textContent='✕ สแกนไม่สำเร็จ';$('spName').textContent=message||'เกิดข้อผิดพลาด';$('spMeta').textContent=id?'รหัสที่สแกน: '+id:'';num.textContent='';$('spAvatar').innerHTML='';}
+ if(kind==='error'){$('spBanner').textContent=m.dataset.verify==='1'?'✕ ตรวจสอบไม่ได้':'✕ สแกนไม่สำเร็จ';$('spName').textContent=message||'เกิดข้อผิดพลาด';$('spMeta').textContent=id?'รหัสที่สแกน: '+id:'';num.textContent='';$('spAvatar').innerHTML='';}
  else{
-  $('spBanner').textContent=kind==='duplicate'?'! สแกนไปแล้ว · ตัดสิทธิ์แล้ว':'✓ ตรวจสอบสำเร็จ · ตัดสิทธิ์แล้ว';
+  $('spBanner').textContent=({duplicate:'! สแกนไปแล้ว · ตัดสิทธิ์แล้ว',checked:'✕ เช็คแล้ว · ตัดสิทธิ์แล้ว',unchecked:'✓ ยังไม่ได้เช็ค · ใช้สิทธิ์ได้'})[kind]||'✓ ตรวจสอบสำเร็จ · ตัดสิทธิ์แล้ว';
   const n=String(student.draw_number||'');num.textContent=n;num.className='sp-number'+(n.length>8?' xlong':n.length>5?' long':'');
   $('spName').textContent=student.student_name;
-  $('spMeta').textContent='รหัส '+student.student_id+(kind==='duplicate'?' · สแกนเมื่อ '+fmt(student.checked_at)+' โดย '+(student.checked_by||'—'):'');
+  $('spMeta').textContent='รหัส '+student.student_id+(kind==='duplicate'||kind==='checked'?' · สแกนเมื่อ '+fmt(student.checked_at)+' โดย '+(student.checked_by||'—'):'');
   const av=$('spAvatar');av.innerHTML='';const initial=[...String(student.student_name||'?').replace(/^(นางสาว|นาย|นาง|น\.ส\.|เด็กชาย|เด็กหญิง)\s*/,'')][0]||'?';
   if(picture){const img=new Image();img.alt='';img.referrerPolicy='no-referrer';img.onerror=()=>{av.textContent=initial};img.src=picture;av.appendChild(img)}else av.textContent=initial;
  }
  $('spClose').focus();
 }
-function closePopup(){$('scanModal').classList.add('hidden');if(cameraScan){cameraScan=false;if(!$('view-scan').classList.contains('hidden'))$('startScan').click()}else $('scanId').focus()}
+// camera + manual input, used by both the check-in tab and the verify tab
+let restartCam=null;
+function closePopup(){const m=$('scanModal');m.classList.add('hidden');const r=restartCam;restartCam=null;if(r)r();}
 $('spClose').onclick=closePopup;
 $('scanModal').addEventListener('click',e=>{if(e.target===$('scanModal'))closePopup()});
 document.addEventListener('keydown',e=>{if(!$('scanModal').classList.contains('hidden')&&(e.key==='Escape'||e.key==='Enter'))closePopup()});
-$('manualScan').onclick=()=>handleScan($('scanId').value);$('scanId').addEventListener('keydown',e=>{if(e.key==='Enter')handleScan(e.target.value)});
-$('startScan').onclick=async()=>{if(!window.Html5Qrcode){toast('โหลดเครื่องมือสแกนไม่สำเร็จ กรุณารีเฟรช');return}try{scanner=new Html5Qrcode('reader');await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},async text=>{await scanner.stop();scanner=null;$('startScan').classList.remove('hidden');$('stopScan').classList.add('hidden');await handleScan(text,true)},()=>{});$('startScan').classList.add('hidden');$('stopScan').classList.remove('hidden')}catch(e){toast('เปิดกล้องไม่ได้ กรุณาอนุญาตการใช้กล้องหรือกรอกรหัสแทน')}}
-$('stopScan').onclick=async()=>{if(scanner){await scanner.stop();scanner=null}$('startScan').classList.remove('hidden');$('stopScan').classList.add('hidden')};
+const stoppers=[];
+function bindScanner({readerId,startId,stopId,inputId,goId,view,onValue}){
+ let cam=null;
+ const show=(on)=>{$(startId).classList.toggle('hidden',on);$(stopId).classList.toggle('hidden',!on)};
+ const stop=async()=>{if(cam){try{await cam.stop()}catch(e){}cam=null}show(false)};
+ stoppers.push(stop);
+ $(goId).onclick=()=>onValue($(inputId).value,false);$(inputId).addEventListener('keydown',e=>{if(e.key==='Enter')onValue(e.target.value,false)});
+ $(startId).onclick=async()=>{if(!window.Html5Qrcode){toast('โหลดเครื่องมือสแกนไม่สำเร็จ กรุณารีเฟรช');return}
+  try{cam=new Html5Qrcode(readerId);await cam.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},async text=>{await stop();restartCam=()=>{if(!$(view).classList.contains('hidden'))$(startId).click()};await onValue(text,true)},()=>{});show(true)}
+  catch(e){toast('เปิดกล้องไม่ได้ กรุณาอนุญาตการใช้กล้องหรือกรอกรหัสแทน')}};
+ $(stopId).onclick=stop;
+}
+function setVerifyMode(on){$('scanModal').dataset.verify=on?'1':''}
+bindScanner({readerId:'reader',startId:'startScan',stopId:'stopScan',inputId:'scanId',goId:'manualScan',view:'view-scan',onValue:(v,cam)=>{setVerifyMode(false);return handleScan(v,cam)}});
+bindScanner({readerId:'vReader',startId:'vStart',stopId:'vStop',inputId:'vId',goId:'vGo',view:'view-verify',onValue:(v,cam)=>{setVerifyMode(true);return handleVerify(v,cam)}});
+// read-only: is this QR already checked in?
+async function handleVerify(value,fromCamera){
+ const id=String(value||'').trim();$('vId').value=id;const box=$('vResult');
+ try{
+  const d=await data('/camps/lotto/scanner/verify?studentId='+encodeURIComponent(id)),x=d.student;
+  box.className='result '+(d.checked?'checked':'unchecked');
+  box.innerHTML='<b>'+(d.checked?'เช็คแล้ว · ตัดสิทธิ์แล้ว':'ยังไม่ได้เช็ค · ใช้สิทธิ์ได้')+'</b>'+esc(x.student_name)+'<small>รหัส '+esc(x.student_id)+' · เลขจับสลาก '+esc(x.draw_number)+'</small>'+(d.checked?'<small>เวลา '+esc(fmt(x.checked_at))+' · เจ้าหน้าที่ '+esc(x.checked_by||'—')+'</small>':'');
+  showPopup({kind:d.checked?'checked':'unchecked',student:x,picture:d.picture});
+  if(!d.checked){const act=$('spAction');act.classList.remove('hidden');act.onclick=async()=>{act.disabled=true;try{$('scanModal').classList.add('hidden');restartCam=null;setVerifyMode(false);await handleScan(x.student_id,false);await handleVerify(x.student_id,false)}finally{act.disabled=false}}}
+ }catch(e){box.className='result error';box.textContent=e.message;showPopup({kind:'error',message:e.message,id});toast(e.message)}
+}
 $('refresh').onclick=()=>refresh($('search').value);$('search').oninput=()=>{clearTimeout(window.__searchTimer);window.__searchTimer=setTimeout(()=>refresh($('search').value),250)};$('verifyBtn').onclick=async()=>{if(isAdmin){await refresh($('verifySearch').value);return}try{const d=await data('/camps/lotto/scanner/lookup?q='+encodeURIComponent($('verifySearch').value));renderTable('verifyTable',d.students||[],false)}catch(e){toast(e.message)}};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$('view-'+b.dataset.tab).classList.remove('hidden');if(b.dataset.tab==='verify'){if(isAdmin)refresh($('verifySearch').value);else $('verifyBtn').click()}if(b.dataset.tab==='scanners')refreshScanners()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{stoppers.forEach(f=>f());document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$('view-'+b.dataset.tab).classList.remove('hidden');if(b.dataset.tab==='verify'){if(isAdmin)refresh($('verifySearch').value);else $('verifyBtn').click()}if(b.dataset.tab==='scanners')refreshScanners()});
 init();
 })();

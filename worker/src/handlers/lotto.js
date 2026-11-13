@@ -153,6 +153,17 @@ async function studentPicture(env, id) {
   } catch (e) { console.error("[lotto] picture lookup:", e?.message || e); return null; }
 }
 
+// Read-only QR check: is this student's QR already checked in? Never changes anything.
+async function verify(req, env, url) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
+  const id = studentId(url.searchParams.get("studentId") ?? url.searchParams.get("value"));
+  if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
+  const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
+  if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
+  const picture = await studentPicture(env, id);
+  return json(req, env, { ok: true, checked: !!row.checked_at, student: row, picture });
+}
+
 async function scan(req, env) {
   const a = await scanActor(req, env); if (a.response) return a.response;
   const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
@@ -181,6 +192,7 @@ export async function lotto(req, env, url) {
     const scannerDel=p.match(/^\/camps\/lotto\/admin\/scanners\/(.+)$/);
     if (m==="DELETE" && scannerDel) return await removeScanner(req,env,scannerDel[1]);
     if (m==="GET" && p==="/camps/lotto/scanner/me") return await scannerMe(req,env);
+    if (m==="GET" && p==="/camps/lotto/scanner/verify") return await verify(req,env,url);
     if (m==="GET" && p==="/camps/lotto/scanner/lookup") return await scannerLookup(req,env,url);
     if (m==="GET" && p==="/camps/lotto/admin/overview") return await overview(req,env);
     if (m==="GET" && p==="/camps/lotto/admin/students") return await list(req,env,url);

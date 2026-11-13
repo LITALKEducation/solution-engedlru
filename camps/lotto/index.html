@@ -7,7 +7,7 @@
 <title>ระบบจับสลาก · Camps</title>
 <link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=5">
+<link rel="stylesheet" href="./style.css?v=6">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -35,7 +35,10 @@
 <textarea id="csvInput" rows="5" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,เลขจับสลาก&#10;6740102220,สมชาย ใจดี,001"></textarea><button id="importBtn" class="primary">นำเข้ารายชื่อ</button><div id="importRes" class="importres" aria-live="polite"></div></details>
 <div class="toolbar"><input id="search" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="refresh" class="secondary">รีเฟรช</button></div><div id="studentTable" class="table-wrap"></div>
 </section>
-<section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบสถานะการใช้สิทธิ์</h2><p>ค้นหาเพื่อดูว่าใครถูกตัดสิทธิ์แล้ว พร้อมเวลาที่สแกนและเจ้าหน้าที่</p></div></div><div class="toolbar"><input id="verifySearch" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="verifyBtn" class="secondary">ค้นหา</button></div><div id="verifyTable" class="table-wrap"></div></section>
+<section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบ QR Code</h2><p>สแกนหรือกรอกรหัสเพื่อดูว่า <b>เช็คแล้วหรือยัง</b> (เวลา และเจ้าหน้าที่ที่สแกน) การตรวจสอบนี้ <b>ไม่ตัดสิทธิ์</b></p></div><span class="pill ok">ตรวจสอบเท่านั้น</span></div>
+<div class="scanner-grid"><div class="scan-box"><div id="vReader"></div><button id="vStart" class="primary">เปิดกล้องตรวจสอบ QR</button><button id="vStop" class="secondary hidden">ปิดกล้อง</button></div>
+<div class="manual"><h3>กรอกรหัสด้วยตนเอง</h3><label for="vId">รหัสนักศึกษา</label><div class="inline"><input id="vId" inputmode="numeric" placeholder="เช่น 6740102220"><button id="vGo" class="primary">ตรวจสอบ</button></div><div id="vResult" aria-live="polite" class="result empty">รอการสแกน QR Code</div></div></div>
+<h3 class="subhead">ค้นหาจากรายชื่อ</h3><div class="toolbar"><input id="verifySearch" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="verifyBtn" class="secondary">ค้นหา</button></div><div id="verifyTable" class="table-wrap"></div></section>
 <section id="view-scanners" class="view panel hidden"><div class="section-head"><div><h2>กำหนดเจ้าหน้าที่สแกน</h2><p>เพิ่มอีเมลบัญชีมหาวิทยาลัยที่ได้รับอนุญาตให้สแกน QR Code</p></div></div><form id="scannerForm" class="inline"><input id="scannerEmail" type="email" required placeholder="student@lru.ac.th"><button class="primary">เพิ่มเจ้าหน้าที่</button></form><div id="scannerList" class="table-wrap"></div></section>
 </div>
 <footer>© English Education · LRU</footer>
@@ -47,8 +50,9 @@
 <div class="sp-label" id="spLabel">เลขจับสลาก</div>
 <div class="sp-number" id="spNumber"></div>
 <h2 id="spName"></h2><p id="spMeta"></p>
+<button id="spAction" class="secondary hidden" type="button">เช็คชื่อตอนนี้ (ตัดสิทธิ์)</button>
 <button id="spClose" class="primary">สแกนคนต่อไป</button>
 </div></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=6" defer></script>
+<script src="./app.js?v=7" defer></script>
 </body></html>

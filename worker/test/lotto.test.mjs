@@ -27,5 +27,17 @@ r=await call('admin','DELETE','/camps/lotto/admin/students/6840100001');ok(r.s==
 r=await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102220%40lru.ac.th');ok(r.s===200,'remove scanner (route regex)');
 r=await call('s1','GET','/camps/lotto/scanner/me');ok(r.s===403,'removed scanner blocked');
 r=await call('admin','GET','/camps/lotto/admin/overview');ok(r.d.total===2&&r.d.checked===2,'overview counts');
+// read-only QR verification
+r=await call(null,'GET','/camps/lotto/scanner/verify?studentId=6740102220');ok(r.s===401,'verify: anonymous 401');
+await call('admin','POST','/camps/lotto/admin/scanners',{email:'sb6740102221@lru.ac.th'});
+r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=6740102220');ok(r.s===200&&r.d.checked===true&&r.d.student.checked_by&&r.d.picture,'verify (assigned scanner): already checked, with who/when and photo');
+await call('admin','POST','/camps/lotto/admin/students',{studentId:'6840300001',name:'Not Yet',drawNumber:'88'});
+r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=6840300001');ok(r.s===200&&r.d.checked===false&&r.d.student.draw_number==='88','verify: not checked yet');
+r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=6840300001');ok(r.d.checked===false,'verifying twice does not check the student in');
+r=await call('admin','GET','/camps/lotto/admin/students?q=6840300001');ok(r.d.students[0].checked_at===null,'still unchecked in the roster (read-only)');
+r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=9999999999');ok(r.s===404,'verify: unknown id 404');
+r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=hello');ok(r.s===400,'verify: not a student QR 400');
+r=await call('s3','GET','/camps/lotto/scanner/verify?studentId=6840300001');ok(r.s===403,'verify: unassigned account refused');
+await call('admin','DELETE','/camps/lotto/admin/students/6840300001');await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102221%40lru.ac.th');
 console.log(fl?fl+' FAILED':'all '+pass+' lotto checks passed');
 process.exit(fl?1:0);
