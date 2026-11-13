@@ -78,5 +78,5 @@ footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:
 .dept>*{min-width:0}
 @media(min-width:1100px){body[data-page] main{max-width:1200px}body[data-page] .hero{padding-left:max(48px,calc(50% - 552px));padding-right:max(48px,calc(50% - 552px))}}
 /* iPad: 3 home cards fill the row in landscape, and the odd one spans the row in portrait */
-@media(min-width:760px) and (max-width:999px){.cards>.card:last-child:nth-child(odd){grid-column:1/-1}}
-@media(min-width:1000px){.cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* four home cards: 2 x 2 from iPad up (an odd last card spans the row) */
+.cards>.card:last-child:nth-child(odd){grid-column:1/-1}
