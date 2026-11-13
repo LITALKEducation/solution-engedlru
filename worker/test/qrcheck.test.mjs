@@ -33,6 +33,10 @@ r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: '9999999999',
 r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: 'hello', checkId: C1 }); ok(r.s === 400 && r.d.code === 'BAD_QR', 'not a student QR -> 400');
 r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: '6740102220' }); ok(r.s === 400 && r.d.code === 'NO_CHECK', 'a check must be selected');
 r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: '6840100001', checkId: C1 }); ok(r.s === 200 && r.d.registered === false && r.d.blocked, 'student with no department: lookup works but the check is blocked');
+// AKA (camp name) from the AKA system is shown so the badge can be compared with it
+db.exec("INSERT INTO camp_aka (student_id,nickname,aka) VALUES ('6740102220','ชาย','หมีขาว')");
+r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: '6740102220', checkId: CAKA }); ok(r.d.aka && r.d.aka.aka === 'หมีขาว' && r.d.aka.nickname === 'ชาย', 'lookup returns the student AKA + nickname from the AKA system');
+r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: '6740102221', checkId: CAKA }); ok(r.d.aka === null, 'a student who has not named themselves yet: aka null');
 // record
 r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6840100001', checkId: C1, result: 'pass' }); ok(r.s === 409 && r.d.code === 'NOT_REGISTERED', 'cannot record for a student who has not registered a department');
 r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: C1, result: 'maybe' }); ok(r.s === 400, 'result must be pass or fail');

@@ -19,8 +19,8 @@ Switching the check while a student is on screen only *looks* (read-only) and of
 
 **Optional follow-up on a recorded check** (folded away, opens by itself for AKA checks without a badge code): a **note**, the **AKA badge code**, or changing the result to **ไม่ผ่าน** (a reason is required) / back to ผ่าน. Allowed for the officer who recorded it and for admins; the edit keeps who/when. One result per student per check; the student's history of other checks is listed under the result.
 
-### AKA (future system)
-AKA is not connected yet. The check type **"เทียบป้ายกับ AKA"** adds a field for the **badge code**; officers compare the badge by hand today and the code is stored (`camp_qr_results.reference`, searchable and in the Excel export) so it can be matched automatically when AKA is connected.
+### AKA
+The check type **"เทียบป้ายกับ AKA"** shows the student's **AKA and nickname from the AKA system** (`/aka/`, table `camp_aka`) in a highlighted box, so the officer compares the badge the student wears with the name they chose. If the student has not named themselves yet the box says so. Whatever the badge actually shows can be typed into **ข้อความบนป้าย** (stored in `camp_qr_results.reference`, searchable, in the Excel export). The AKA lookup is optional: without the AKA table the page still works.
 
 ## Who can use it
 - **Admins** (`camp_admin` / `budget_admin`): everything, including the tabs below.

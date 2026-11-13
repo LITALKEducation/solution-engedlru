@@ -123,3 +123,8 @@ input,select{font-weight:400}
 select{appearance:auto}
 .row+.table-wrap,form+.table-wrap{margin-top:14px}
 .table-wrap{background:#fff}
+
+/* AKA to compare with the badge */
+.akabox{display:grid;gap:2px;justify-items:center;text-align:center;background:#fff8e6;border:2px solid #f0c75e;border-radius:12px;padding:14px 12px;margin-bottom:14px}
+.akabox small{color:#7a5a00;font-weight:600}.akabox b{font-size:30px;line-height:1.25;color:#4a3500;word-break:break-word}.akabox span{color:#7a5a00;font-size:14px}
+.akabox.none{background:#f3f4f6;border-color:var(--line);border-style:dashed}.akabox.none b{font-size:18px;color:var(--mute)}.akabox.none small,.akabox.none span{color:var(--mute)}

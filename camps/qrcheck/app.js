@@ -118,7 +118,10 @@ function renderResult(d, quiet) {
   // 2. who it is (from the registration database)
   h += '<div class="person">' + photo + '<div><div class="pname">' + esc(s.name) + '</div><div class="pid">รหัสนักศึกษา ' + esc(s.studentId) + ' · พบในฐานข้อมูลลงทะเบียน</div></div></div>'
     + '<dl class="kv"><dt>ชั้นปี</dt><dd>ปี ' + esc(s.year) + '</dd><dt>เพศ</dt><dd>' + esc(GENDER[s.gender] || '—') + '</dd><dt>ฝ่าย</dt><dd>' + (s.departmentName ? esc(s.departmentName) : '<span class="muted-t">ยังไม่ได้ลงทะเบียนเลือกฝ่าย</span>') + '</dd>'
-    + (r ? '<dt>ผลการตรวจ</dt><dd>' + badge(r.result) + (r.reference ? ' · รหัสป้าย AKA <b>' + esc(r.reference) + '</b>' : '') + (r.note ? '<div class="small">หมายเหตุ: ' + esc(r.note) + '</div>' : '') + (r.updated_at ? '<div class="small">แก้ไขล่าสุด ' + esc(fmt(r.updated_at)) + ' โดย ' + esc(r.updated_by || '—') + '</div>' : '') + '</dd>' : '') + '</dl>';
+    + (d.aka ? '<dt>ชื่อเล่น</dt><dd>' + esc(d.aka.nickname || '—') + '</dd><dt>AKA</dt><dd>' + esc(d.aka.aka || '—') + '</dd>' : '') + (r ? '<dt>ผลการตรวจ</dt><dd>' + badge(r.result) + (r.reference ? ' · ข้อความบนป้าย <b>' + esc(r.reference) + '</b>' : '') + (r.note ? '<div class="small">หมายเหตุ: ' + esc(r.note) + '</div>' : '') + (r.updated_at ? '<div class="small">แก้ไขล่าสุด ' + esc(fmt(r.updated_at)) + ' โดย ' + esc(r.updated_by || '—') + '</div>' : '') + '</dd>' : '') + '</dl>';
+  if (c.kind === 'aka') h += d.aka && d.aka.aka
+    ? '<div class="akabox"><small>AKA ที่ต้องตรงกับป้าย</small><b>' + esc(d.aka.aka) + '</b>' + (d.aka.nickname ? '<span>ชื่อเล่น ' + esc(d.aka.nickname) + '</span>' : '') + '</div>'
+    : '<div class="akabox none"><small>AKA ที่ต้องตรงกับป้าย</small><b>ยังไม่ได้ตั้งชื่อ AKA</b><span>นักศึกษายังไม่ได้ตั้งชื่อในระบบ AKA</span></div>';
   // 3. actions
   if (!r && !d.blocked) h += '<div class="row end"><button id="recNow" class="btn ok" type="button">บันทึกว่าตรวจแล้ว</button></div>';
   if (canRefine) h += refineForm(c, r, !mine && isAdmin);
@@ -132,8 +135,8 @@ function renderResult(d, quiet) {
 // optional follow-up on a recorded check: badge code (AKA), note, or change the result
 function refineForm(c, r, byAdmin) {
   const open = c.kind === 'aka' && !r.reference ? ' open' : '';
-  return '<details class="refine"' + open + '><summary>' + (c.kind === 'aka' ? 'บันทึกรหัสป้าย AKA / หมายเหตุ / เปลี่ยนผล' : 'หมายเหตุ / เปลี่ยนผลการตรวจ') + (byAdmin ? ' (ผู้ดูแล)' : '') + '</summary><form id="recForm" novalidate>'
-    + (c.kind === 'aka' ? '<label>รหัสป้าย AKA<input id="recRef" maxlength="60" autocomplete="off" placeholder="เลข/รหัสบนป้าย" value="' + esc(r.reference) + '"></label>' : '')
+  return '<details class="refine"' + open + '><summary>' + (c.kind === 'aka' ? 'บันทึกข้อความบนป้าย / หมายเหตุ / เปลี่ยนผล' : 'หมายเหตุ / เปลี่ยนผลการตรวจ') + (byAdmin ? ' (ผู้ดูแล)' : '') + '</summary><form id="recForm" novalidate>'
+    + (c.kind === 'aka' ? '<label>ข้อความบนป้าย (ชื่อ AKA ที่เห็นบนป้าย)<input id="recRef" maxlength="60" autocomplete="off" placeholder="พิมพ์สิ่งที่เห็นบนป้าย" value="' + esc(r.reference) + '"></label>' : '')
     + '<label>หมายเหตุ <small>(จำเป็นเมื่อเปลี่ยนเป็นไม่ผ่าน)</small><input id="recNote" maxlength="300" autocomplete="off" placeholder="เช่น ชื่อบนป้ายไม่ตรง" value="' + esc(r.note) + '"></label>'
     + '<div class="row"><button type="button" id="recSave" class="btn primary">บันทึกข้อมูล</button>' + (r.result === 'pass' ? '<button type="button" id="recFail" class="btn danger">เปลี่ยนเป็นไม่ผ่าน</button>' : '<button type="button" id="recPass" class="btn ok">เปลี่ยนเป็นผ่าน</button>') + '</div></form></details>';
 }
@@ -170,8 +173,8 @@ async function loadResultRows() {
   const q = new URLSearchParams(); if ($('fCheck').value) q.set('checkId', $('fCheck').value); if ($('fResult').value) q.set('result', $('fResult').value); if ($('fQ').value.trim()) q.set('q', $('fQ').value.trim());
   try {
     resultRows = (await data('/camps/qrcheck/admin/results?' + q)).results || [];
-    $('resTable').innerHTML = resultRows.length ? '<thead><tr><th>รายการตรวจ</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ชั้นปี</th><th>ฝ่าย</th><th>ผล</th><th>รหัสป้าย</th><th>หมายเหตุ</th><th>เวลา</th><th>ผู้ตรวจ</th></tr></thead><tbody>'
-      + resultRows.map((x) => '<tr><td data-l="รายการตรวจ">' + esc(x.check_name) + '</td><td data-l="รหัส">' + esc(x.student_id) + '</td><td data-l="ชื่อ">' + esc(x.name || '—') + '</td><td data-l="ชั้นปี">' + esc(x.year || '—') + '</td><td data-l="ฝ่าย">' + esc(x.department_name || '—') + '</td><td data-l="ผล">' + badge(x.result) + '</td><td data-l="รหัสป้าย">' + esc(x.reference || '—') + '</td><td data-l="หมายเหตุ">' + esc(x.note || '—') + '</td><td data-l="เวลา">' + esc(fmtShort(x.updated_at || x.checked_at)) + '</td><td data-l="ผู้ตรวจ">' + esc(x.updated_by || x.checked_by) + '</td></tr>').join('') + '</tbody>'
+    $('resTable').innerHTML = resultRows.length ? '<thead><tr><th>รายการตรวจ</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ชั้นปี</th><th>ฝ่าย</th><th>ผล</th><th>ข้อความบนป้าย</th><th>หมายเหตุ</th><th>เวลา</th><th>ผู้ตรวจ</th></tr></thead><tbody>'
+      + resultRows.map((x) => '<tr><td data-l="รายการตรวจ">' + esc(x.check_name) + '</td><td data-l="รหัส">' + esc(x.student_id) + '</td><td data-l="ชื่อ">' + esc(x.name || '—') + '</td><td data-l="ชั้นปี">' + esc(x.year || '—') + '</td><td data-l="ฝ่าย">' + esc(x.department_name || '—') + '</td><td data-l="ผล">' + badge(x.result) + '</td><td data-l="ข้อความบนป้าย">' + esc(x.reference || '—') + '</td><td data-l="หมายเหตุ">' + esc(x.note || '—') + '</td><td data-l="เวลา">' + esc(fmtShort(x.updated_at || x.checked_at)) + '</td><td data-l="ผู้ตรวจ">' + esc(x.updated_by || x.checked_by) + '</td></tr>').join('') + '</tbody>'
       : '<tbody><tr><td class="empty">ไม่พบผลการตรวจ</td></tr></tbody>';
   } catch (e) { toast(e.message, true); }
 }
@@ -182,7 +185,7 @@ const loadXlsx = () => window.XLSX ? Promise.resolve(window.XLSX) : (xlsxP || (x
 $('exportBtn').onclick = async () => {
   if (!resultRows.length) return toast('ไม่มีข้อมูลให้ดาวน์โหลด', true);
   try {
-    const X = await loadXlsx(), rows = [['รายการตรวจ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย', 'ผล', 'รหัสป้าย AKA', 'หมายเหตุ', 'ตรวจเมื่อ', 'ผู้ตรวจ', 'แก้ไขเมื่อ', 'ผู้แก้ไข']]
+    const X = await loadXlsx(), rows = [['รายการตรวจ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย', 'ผล', 'ข้อความบนป้าย', 'หมายเหตุ', 'ตรวจเมื่อ', 'ผู้ตรวจ', 'แก้ไขเมื่อ', 'ผู้แก้ไข']]
       .concat(resultRows.map((x) => [x.check_name, String(x.student_id), x.name || '', x.year || '', GENDER[x.gender] || '', x.department_name || '', x.result === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน', x.reference || '', x.note || '', fmt(x.checked_at), x.checked_by, x.updated_at ? fmt(x.updated_at) : '', x.updated_by || '']));
     const ws = X.utils.aoa_to_sheet(rows); ws['!cols'] = [22, 15, 26, 8, 8, 18, 9, 16, 28, 18, 28, 18, 28].map((w) => ({ wch: w }));
     const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'ผลการตรวจ'); X.writeFile(wb, 'qr-check-results-' + new Date().toISOString().slice(0, 10) + '.xlsx');

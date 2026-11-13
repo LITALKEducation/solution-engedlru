@@ -7,7 +7,7 @@
 <title>ระบบเช็ค QR · Camps</title>
 <link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=5">
+<link rel="stylesheet" href="./style.css?v=6">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 </head>
@@ -71,7 +71,7 @@
     <div class="filters">
      <label>รายการตรวจ<select id="fCheck"></select></label>
      <label>ผล<select id="fResult"><option value="">ทั้งหมด</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></label>
-     <label>ค้นหา<input id="fQ" placeholder="ชื่อ / รหัส / รหัสป้าย"></label>
+     <label>ค้นหา<input id="fQ" placeholder="ชื่อ / รหัส / ข้อความบนป้าย"></label>
     </div>
     <div class="table-wrap"><table id="resTable"></table></div>
    </div>
@@ -91,7 +91,7 @@
      <label class="chk"><input type="checkbox" id="cReq" checked> ต้องลงทะเบียนเลือกฝ่ายแล้วจึงจะตรวจได้</label>
      <div><button class="btn primary" type="submit">เพิ่มรายการตรวจ</button></div>
     </form>
-    <p class="hint">ประเภท “เทียบป้ายกับ AKA”: ระบบ AKA ยังไม่ได้เชื่อมต่อ ตอนนี้เจ้าหน้าที่บันทึกผลด้วยมือและกรอกรหัสป้ายไว้ เพื่อใช้เทียบอัตโนมัติเมื่อเชื่อมระบบในอนาคต</p>
+    <p class="hint">ประเภท “เทียบป้ายกับ AKA”: หน้าตรวจจะแสดงชื่อ AKA ที่นักศึกษาตั้งไว้ในระบบ AKA เป็นกรอบเด่น เจ้าหน้าที่เทียบกับป้ายที่นักศึกษาสวมอยู่ แล้วบันทึกผล (พิมพ์ข้อความบนป้ายไว้ได้ถ้าไม่ตรง)</p>
    </div>
    <div class="card">
     <h2>เจ้าหน้าที่ผู้ตรวจ</h2>
@@ -104,5 +104,5 @@
  <footer>© English Education · LRU</footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=4" defer></script>
+<script src="./app.js?v=5" defer></script>
 </body></html>

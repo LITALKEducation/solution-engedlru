@@ -71,16 +71,19 @@ async function describe(req, env, b) {
   return { id, check, st };
 }
 async function payload(env, { id, check, st }) {
-  const [result, hist, picture] = await Promise.all([
+  const [result, hist, picture, names] = await Promise.all([
     env.DB.prepare(RESULT_SQL).bind(check.id, id).first(),
     env.DB.prepare("SELECT r.check_id,c.name,r.result,r.checked_at FROM camp_qr_results r JOIN camp_qr_checks c ON c.id=r.check_id WHERE r.student_id=? ORDER BY c.sort_order,c.id").bind(id).all(),
-    pictureFor(env, id)
+    pictureFor(env, id),
+    // the student's AKA (camp name) and nickname from the AKA system; optional, so an older database without that table still works
+    env.DB.prepare("SELECT nickname,aka FROM camp_aka WHERE student_id=?").bind(id).first().catch(() => null)
   ]);
   const registered = !!st.department_code;
   return {
     ok: true, check: shapeCheck(check), registered,
     blocked: check.require_registered && !registered ? "นักศึกษายังไม่ได้ลงทะเบียนเลือกฝ่าย" : null,
     student: { studentId: st.student_id, name: st.name, year: st.year, gender: st.gender, departmentCode: st.department_code, departmentName: st.department_name },
+    aka: names && (names.aka || names.nickname) ? { nickname: names.nickname || "", aka: names.aka || "" } : null,
     result: result || null, history: hist.results || [], picture
   };
 }

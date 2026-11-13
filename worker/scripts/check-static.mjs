@@ -60,7 +60,7 @@ for (const f of mig) if (!/^\d{4}_[a-z0-9_]+\.sql$/.test(f)) errors.push(`migrat
 if (new Set(mig).size !== mig.length) errors.push('duplicate migration file names');
 
 // 4. one Auth0 application per system: report (not fail) while two systems still share a Client ID
-const ids = { budget: 'camps/budget/assets/budget-v2.js', hr: 'camps/hr/hr.js', lotto: 'camps/lotto/app.js', qrcheck: 'camps/qrcheck/app.js' };
+const ids = { budget: 'camps/budget/assets/budget-v2.js', hr: 'camps/hr/hr.js', lotto: 'camps/lotto/app.js', qrcheck: 'camps/qrcheck/app.js', aka: 'camps/aka/app.js' };
 const found = {};
 for (const [name, f] of Object.entries(ids)) {
   const m = /AUTH0_CLIENT_ID\s*\|\|\s*'([A-Za-z0-9]{20,})'/.exec(fs.readFileSync(path.join(root, f), 'utf8'));

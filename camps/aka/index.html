@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="/assets/inapp-guard.js?v=1"></script>
+<meta name="theme-color" content="#b71c1c"><meta name="robots" content="noindex,nofollow">
+<title>ระบบ AKA · Camps</title>
+<link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css?v=1">
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
+</head>
+<body>
+<header class="top">
+ <div class="top-in">
+  <a class="back" href="/" aria-label="กลับไปหน้ากิจกรรมค่าย">‹ กิจกรรมค่าย</a>
+  <div class="title"><b>ระบบ AKA</b><small>ชื่อที่เรียกกันในค่าย · English Education · LRU</small></div>
+  <span id="account" class="account">กำลังตรวจสอบ…</span>
+ </div>
+</header>
+<main>
+ <section id="login" class="card hidden">
+  <h1>เข้าสู่ระบบ</h1>
+  <p>ใช้บัญชี Google อีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อตั้งชื่อ AKA ของคุณ</p>
+  <button id="loginBtn" class="btn primary">เข้าสู่ระบบด้วย Google</button>
+ </section>
+
+ <div id="app" class="hidden">
+  <nav class="tabs" id="tabs">
+   <button data-tab="me" class="on">ชื่อของฉัน</button>
+   <button data-tab="list" class="adm">รายชื่อ</button>
+   <button data-tab="settings" class="adm">ตั้งค่าและส่งออก</button>
+  </nav>
+
+  <!-- my names -->
+  <section id="view-me" class="view">
+   <div class="card narrow">
+    <div id="stateBanner"></div>
+    <h2>ตั้งชื่อค่ายของคุณ</h2>
+    <div id="meProblem" class="hidden"></div>
+    <div id="meBody" class="hidden">
+     <dl class="kv" id="meInfo"></dl>
+     <form id="nameForm" novalidate>
+      <label for="nick">ชื่อเล่น <small>(ไม่เกิน 30 ตัวอักษร)</small></label>
+      <input id="nick" maxlength="30" autocomplete="off" placeholder="เช่น ชาย">
+      <label for="akaName">AKA — ชื่อที่เรียกกันในค่าย <small>(ไม่เกิน 40 ตัวอักษร)</small></label>
+      <input id="akaName" maxlength="40" autocomplete="off" placeholder="เช่น หมีขาว">
+      <p class="hint" id="preview"></p>
+      <div class="row"><button id="saveBtn" class="btn primary" type="submit">บันทึกชื่อ</button></div>
+     </form>
+     <p class="hint" id="savedAt"></p>
+    </div>
+   </div>
+  </section>
+
+  <!-- list (admin) -->
+  <section id="view-list" class="view hidden">
+   <div class="card">
+    <div class="head-row"><h2>รายชื่อนักศึกษาและชื่อ AKA</h2><span id="listCount" class="badge muted"></span></div>
+    <div class="filters4">
+     <label>ฝ่าย<select id="fDept"></select></label>
+     <label>ชั้นปี<select id="fYear"><option value="">ทุกชั้นปี</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label>
+     <label>สถานะ<select id="fNamed"><option value="">ทั้งหมด</option><option value="1">ตั้งชื่อแล้ว</option><option value="0">ยังไม่ตั้งชื่อ</option></select></label>
+     <label>ค้นหา<input id="fQ" placeholder="ชื่อ / รหัส / ชื่อเล่น / AKA"></label>
+    </div>
+    <div class="table-wrap"><table id="listTable"></table></div>
+   </div>
+  </section>
+
+  <!-- settings + export (admin) -->
+  <section id="view-settings" class="view hidden">
+   <div class="grid2">
+    <div class="card">
+     <h2>การตั้งชื่อ</h2>
+     <p class="hint">นักศึกษาตั้งและเปลี่ยนชื่อได้ตลอดเวลา จนกว่าผู้ดูแลจะปิดรับการตั้งชื่อ (ผู้ดูแลยังแก้ไขชื่อให้ได้เสมอ)</p>
+     <div id="progress" class="progress"></div>
+     <div class="seg" role="group" aria-label="สถานะการตั้งชื่อ"><button id="stOpen" type="button">เปิดรับการตั้งชื่อ</button><button id="stClosed" type="button">ปิดรับการตั้งชื่อ</button></div>
+    </div>
+    <div class="card">
+     <h2>ส่งออกรายชื่อ</h2>
+     <p class="hint">แยกตามฝ่าย เรียงชั้นปีจากสูงสุดไปต่ำสุด (ปี 4 → 1) มี 4 คอลัมน์: <b>รหัสนักศึกษา · ชื่อ-สกุล · ชื่อเล่น · AKA</b> นักศึกษาที่ยังไม่เลือกฝ่ายอยู่ท้ายสุด</p>
+     <label class="chk"><input type="checkbox" id="onlyNamed"> เฉพาะผู้ที่ตั้งชื่อแล้ว</label>
+     <div class="row"><button id="exportXlsx" class="btn primary" type="button">ดาวน์โหลด Excel</button><button id="exportPdf" class="btn" type="button">ดาวน์โหลด PDF</button></div>
+     <div id="exportPreview" class="small"></div>
+    </div>
+   </div>
+  </section>
+ </div>
+ <footer>© English Education · LRU</footer>
+</main>
+
+<dialog id="editDlg" class="dlg">
+ <form method="dialog" id="editForm" novalidate>
+  <h3 id="editTitle">แก้ไขชื่อ</h3><p id="editSub" class="small"></p>
+  <label for="eNick">ชื่อเล่น</label><input id="eNick" maxlength="30" autocomplete="off">
+  <label for="eAka">AKA</label><input id="eAka" maxlength="40" autocomplete="off">
+  <div class="row end"><button type="button" id="eClear" class="btn danger">ล้างชื่อ</button><button type="button" id="eCancel" class="btn">ยกเลิก</button><button type="submit" id="eSave" class="btn primary">บันทึก</button></div>
+ </form>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="./app.js?v=1" defer></script>
+</body></html>
