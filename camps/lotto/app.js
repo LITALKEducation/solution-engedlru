@@ -37,8 +37,52 @@ el.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('�
 function showQr(x){if(!x)return;$('qrTitle').textContent='QR Code · '+x.student_name;$('qrCaption').textContent=x.student_id+' · เลขจับสลาก '+x.draw_number;$('qrCanvas').innerHTML='';$('qrModal').classList.remove('hidden');new QRCode($('qrCanvas'),{text:x.student_id,width:220,height:220,correctLevel:QRCode.CorrectLevel.M})}
 $('closeQr').onclick=()=>$('qrModal').classList.add('hidden');$('printQr').onclick=()=>window.print();
 $('studentForm').onsubmit=async e=>{e.preventDefault();try{const d=await post('/camps/lotto/admin/students',{studentId:$('studentId').value,name:$('studentName').value,drawNumber:$('drawNumber').value});toast(d.created?'เพิ่มรายชื่อแล้ว':'อัปเดตข้อมูลแล้ว');$('studentForm').reset();await refresh();await refreshStats()}catch(e){toast(e.message)}};
-function parseCsv(s){return s.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map((line,i)=>{const c=line.split(/[;,\t]/).map(x=>x.trim().replace(/^"|"$/g,''));if(i===0&&/รหัส|student/i.test(c[0]))return null;return {studentId:c[0],name:c[1],drawNumber:c[2]}}).filter(Boolean)}
-$('importBtn').onclick=async()=>{try{const students=parseCsv($('csvInput').value);const d=await post('/camps/lotto/admin/students/import',{students});toast('นำเข้าสำเร็จ '+d.imported+' รายชื่อ'+(d.errors.length?' · ผิดพลาด '+d.errors.length+' แถว':''));$('csvInput').value='';await refresh();await refreshStats();if(d.errors.length)alert(d.errors.map(x=>(x.row||x.studentId||'')+': '+x.error).join('\n'))}catch(e){toast(e.message)}};
+// ---- roster import: Excel / CSV file or pasted text ----
+// RFC-4180-lite reader (quotes, "" escapes, newlines in quotes, BOM, , ; or tab) -> array of cell arrays
+function readRows(text){
+ const src=String(text||'').replace(/^﻿/,''),first=(src.split(/\r?\n/).find(l=>l.trim())||'');
+ const cnt=c=>first.split(c).length-1,delim=cnt('\t')>0&&cnt('\t')>=Math.max(cnt(','),cnt(';'))?'\t':cnt(';')>cnt(',')?';':',';
+ const rows=[];let row=[],cell='',q=false;
+ const endCell=()=>{row.push(cell.normalize('NFC').replace(/[​-‍⁠﻿]/g,'').replace(/[   　]/g,' ').replace(/[ \t]+/g,' ').trim());cell=''};
+ const endRow=()=>{endCell();if(row.some(c=>c!==''))rows.push(row);row=[]};
+ for(let i=0;i<src.length;i++){const ch=src[i];
+  if(q){if(ch==='"'){if(src[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}
+  else if(ch==='"'&&cell==='')q=true;else if(ch===delim)endCell();else if(ch==='\n')endRow();else if(ch!=='\r')cell+=ch}
+ if(cell!==''||row.length)endRow();
+ return rows}
+const thDigits=s=>String(s||'').replace(/[๐-๙]/g,c=>String(c.charCodeAt(0)-0x0e50));
+// header names (Thai or English, any order, spaces ignored); without a header the order is id, name, draw number
+const HEAD={id:/^(รหัส|รหัสนักศึกษา|รหัสประจำตัว|รหัสประจำตัวนักศึกษา|เลขประจำตัว|เลขประจำตัวนักศึกษา|studentid|student_id|id|code)$/i,name:/^(ชื่อ|ชื่อ-?นามสกุล|ชื่อและนามสกุล|ชื่อสกุล|name|fullname|firstname)$/i,last:/^(นามสกุล|สกุล|lastname|surname)$/i,prefix:/^(คำนำหน้า|คำนำหน้าชื่อ|title|prefix)$/i,draw:/^(เลขจับสลาก|เลขสลาก|หมายเลขสลาก|หมายเลข|เลข|ลำดับสลาก|draw|drawnumber|draw_number|number|ticket)$/i};
+function parseCsv(text){
+ const rows=readRows(text);if(!rows.length)return[];
+ const keyed={};rows[0].forEach((c,i)=>{const k=c.replace(/\s+/g,'');for(const n in HEAD)if(HEAD[n].test(k)&&keyed[n]===undefined)keyed[n]=i});
+ const numericFirst=/^\d{6,12}$/.test(thDigits(rows[0][0]).replace(/^[a-z]{2}/i,'').replace(/@.*$/,''));
+ const hasHead=!numericFirst&&Object.keys(keyed).length>=2;
+ const col=hasHead?{id:keyed.id??-1,name:keyed.name??-1,last:keyed.last??-1,prefix:keyed.prefix??-1,draw:keyed.draw??-1}:{id:0,name:1,last:-1,prefix:-1,draw:2};
+ return(hasHead?rows.slice(1):rows).map(c=>{
+  const pre=col.prefix>=0?c[col.prefix]||'':'',last=col.last>=0?c[col.last]||'':'';
+  return{studentId:thDigits(c[col.id]),name:((pre&&pre.length>4&&!/\.$/.test(pre)?pre+' ':pre)+(c[col.name]||'')+(last?' '+last:'')).trim(),drawNumber:thDigits(c[col.draw])}})}
+let xlsxP=null;
+function loadXlsx(){if(window.XLSX)return Promise.resolve(window.XLSX);return xlsxP||(xlsxP=new Promise((res,rej)=>{const el=document.createElement('script');el.src='/lotto/vendor/xlsx.mini.min.js';el.onload=()=>res(window.XLSX);el.onerror=()=>{xlsxP=null;rej(new Error('load'))};document.head.appendChild(el)}))}
+$('csvFile').onchange=async e=>{
+ const f=e.target.files&&e.target.files[0];if(!f)return;
+ if(f.size>5*1024*1024){toast('ไฟล์ใหญ่เกิน 5 MB');e.target.value='';return}
+ const buf=await f.arrayBuffer(),u8=new Uint8Array(buf,0,Math.min(4,buf.byteLength));let text;
+ const isExcel=/\.(xlsx|xls)$/i.test(f.name)||(u8[0]===0x50&&u8[1]===0x4b)||(u8[0]===0xd0&&u8[1]===0xcf);
+ if(isExcel){try{const X=await loadXlsx(),wb=X.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]];if(!ws)throw new Error('empty');text=X.utils.sheet_to_csv(ws,{FS:',',RS:'\n',blankrows:false})}catch(err){toast('อ่านไฟล์ Excel ไม่ได้ ลองบันทึกเป็น .xlsx หรือ CSV อีกครั้ง');e.target.value='';return}}
+ else if(u8[0]===0xff&&u8[1]===0xfe)text=new TextDecoder('utf-16le').decode(buf);
+ else if(u8[0]===0xfe&&u8[1]===0xff)text=new TextDecoder('utf-16be').decode(buf);
+ else{try{text=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(x){try{text=new TextDecoder('windows-874').decode(buf)}catch(y){text=new TextDecoder().decode(buf)}}}
+ $('csvInput').value=text;const n=parseCsv(text).length;$('csvName').textContent=f.name+' · '+n+' รายชื่อ — ตรวจสอบแล้วกด “นำเข้ารายชื่อ”';$('importRes').textContent='';e.target.value=''};
+$('tplBtn').onclick=async()=>{try{const X=await loadXlsx(),ws=X.utils.aoa_to_sheet([['รหัสนักศึกษา','ชื่อ-นามสกุล','เลขจับสลาก'],['6740102220','สมชาย ใจดี','001'],['6840100001','สมหญิง รักเรียน','002']]);ws['!cols']=[{wch:16},{wch:26},{wch:14}];const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'รายชื่อ');X.writeFile(wb,'lotto-students-template.xlsx')}catch(e){toast('สร้างไฟล์ตัวอย่างไม่ได้')}};
+$('importBtn').onclick=async()=>{const btn=$('importBtn');try{
+ const students=parseCsv($('csvInput').value);if(!students.length){toast('เลือกไฟล์หรือวางรายชื่อก่อน');return}
+ if(students.length>1000){toast('นำเข้าได้ครั้งละไม่เกิน 1,000 รายชื่อ');return}
+ btn.disabled=true;const d=await post('/camps/lotto/admin/students/import',{students});
+ $('importRes').innerHTML='✓ นำเข้าสำเร็จ <b>'+d.imported+'</b> รายชื่อ'+(d.errors.length?' · ข้าม <b>'+d.errors.length+'</b> แถว:<div class="err">'+d.errors.slice(0,30).map(x=>'แถว '+esc(x.row||x.studentId||'')+': '+esc(x.error)).join('<br>')+'</div>':'');
+ toast('นำเข้าสำเร็จ '+d.imported+' รายชื่อ'+(d.errors.length?' · ผิดพลาด '+d.errors.length+' แถว':''));
+ if(!d.errors.length){$('csvInput').value='';$('csvName').textContent=''}
+ await refresh();await refreshStats()}catch(e){toast(e.message)}finally{btn.disabled=false}};
 let cameraScan=false;
 async function handleScan(value,fromCamera){cameraScan=!!fromCamera;const id=String(value||'').trim();$('scanId').value=id;try{const d=await post('/camps/lotto/admin/scan',{studentId:id});showScanResult(d.student,false,d.picture)}catch(e){if(e.status===409&&e.data?.student)showScanResult(e.data.student,true,e.data.picture);else{$('scanResult').className='result error';$('scanResult').textContent=e.message;showPopup({kind:'error',message:e.message,id});toast(e.message)}}}
 function showScanResult(x,duplicate,picture){$('scanResult').className='result '+(duplicate?'duplicate':'success');$('scanResult').innerHTML='<b>'+(duplicate?'สแกนไปแล้ว · ตัดสิทธิ์แล้ว':'ตรวจสอบสำเร็จ · ตัดสิทธิ์แล้ว')+'</b>'+esc(x.student_name)+'<small>รหัส '+esc(x.student_id)+' · เลขจับสลาก '+esc(x.draw_number)+'</small><small>เวลา '+esc(fmt(x.checked_at))+' · เจ้าหน้าที่ '+esc(x.checked_by)+'</small>';showPopup({kind:duplicate?'duplicate':'success',student:x,picture});if(isAdmin){refreshStats();refresh($('search').value)}}

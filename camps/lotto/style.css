@@ -81,6 +81,12 @@ label{display:grid;gap:6px;font-size:13px;font-weight:700;color:#4c3d3e}
 .import textarea{margin:6px 0 10px;min-height:110px}
 .toolbar{display:flex;gap:8px;margin:18px 0 12px}.toolbar input{flex:1}
 
+/* import */
+.filerow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+label.filebtn{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;color:#4c3d3e}
+.import .muted,#csvName{color:var(--muted);font-size:13px}
+.importres{margin-top:12px;font-size:14px}.importres .err{margin-top:6px;color:var(--bad);font-size:13px;background:var(--bad-l);border-radius:12px;padding:8px 12px}
+
 /* tables */
 .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:18px}
 table{width:100%;border-collapse:collapse}
