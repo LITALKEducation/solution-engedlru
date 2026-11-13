@@ -25,7 +25,7 @@ async function list(req, env, url) {
   const q = clean(url.searchParams.get("q"), 100);
   const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 200));
   const rows = await env.DB.prepare(
-    `SELECT student_id, student_name, draw_number, created_at, updated_at, checked_at, checked_by
+    `SELECT student_id, student_name, draw_number, created_at, updated_at, checked_at, checked_by, gift_opened_at, gift_opened_by
      FROM camp_lotto_students
      WHERE (? = '' OR student_id LIKE ? OR student_name LIKE ? OR draw_number LIKE ?)
      ORDER BY CAST(draw_number AS INTEGER), draw_number, student_id LIMIT ?`
@@ -36,10 +36,10 @@ async function list(req, env, url) {
 async function overview(req, env) {
   const a = await actor(req, env); if (a.response) return a.response;
   const stats = await env.DB.prepare(
-    `SELECT COUNT(*) total, SUM(CASE WHEN checked_at IS NOT NULL THEN 1 ELSE 0 END) checked
+    `SELECT COUNT(*) total, SUM(CASE WHEN checked_at IS NOT NULL THEN 1 ELSE 0 END) checked, SUM(CASE WHEN gift_opened_at IS NOT NULL THEN 1 ELSE 0 END) gifts
      FROM camp_lotto_students`
   ).first();
-  return json(req, env, { total: stats?.total || 0, checked: stats?.checked || 0, remaining: (stats?.total || 0) - (stats?.checked || 0) });
+  return json(req, env, { total: stats?.total || 0, checked: stats?.checked || 0, gifts: stats?.gifts || 0, remaining: (stats?.total || 0) - (stats?.checked || 0) });
 }
 
 async function upsert(req, env) {
@@ -141,7 +141,7 @@ async function scannerLookup(req, env, url) {
   const q = clean(url.searchParams.get("q"),100);
   if (!q) return json(req,env,{students:[]});
   const r = await env.DB.prepare(
-    "SELECT student_id,student_name,draw_number,created_at,updated_at,checked_at,checked_by FROM camp_lotto_students WHERE student_id LIKE ? OR student_name LIKE ? OR draw_number LIKE ? ORDER BY draw_number LIMIT 100"
+    "SELECT student_id,student_name,draw_number,created_at,updated_at,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id LIKE ? OR student_name LIKE ? OR draw_number LIKE ? ORDER BY draw_number LIMIT 100"
   ).bind(`%${q}%`,`%${q}%`,`%${q}%`).all();
   return json(req,env,{students:r.results||[]});
 }
@@ -158,7 +158,7 @@ async function verify(req, env, url) {
   const a = await scanActor(req, env); if (a.response) return a.response;
   const id = studentId(url.searchParams.get("studentId") ?? url.searchParams.get("value"));
   if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
-  const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
+  const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
   if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
   const picture = await studentPicture(env, id);
   return json(req, env, { ok: true, checked: !!row.checked_at, student: row, picture });
@@ -168,7 +168,7 @@ async function scan(req, env) {
   const a = await scanActor(req, env); if (a.response) return a.response;
   const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
   if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
-  const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
+  const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
   if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
   const picture = await studentPicture(env, id);
   if (row.checked_at) return json(req, env, { ok: false, alreadyChecked: true, student: row, picture }, 409);
@@ -176,12 +176,28 @@ async function scan(req, env) {
     "UPDATE camp_lotto_students SET checked_at=datetime('now'),checked_by=?,updated_at=datetime('now') WHERE student_id=? AND checked_at IS NULL"
   ).bind(a.email, id).run();
   if (!result?.meta?.changes) {
-    const latest = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
+    const latest = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
     return json(req, env, { ok: false, alreadyChecked: true, student: latest, picture }, 409);
   }
-  const updated = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
+  const updated = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
   await env.DB.prepare("INSERT INTO camp_lotto_scan_logs (student_id,draw_number,actor_email,result) VALUES (?,?,?,'checked')").bind(id,row.draw_number,a.email).run();
   return json(req, env, { ok: true, student: updated, picture });
+}
+
+// Open the gift (reveals the draw number): only after check-in, once. A second call just reports who opened it and when.
+async function openGift(req, env) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
+  const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
+  if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
+  const SEL = "SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?";
+  const row = await env.DB.prepare(SEL).bind(id).first();
+  if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
+  if (!row.checked_at) return fail(req, env, "ต้องเช็คชื่อก่อนจึงจะเปิดของขวัญได้", 409, { code: "NOT_CHECKED_IN", student: { ...row, draw_number: null } });
+  const res = await env.DB.prepare("UPDATE camp_lotto_students SET gift_opened_at=datetime('now'),gift_opened_by=?,updated_at=datetime('now') WHERE student_id=? AND gift_opened_at IS NULL").bind(a.email, id).run();
+  const latest = await env.DB.prepare(SEL).bind(id).first();
+  if (!res?.meta?.changes) return json(req, env, { ok: true, firstTime: false, student: latest });
+  await env.DB.prepare("INSERT INTO camp_lotto_scan_logs (student_id,draw_number,actor_email,result) VALUES (?,?,?,'gift_opened')").bind(id, row.draw_number, a.email).run();
+  return json(req, env, { ok: true, firstTime: true, student: latest });
 }
 
 export async function lotto(req, env, url) {
@@ -199,6 +215,7 @@ export async function lotto(req, env, url) {
     if (m==="POST" && p==="/camps/lotto/admin/students") return await upsert(req,env);
     if (m==="POST" && p==="/camps/lotto/admin/students/import") return await bulk(req,env);
     if (m==="POST" && p==="/camps/lotto/admin/scan") return await scan(req,env);
+    if (m==="POST" && p==="/camps/lotto/scanner/gift/open") return await openGift(req,env);
     const del=p.match(/^\/camps\/lotto\/admin\/students\/([^/]+)$/);
     if (m==="DELETE" && del) return await remove(req,env,del[1]);
     return fail(req,env,"Not Found",404);

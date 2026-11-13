@@ -167,4 +167,27 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:26px 0 0}
 .pill.ok{background:var(--ok-l);color:var(--ok)}
 .subhead{font-size:16px;margin:26px 0 4px}
 #vReader{width:100%;max-width:460px;overflow:hidden;border-radius:20px;background:var(--panel);border:2px dashed #ebd3d1}#vReader:empty{min-height:180px}#vReader video{border-radius:16px;width:100%!important}
+/* gift */
+.stats{grid-template-columns:repeat(4,1fr)}.stat:nth-child(4)::before{background:#7c3aed}
+.status.gift{background:#ede9fe;color:#6d28d9}
+.vauto{display:flex!important;align-items:flex-start;gap:12px;background:var(--panel);border-radius:16px;padding:12px 14px;margin:0 0 16px;cursor:pointer}
+.vauto input{width:22px;height:22px;min-height:0;padding:0;accent-color:var(--red);flex:none;margin-top:3px}
+.vauto small{display:block;color:var(--muted);font-weight:500;font-size:13px}
+.giftbtn{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;margin:8px 0 0;padding:14px;min-height:0;background:linear-gradient(180deg,#fff,#faf3f2);border:2px dashed #e7b8b5;border-radius:26px;color:var(--red-d)}
+.giftbtn .gb-box{font-size:clamp(96px,28vw,150px);line-height:1;display:block;animation:giftbob 1.4s ease-in-out infinite;filter:drop-shadow(0 10px 14px #d32f2f33)}
+.giftbtn .gb-text{font-size:20px;font-weight:800}
+.giftbtn.opening{pointer-events:none}.giftbtn.opening .gb-box{animation:giftopen .65s ease-in forwards}
+@keyframes giftbob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+@keyframes giftopen{0%{transform:scale(1) rotate(0)}30%{transform:scale(1.15) rotate(-12deg)}55%{transform:scale(1.25) rotate(12deg)}100%{transform:scale(2.4) rotate(0);opacity:0}}
+.sp-number.reveal{animation:reveal .55s cubic-bezier(.2,1.4,.3,1) both}
+@keyframes reveal{from{transform:scale(.2) rotate(-10deg);opacity:0}to{transform:none;opacity:1}}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(print){body *{visibility:hidden}#qrModal,#qrModal *{visibility:visible}#qrModal{position:absolute;inset:0;background:#fff}.close,#printQr{display:none!important}.modal-card{box-shadow:none;animation:none}}
+
+/* link to the separate QR check system */
+.qrlink{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:12px 18px;margin:0 0 16px;box-shadow:0 8px 24px #1712120d;transition:transform .15s,box-shadow .15s}
+.qrlink:hover{transform:translateY(-2px);box-shadow:0 12px 30px #17121220}
+.qrlink>span:first-child{font-size:28px;width:48px;height:48px;border-radius:14px;background:var(--red-l);display:grid;place-items:center}
+.qrlink>span:nth-child(2){flex:1;display:grid}.qrlink small{color:var(--muted);font-size:13px}.qrlink>span:last-child{font-size:28px;color:var(--red)}
+a.btnlink{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;font-weight:700}
+.inlinelink{color:var(--red);font-weight:700;text-decoration:underline}
