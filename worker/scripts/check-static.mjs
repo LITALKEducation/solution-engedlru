@@ -47,6 +47,13 @@ for (const f of walk(camps).filter((x) => x.endsWith('.html'))) {
   }
 }
 
+// 2b. every page must load the in-app browser guard first (the public receipt verification page is the one exception)
+for (const f of walk(camps).filter((x) => x.endsWith('.html'))) {
+  const rel = path.relative(camps, f).split(path.sep).join('/');
+  if (rel.startsWith('budget/verify/')) continue;
+  if (!fs.readFileSync(f, 'utf8').includes('/assets/inapp-guard.js')) errors.push(`camps/${rel}: missing <script src="/assets/inapp-guard.js"> (pages must not open inside in-app browsers)`);
+}
+
 // 3. migrations
 const mig = fs.readdirSync(path.join(root, 'worker/migrations')).filter((f) => f.endsWith('.sql'));
 for (const f of mig) if (!/^\d{4}_[a-z0-9_]+\.sql$/.test(f)) errors.push(`migration name should look like 0010_description.sql: ${f}`);
