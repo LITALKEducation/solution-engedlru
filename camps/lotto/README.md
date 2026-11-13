@@ -63,3 +63,10 @@ The photo is looked up by the university email `sb<student id>@lru.ac.th` with t
 
 ## Roster import from a file
 `รายชื่อและเลขสลาก` → *นำเข้ารายชื่อหลายคน*: choose an **.xlsx / .xls / .csv** file (first sheet) or paste text, check the count, then press นำเข้า. Columns: รหัสนักศึกษา, ชื่อ-นามสกุล, เลขจับสลาก — with a header row they can be in any order and may include คำนำหน้า / ชื่อ / นามสกุล as separate columns; without a header the order is id, name, draw number. Thai digits (๑๐๑), `sb<id>@lru.ac.th` ids, quoted names containing commas, UTF-8 / UTF-16 / Windows-874 files and zero-width / non-breaking spaces are handled. Up to 1,000 rows per import (5 MB); rows that are invalid or repeat a student id / draw number are skipped and listed with the reason. A template (.xlsx) can be downloaded. Excel files are read in the browser with a vendored SheetJS copy (`lotto/vendor/`), loaded only when needed.
+
+## QR verification (ตรวจสอบ QR) — read-only
+The **ตรวจสอบสถานะ** tab has its own camera / manual input. Scanning a QR there only *looks it up* (`GET /camps/lotto/scanner/verify?studentId=…`, assigned scanners and admins) and never checks anyone in:
+- **red "เช็คแล้ว · ตัดสิทธิ์แล้ว"** — the draw number in huge type, the student, when it was checked and by which officer;
+- **green "ยังไม่ได้เช็ค · ใช้สิทธิ์ได้"** — with an optional "เช็คชื่อตอนนี้" button that does the normal check-in;
+- red error for a QR that is not in the roster or is not a student id.
+The camera restarts after each popup, like on the check-in tab, and is stopped when you change tab.

@@ -158,4 +158,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:26px 0 0}
 .scanpop p{color:var(--muted);font-size:15px;margin-bottom:4px}
 .scanpop button{width:100%;margin-top:18px;min-height:56px;font-size:18px;border-radius:18px}
 @media(max-height:640px){.sp-number{font-size:84px}.sp-avatar{width:96px;height:96px;font-size:40px}}
+/* verify mode: red = already checked, green = still usable */
+.result.checked{background:var(--bad-l);color:#7f1d1d}.result.checked::before{content:"✕";background:var(--bad);color:#fff;font-size:22px;letter-spacing:0}
+.result.unchecked{background:var(--ok-l);color:#14532d}.result.unchecked::before{content:"✓";background:var(--ok);color:#fff;font-size:24px;letter-spacing:0}
+.scanpop.checked .sp-banner{background:var(--bad)}.scanpop.unchecked .sp-banner{background:var(--ok)}
+.scanpop.checked .sp-number{color:var(--bad)}.scanpop.unchecked .sp-number{color:var(--ok)}
+.scanpop #spAction{margin-top:14px;min-height:48px;font-size:16px}
+.pill.ok{background:var(--ok-l);color:var(--ok)}
+.subhead{font-size:16px;margin:26px 0 4px}
+#vReader{width:100%;max-width:460px;overflow:hidden;border-radius:20px;background:var(--panel);border:2px dashed #ebd3d1}#vReader:empty{min-height:180px}#vReader video{border-radius:16px;width:100%!important}
 @media(print){body *{visibility:hidden}#qrModal,#qrModal *{visibility:visible}#qrModal{position:absolute;inset:0;background:#fff}.close,#printQr{display:none!important}.modal-card{box-shadow:none;animation:none}}
