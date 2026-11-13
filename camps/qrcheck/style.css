@@ -46,7 +46,7 @@ input:focus,select:focus,button:focus-visible{outline:3px solid #b71c1c33;border
 .btn.primary{background:var(--red);border-color:var(--red);color:#fff}.btn.primary:hover{background:var(--red-d)}
 .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}.btn.danger{background:#fff;border-color:var(--bad);color:var(--bad)}.btn.danger:hover{background:var(--bad-l)}
 .btn.sm{min-height:36px;padding:6px 12px;font-size:13px}
-#recForm .btn{flex:1;font-size:17px}#recForm .btn.danger{background:var(--bad);color:#fff}
+
 #reader{width:100%;border-radius:10px;overflow:hidden;background:#f0f1f3;border:1px dashed #c4c9d0;min-height:150px;margin-top:6px}#reader video{width:100%!important}
 #reader:empty::before{content:"กล้องจะแสดงที่นี่";display:grid;place-items:center;min-height:150px;color:var(--mute);font-size:14px}
 
@@ -56,6 +56,10 @@ input:focus,select:focus,button:focus-visible{outline:3px solid #b71c1c33;border
 .banner{display:grid;gap:2px;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid}
 .banner.ok{background:var(--ok-l);border-color:#b7e1c4;color:var(--ok)}.banner.bad{background:var(--bad-l);border-color:#f3c0bb;color:var(--bad)}
 .banner span{font-size:13px;opacity:.9}
+.banner{background:#f3f4f6;border-color:var(--line);color:var(--ink)}.banner.warn{background:var(--warn-l);border-color:#f2d79b;color:#7a4b00}
+.banner.big{padding:16px 18px}.banner.big b{font-size:24px;line-height:1.25}.banner.big span{font-size:14px}
+.refine{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:2px 14px 12px}.refine summary{cursor:pointer;font-weight:600;padding:12px 0;min-height:44px}
+.refine .row .btn{flex:1}
 .person{display:flex;gap:14px;align-items:center;margin-bottom:12px}
 .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;background:#eef0f3;flex:none}
 .avatar.ph{display:grid;place-items:center;font-size:26px;font-weight:700;color:var(--red)}

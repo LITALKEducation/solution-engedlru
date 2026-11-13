@@ -5,9 +5,19 @@ A formal, plain tool for checking a student's QR code against the data the other
 ## What it does
 1. **Choose the check** (admin-defined), e.g. *ตรวจครั้งที่ 1* or *ตรวจสอบป้ายกับ AKA*.
 2. **Scan the QR** with the camera or type the student id (Thai digits and `sb<id>@lru.ac.th` are accepted).
-3. **Check the data and record the result.** The page shows what the registration database says: name, year, gender and the **department** the student chose in the HR system (`camp_students`, `camp_selections`, `camp_departments`), plus the Auth0 photo when there is one. A QR that is not in that database shows a red "ไม่พบในฐานข้อมูลลงทะเบียน". The officer then records **ผ่าน** or **ไม่ผ่าน** (a reason is required for ไม่ผ่าน).
+3. **The scan itself records the check.** The student is looked up in the registration database — name, year, gender and the **department** chosen in the HR system (`camp_students`, `camp_selections`, `camp_departments`), plus the Auth0 photo when there is one — and, if found, the page immediately shows a large green **"ตรวจแล้ว"** and saves it (who, when) for the chosen check (`POST /camps/qrcheck/scan`). No extra button.
 
-Rules: one result per student per check; once recorded an officer cannot record it again (the page shows who and when); only an admin can correct it (the edit keeps who/when). A check can require that the student has already chosen a department (default). The student's history of other checks is listed under the result.
+| Scan of … | Shown | Saved |
+|---|---|---|
+| a student not checked yet | green **ตรวจแล้ว** | yes (result "ผ่าน", checked by the officer) |
+| a student already checked for this check | amber **ตรวจแล้ว (บันทึกไว้ก่อนหน้านี้)** with who / when | no, nothing changes |
+| a student who has not chosen a department, when the check requires it (default) | red **บันทึกไม่ได้** | no |
+| a QR that is not in the registration database | red **ไม่พบในฐานข้อมูลลงทะเบียน** | no |
+| something that is not a student QR | red "ตรวจสอบไม่ได้" with the reason | no |
+
+Switching the check while a student is on screen only *looks* (read-only) and offers **บันทึกว่าตรวจแล้ว**, so changing the dropdown never records by accident.
+
+**Optional follow-up on a recorded check** (folded away, opens by itself for AKA checks without a badge code): a **note**, the **AKA badge code**, or changing the result to **ไม่ผ่าน** (a reason is required) / back to ผ่าน. Allowed for the officer who recorded it and for admins; the edit keeps who/when. One result per student per check; the student's history of other checks is listed under the result.
 
 ### AKA (future system)
 AKA is not connected yet. The check type **"เทียบป้ายกับ AKA"** adds a field for the **badge code**; officers compare the badge by hand today and the code is stored (`camp_qr_results.reference`, searchable and in the Excel export) so it can be matched automatically when AKA is connected.
@@ -24,7 +34,7 @@ AKA is not connected yet. The check type **"เทียบป้ายกับ
 | ตั้งค่า | admins | add / rename / reorder / deactivate / delete checks (a check with results can only be deactivated), manage officers |
 
 ## API (`/camps/qrcheck/*`, Worker handler `handlers/qrcheck.js`, migration `0011_camps_qrcheck.sql`)
-`GET me` · `GET checks` (`?all=1` for admins) · `POST lookup` (read-only) · `POST record` · admin: `GET|POST admin/checks`, `PATCH|DELETE admin/checks/:id`, `GET admin/results`, `GET|POST admin/officers`, `DELETE admin/officers/:email`. Every write is audited in `budget_audit_logs` (`entity_type = qrcheck`). The migration seeds the two example checks; admins can rename or remove them.
+`GET me` · `GET checks` (`?all=1` for admins) · `POST scan` (look up + record) · `POST lookup` (read-only) · `POST record` (add a note / badge code, change the result) · admin: `GET|POST admin/checks`, `PATCH|DELETE admin/checks/:id`, `GET admin/results`, `GET|POST admin/officers`, `DELETE admin/officers/:email`. Every write is audited in `budget_audit_logs` (`entity_type = qrcheck`). The migration seeds the two example checks; admins can rename or remove them.
 
 ## Files
 `index.html`, `app.js` (its own Client ID constant `CLIENT`, or `window.QRCHECK_AUTH0_CLIENT_ID`), `style.css`, `vendor/xlsx.mini.min.js` (Excel export, loaded on demand). Camera scanning uses `html5-qrcode` from unpkg.

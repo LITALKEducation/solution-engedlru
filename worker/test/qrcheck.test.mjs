@@ -19,6 +19,7 @@ const C1 = r.d.checks[0].id, CAKA = r.d.checks[1].id;
 // officers
 r = await call('s1', 'POST', '/camps/qrcheck/admin/officers', { email: 'sb6740102220@lru.ac.th' }); ok(r.s === 403, 'student cannot add officers');
 r = await call('admin', 'POST', '/camps/qrcheck/admin/officers', { email: 'sb6740102220@lru.ac.th' }); ok(r.s === 200, 'admin adds an officer');
+await call('admin', 'POST', '/camps/qrcheck/admin/officers', { email: 'sb6740102221@lru.ac.th' });
 r = await call('admin', 'POST', '/camps/qrcheck/admin/officers', { email: 'nope' }); ok(r.s === 400, 'bad email rejected');
 r = await call('s1', 'GET', '/camps/qrcheck/me'); ok(r.s === 200 && !r.d.isAdmin, 'assigned officer allowed (not admin)');
 r = await call('unverified', 'GET', '/camps/qrcheck/me'); ok(r.s === 403, 'unverified email refused');
@@ -38,7 +39,8 @@ r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220',
 r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: C1, result: 'fail' }); ok(r.s === 400 && r.d.code === 'NOTE_REQUIRED', 'a failed check needs a reason');
 r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: C1, result: 'pass' }); ok(r.s === 200 && r.d.result.result === 'pass' && r.d.result.checked_by === 'sb6740102220@lru.ac.th', 'officer records "ตรวจครั้งที่ 1: ผ่าน"');
 r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: C1, result: 'fail', note: 'x' }); ok(r.s === 409 && r.d.code === 'ALREADY_CHECKED' && r.d.result.result === 'pass', 'second record for the same check is refused, the first one stays');
-r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: C1, result: 'fail', note: 'x', overwrite: true }); ok(r.s === 403, 'an officer cannot overwrite');
+r = await call('s2', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: C1, result: 'fail', note: 'x', overwrite: true }); ok(r.s === 403, 'a different officer cannot overwrite');
+r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: C1, result: 'pass', note: 'เพิ่มหมายเหตุ', overwrite: true }); ok(r.s === 200 && r.d.result.note === 'เพิ่มหมายเหตุ', 'the officer who recorded it can refine their own record');
 r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: '6740102220', checkId: C1 }); ok(r.d.result.result === 'pass' && r.d.history.length === 1, 'lookup now shows the recorded result and the history');
 r = await call('s1', 'POST', '/camps/qrcheck/record', { studentId: '6740102220', checkId: CAKA, result: 'pass', reference: 'AKA-0042' }); ok(r.s === 200 && r.d.result.reference === 'AKA-0042', 'a different check (ป้ายกับ AKA) is independent and keeps the badge reference');
 r = await call('s1', 'POST', '/camps/qrcheck/lookup', { studentId: '6740102220', checkId: CAKA }); ok(r.d.history.length === 2, 'history lists both checks');
@@ -67,6 +69,22 @@ r = await call('admin', 'GET', '/camps/qrcheck/admin/results'); ok(r.d.results.l
 r = await call('admin', 'GET', '/camps/qrcheck/admin/results?checkId=' + C1 + '&result=fail'); ok(r.d.results.length === 2, 'filter by check and result');
 r = await call('admin', 'GET', '/camps/qrcheck/admin/results?q=AKA-0042'); ok(r.d.results.length === 1 && r.d.results[0].reference === 'AKA-0042', 'search by badge reference');
 r = await call('s1', 'GET', '/camps/qrcheck/admin/results'); ok(r.s === 403, 'officer cannot list all results');
+// scan = look up AND record "ตรวจแล้ว" in one step
+r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '6740102221', checkId: CAKA });
+ok(r.s === 200 && r.d.justRecorded === true && r.d.result.result === 'pass' && r.d.result.checked_by === 'sb6740102221@lru.ac.th' && r.d.student.departmentName === 'ฝ่ายสวัสดิการ', 'scan: found in the HR data and recorded as checked at once');
+r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '6740102221', checkId: CAKA });
+ok(r.s === 200 && r.d.justRecorded === false && r.d.result.checked_by === 'sb6740102221@lru.ac.th', 'scanning the same QR again changes nothing (already checked, who/when kept)');
+r = await call('s1', 'POST', '/camps/qrcheck/scan', { studentId: '6740102221', checkId: CAKA });
+ok(r.d.justRecorded === false && r.d.result.checked_by === 'sb6740102221@lru.ac.th', 'another officer scanning it does not overwrite the first check');
+r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '6840100001', checkId: CAKA });
+ok(r.s === 200 && r.d.justRecorded === false && r.d.blocked && r.d.result === null, 'scan of a student with no department: shown but NOT recorded when the check requires a department');
+r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '9999999999', checkId: CAKA }); ok(r.s === 404 && r.d.code === 'NOT_FOUND', 'scan: QR not in the registration database -> 404, nothing recorded');
+ok(db.prepare("select count(*) c from camp_qr_results where student_id in ('9999999999')").get().c === 0, 'nothing is stored for an unknown QR');
+r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: 'hello', checkId: CAKA }); ok(r.s === 400, 'scan: not a student QR -> 400');
+r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '6740102221' }); ok(r.s === 400 && r.d.code === 'NO_CHECK', 'scan: a check must be chosen');
+r = await call('gmail', 'POST', '/camps/qrcheck/scan', { studentId: '6740102221', checkId: CAKA }); ok(r.s === 403, 'scan: unassigned account refused');
+r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '6840100001', checkId: C2 });
+ok(r.s === 400, 'scan: an inactive check cannot be used');
 r = await call('admin', 'DELETE', '/camps/qrcheck/admin/officers/sb6740102220%40lru.ac.th'); ok(r.s === 200, 'remove officer');
 r = await call('s1', 'GET', '/camps/qrcheck/me'); ok(r.s === 403, 'removed officer is blocked');
 ok(db.prepare("select count(*) c from budget_audit_logs where entity_type='qrcheck'").get().c >= 8, 'actions are audited');

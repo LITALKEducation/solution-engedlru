@@ -1,5 +1,5 @@
-// ระบบเช็ค QR (/qrcheck/): look the student up in the HR registration data, then record the result of an admin-defined check
-// ("ตรวจครั้งที่ 1", "ตรวจสอบป้ายกับ AKA", …). The student data is read from camp_students / camp_selections / camp_departments.
+// ระบบเช็ค QR (/qrcheck/): scanning looks the student up in the HR registration data and records "ตรวจแล้ว" for an admin-defined check
+// ("ตรวจครั้งที่ 1", "ตรวจสอบป้ายกับ AKA", …); the result can then be refined (badge code, note, or marked ไม่ผ่าน). The student data is read from camp_students / camp_selections / camp_departments.
 import { json } from "../lib/cors.js";
 import { getAuth0UserFromRequest, getAuth0Roles, getAuth0PictureByEmail } from "../lib/auth0.js";
 
@@ -60,27 +60,48 @@ async function activeCheck(env, checkId) {
   return await env.DB.prepare(`SELECT ${CHECK_COLS} FROM camp_qr_checks WHERE id=?`).bind(id).first();
 }
 
-// Read-only: who is this QR, and what does this check already say about them?
-async function lookup(req, env) {
-  const a = await actor(req, env); if (a.response) return a.response;
-  const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
-  if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง", 400, { code: "BAD_QR" });
+// Who is this QR, and what does this check already say about them? (shared by the read-only lookup and the scan)
+async function describe(req, env, b) {
+  const id = studentId(b?.studentId ?? b?.value);
+  if (!id) return { response: fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง", 400, { code: "BAD_QR" }) };
   const check = await activeCheck(env, b?.checkId);
-  if (!check || !check.active) return fail(req, env, "เลือกรายการตรวจที่เปิดใช้งานก่อน", 400, { code: "NO_CHECK" });
+  if (!check || !check.active) return { response: fail(req, env, "เลือกรายการตรวจที่เปิดใช้งานก่อน", 400, { code: "NO_CHECK" }) };
   const st = await env.DB.prepare(STUDENT_SQL).bind(id).first();
-  if (!st) return fail(req, env, "ไม่พบรหัสนักศึกษานี้ในฐานข้อมูลลงทะเบียน", 404, { code: "NOT_FOUND", studentId: id });
+  if (!st) return { response: fail(req, env, "ไม่พบรหัสนักศึกษานี้ในฐานข้อมูลลงทะเบียน", 404, { code: "NOT_FOUND", studentId: id }) };
+  return { id, check, st };
+}
+async function payload(env, { id, check, st }) {
   const [result, hist, picture] = await Promise.all([
     env.DB.prepare(RESULT_SQL).bind(check.id, id).first(),
     env.DB.prepare("SELECT r.check_id,c.name,r.result,r.checked_at FROM camp_qr_results r JOIN camp_qr_checks c ON c.id=r.check_id WHERE r.student_id=? ORDER BY c.sort_order,c.id").bind(id).all(),
     pictureFor(env, id)
   ]);
   const registered = !!st.department_code;
-  return json(req, env, {
+  return {
     ok: true, check: shapeCheck(check), registered,
     blocked: check.require_registered && !registered ? "นักศึกษายังไม่ได้ลงทะเบียนเลือกฝ่าย" : null,
     student: { studentId: st.student_id, name: st.name, year: st.year, gender: st.gender, departmentCode: st.department_code, departmentName: st.department_name },
     result: result || null, history: hist.results || [], picture
-  });
+  };
+}
+// Read-only
+async function lookup(req, env) {
+  const a = await actor(req, env); if (a.response) return a.response;
+  const d = await describe(req, env, await req.json().catch(() => null)); if (d.response) return d.response;
+  return json(req, env, { ...(await payload(env, d)), justRecorded: false });
+}
+// Scan = look the student up in the registration data AND record "ตรวจแล้ว" for the chosen check, in one step.
+// Already recorded -> nothing changes, the response says who/when. Blocked (department required but not chosen) -> not recorded.
+async function scan(req, env) {
+  const a = await actor(req, env); if (a.response) return a.response;
+  const d = await describe(req, env, await req.json().catch(() => null)); if (d.response) return d.response;
+  let justRecorded = false;
+  if (!(d.check.require_registered && !d.st.department_code)) {
+    const r = await env.DB.prepare("INSERT INTO camp_qr_results (check_id,student_id,result,note,reference,checked_by) VALUES (?,?,'pass','','',?) ON CONFLICT(check_id,student_id) DO NOTHING").bind(d.check.id, d.id, a.email).run();
+    justRecorded = !!r?.meta?.changes;
+    if (justRecorded) await audit(env, a, "QR_CHECK_RECORD", d.id, { check: d.check.id, result: "pass", auto: true });
+  }
+  return json(req, env, { ...(await payload(env, d)), justRecorded });
 }
 
 // body: { studentId, checkId, result: "pass"|"fail", note?, reference?, overwrite? }  (overwrite = admins correcting a recorded result)
@@ -97,7 +118,10 @@ async function record(req, env) {
   if (!st) return fail(req, env, "ไม่พบรหัสนักศึกษานี้ในฐานข้อมูลลงทะเบียน", 404, { code: "NOT_FOUND" });
   if (check.require_registered && !st.department_code) return fail(req, env, "นักศึกษายังไม่ได้ลงทะเบียนเลือกฝ่าย จึงบันทึกผลการตรวจนี้ไม่ได้", 409, { code: "NOT_REGISTERED" });
   const overwrite = b?.overwrite === true;
-  if (overwrite && !a.isAdmin) return fail(req, env, "เฉพาะผู้ดูแลที่แก้ไขผลที่บันทึกแล้วได้", 403);
+  if (overwrite && !a.isAdmin) {   // officers may only correct what they recorded themselves
+    const own = await env.DB.prepare(RESULT_SQL).bind(check.id, id).first();
+    if (!own || String(own.checked_by).toLowerCase() !== a.email) return fail(req, env, "แก้ไขได้เฉพาะผลที่คุณบันทึกเอง (หรือผู้ดูแล)", 403);
+  }
   let changed;
   if (overwrite) {
     const r = await env.DB.prepare(
@@ -215,6 +239,7 @@ export async function qrcheck(req, env, url) {
     if (m === "GET" && p === "/camps/qrcheck/me") return await me(req, env);
     if (m === "GET" && p === "/camps/qrcheck/checks") return await listChecks(req, env, url);
     if (m === "POST" && p === "/camps/qrcheck/lookup") return await lookup(req, env);
+    if (m === "POST" && p === "/camps/qrcheck/scan") return await scan(req, env);
     if (m === "POST" && p === "/camps/qrcheck/record") return await record(req, env);
     if (m === "GET" && p === "/camps/qrcheck/admin/checks") return await adminChecks(req, env);
     if (m === "POST" && p === "/camps/qrcheck/admin/checks") return await addCheck(req, env);

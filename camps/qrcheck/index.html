@@ -7,7 +7,7 @@
 <title>ระบบเช็ค QR · Camps</title>
 <link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=1">
+<link rel="stylesheet" href="./style.css?v=2">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 </head>
@@ -42,13 +42,14 @@
      <select id="checkSel"></select>
      <p id="checkInfo" class="hint"></p>
      <h2><span class="step">2</span> สแกน QR หรือกรอกรหัสนักศึกษา</h2>
+     <p class="hint">เมื่อสแกนพบนักศึกษาในฐานข้อมูล ระบบ<b>บันทึกว่า “ตรวจแล้ว”</b> ให้ทันที</p>
      <div id="reader"></div>
      <div class="row"><button id="camStart" class="btn primary">เปิดกล้องสแกน</button><button id="camStop" class="btn hidden">ปิดกล้อง</button></div>
      <label for="sid">รหัสนักศึกษา</label>
      <div class="row"><input id="sid" inputmode="numeric" autocomplete="off" placeholder="เช่น 6740102220"><button id="sidGo" class="btn">ตรวจสอบ</button></div>
     </div>
     <div class="card" id="resultCard">
-     <h2><span class="step">3</span> ผลการตรวจสอบ</h2>
+     <h2><span class="step">3</span> ผลการตรวจ</h2>
      <div id="result"><p class="empty">ยังไม่มีข้อมูล สแกน QR หรือกรอกรหัสนักศึกษาเพื่อเริ่มตรวจ</p></div>
     </div>
    </div>
@@ -98,5 +99,5 @@
  <footer>© English Education · LRU</footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=1" defer></script>
+<script src="./app.js?v=2" defer></script>
 </body></html>
