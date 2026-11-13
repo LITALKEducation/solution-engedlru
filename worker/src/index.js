@@ -5,6 +5,8 @@ import { getActivities, search } from "./handlers/tokens.js";
 import { budgetV2 } from "./handlers/budget-v2.js";
 import { camps } from "./handlers/camps.js";
 import { lotto } from "./handlers/lotto.js";
+import { qrcheck } from "./handlers/qrcheck.js";
+import { aka } from "./handlers/aka.js";
 import { postProfile } from "./handlers/profile.js";
 import { getFile } from "./handlers/files.js";
 import { generateQr, scanQr } from "./handlers/qr.js";
@@ -90,6 +92,8 @@ export default {
       }
 
       if (pathname.startsWith("/camps/lotto/")) return await lotto(request, env, url);
+      if (pathname.startsWith("/camps/qrcheck/")) return await qrcheck(request, env, url);
+      if (pathname.startsWith("/camps/aka/")) return await aka(request, env, url);
       if (pathname.startsWith("/camps/")) return await camps(request, env, url);
       if (pathname.startsWith("/budget/verify/")) return await budgetV2(request, env, url, ctx);
       if (pathname.startsWith("/budget/") && pathname !== "/budget/") return await budgetV2(request, env, url, ctx);

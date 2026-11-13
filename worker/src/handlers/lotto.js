@@ -15,7 +15,7 @@ async function actor(req, env) {
   if (!a.user) return { response: fail(req, env, a.unavailable ? "ระบบยืนยันตัวตนไม่พร้อมใช้งาน" : "กรุณาเข้าสู่ระบบ", a.unavailable ? 503 : 401) };
   let roles;
   try { roles = await getAuth0Roles(env, a.user.sub); }
-  catch (e) { console.error("[lotto] role lookup:", e?.message || e); return { response: fail(req, env, "ตรวจสอบสิทธิ์ผู้ดูแลไม่ได้", 503) }; }
+  catch (e) { console.error("[lotto] role lookup:", e?.message || e); return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้", 503) }; }
   if (!roles.some(r => allowed.includes(r))) return { response: fail(req, env, "ไม่มีสิทธิ์ใช้งานระบบจับสลาก", 403) };
   return { user: a.user, email: clean(a.user.email || "unknown", 254).toLowerCase() };
 }
@@ -95,7 +95,7 @@ async function remove(req, env, idValue) {
   if (!id) return fail(req, env, "รหัสนักศึกษาไม่ถูกต้อง");
   const row = await env.DB.prepare("SELECT checked_at FROM camp_lotto_students WHERE student_id=?").bind(id).first();
   if (!row) return fail(req, env, "ไม่พบรายชื่อนี้", 404);
-  if (row.checked_at) return fail(req, env, "รายชื่อนี้ถูกตัดสิทธิ์แล้ว ไม่สามารถลบได้", 409);
+  if (row.checked_at) return fail(req, env, "รายชื่อนี้ถูกเช็คชื่อแล้ว ไม่สามารถลบได้", 409);
   await env.DB.prepare("DELETE FROM camp_lotto_students WHERE student_id=?").bind(id).run();
   return json(req, env, { ok: true });
 }
@@ -221,7 +221,7 @@ export async function lotto(req, env, url) {
     return fail(req,env,"Not Found",404);
   } catch(e) {
     console.error("[lotto] error:",e?.message||e);
-    if (/no such (table|column)/i.test(String(e?.message))) return fail(req,env,"ฐานข้อมูลยังไม่ได้ติดตั้ง migration ของระบบจับสลาก",503,{code:"MIGRATION_REQUIRED"});
-    return fail(req,env,"ระบบขัดข้อง กรุณาลองใหม่",500);
+    if (/no such (table|column)/i.test(String(e?.message))) return fail(req,env,"ระบบจับสลากยังไม่พร้อมใช้งาน กรุณาแจ้งแอดมิน",503,{code:"MIGRATION_REQUIRED"});
+    return fail(req,env,"เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",500);
   }
 }

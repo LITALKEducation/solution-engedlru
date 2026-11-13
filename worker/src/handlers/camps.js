@@ -157,8 +157,8 @@ async function requireAdmin(request, env) {
   if (w.response) return w;
   let ok;
   try { ok = await adminStatus(env, w.user, true); }
-  catch (e) { return { response: fail(request, env, "ตรวจสอบสิทธิ์ผู้ดูแลไม่ได้ (Auth0 Role) กรุณาลองใหม่", 503, { code: "AUTH0_ROLE_LOOKUP_FAILED" }) }; }
-  if (!ok) return { response: fail(request, env, "ต้องใช้สิทธิ์ผู้ดูแล (camp_admin หรือ budget_admin)", 403) };
+  catch (e) { return { response: fail(request, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ (Auth0 Role) กรุณาลองใหม่", 503, { code: "AUTH0_ROLE_LOOKUP_FAILED" }) }; }
+  if (!ok) return { response: fail(request, env, "ต้องใช้สิทธิ์แอดมิน (camp_admin หรือ budget_admin)", 403) };
   return w;
 }
 
@@ -251,8 +251,8 @@ async function eligibleStudent(request, env) {
   if (!w.parsed) return { response: fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th)", 403, { reason: "not_university_email" }) };
   if (!w.verified) return { response: fail(request, env, "อีเมลนี้ยังไม่ได้รับการยืนยัน", 403, { reason: "email_not_verified" }) };
   const student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
-  if (!student) return { response: fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อผู้ดูแล`, 403, { reason: "not_in_roster" }) };
-  if (!student.gender) return { response: fail(request, env, "ผู้ดูแลยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อผู้ดูแล", 403, { reason: "no_gender" }) };
+  if (!student) return { response: fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403, { reason: "not_in_roster" }) };
+  if (!student.gender) return { response: fail(request, env, "แอดมินยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อแอดมิน", 403, { reason: "no_gender" }) };
   return { w, student };
 }
 
