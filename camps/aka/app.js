@@ -35,7 +35,7 @@ async function init() {
     if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } finally { history.replaceState({}, document.title, REDIRECT); } }
     if (!(await auth.isAuthenticated())) { $('login').classList.remove('hidden'); $('account').textContent = 'ยังไม่ได้เข้าสู่ระบบ'; return; }
     await loadMe();
-    $('account').innerHTML = esc(me.email) + (isAdmin ? ' <span class="badge info">ผู้ดูแล</span>' : '') + ' · <button id="logoutBtn" class="link" type="button">ออกจากระบบ</button>';
+    $('account').innerHTML = '<span class="em">' + esc(me.email) + '</span>' + (isAdmin ? '<span class="badge">ผู้ดูแล</span>' : '') + '<button id="logoutBtn" class="link" type="button">ออก</button>';
     $('logoutBtn').onclick = signOut;
     document.querySelectorAll('.adm').forEach((b) => b.classList.toggle('hidden', !isAdmin));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
@@ -58,8 +58,9 @@ document.querySelectorAll('#tabs button').forEach((b) => b.onclick = () => {
 });
 
 // ---------- my names ----------
+function setChip(open) { const c = $('heroChip'); c.textContent = open ? 'เปิดรับการตั้งชื่อ' : 'ปิดรับแล้ว'; c.className = 'state-chip ' + (open ? 'open' : 'closed'); }
 function renderMe() {
-  const open = me.state === 'open';
+  const open = me.state === 'open'; setChip(open);
   $('stateBanner').innerHTML = '<div class="banner ' + (open ? 'ok' : 'warn') + '"><b>' + (open ? 'เปิดรับการตั้งชื่อ' : 'ปิดรับการตั้งชื่อแล้ว') + '</b><span>' + (open ? 'ตั้งชื่อและเปลี่ยนชื่อได้ตลอดเวลา จนกว่าผู้ดูแลจะปิดรับ' : 'ไม่สามารถเปลี่ยนชื่อได้แล้ว หากต้องการแก้ไขให้ติดต่อผู้ดูแล') + '</span></div>';
   if (me.reason) { $('meBody').classList.add('hidden'); $('meProblem').classList.remove('hidden'); $('meProblem').innerHTML = '<div class="banner bad"><b>ตั้งชื่อไม่ได้</b><span>' + esc(REASONS[me.reason] || 'ไม่พบข้อมูลนักศึกษา') + '</span></div>' + (me.reason !== 'not_in_roster' || !isAdmin ? '<div class="row"><button class="btn" id="switchBtn" type="button">ใช้บัญชี Google อื่น</button></div>' : ''); const sw = $('switchBtn'); if (sw) sw.onclick = signOut; return; }
   $('meProblem').classList.add('hidden'); $('meBody').classList.remove('hidden');
@@ -71,7 +72,7 @@ function renderMe() {
   preview();
   $('savedAt').textContent = s.updatedAt ? 'บันทึกล่าสุด ' + fmt(s.updatedAt) : 'ยังไม่ได้ตั้งชื่อ';
 }
-function preview() { const a = $('akaName').value.trim(), n = $('nick').value.trim(); $('preview').innerHTML = a || n ? 'ตัวอย่าง: เพื่อนในค่ายจะเรียกคุณว่า <b>' + esc(a || '…') + '</b>' + (n ? ' (ชื่อเล่น ' + esc(n) + ')' : '') : 'กรอกชื่อเล่นและ AKA แล้วกดบันทึก'; }
+function preview() { const a = $('akaName').value.trim(), n = $('nick').value.trim(); $('preview').innerHTML = '<div class="nt-aka' + (a ? '' : ' ph') + '">' + esc(a || 'AKA ของคุณ') + '</div><div class="nt-nick">' + (n ? 'ชื่อเล่น ' + esc(n) : 'ชื่อเล่น —') + '</div>'; }
 $('nick').oninput = $('akaName').oninput = preview;
 $('nameForm').onsubmit = async (e) => {
   e.preventDefault();
@@ -127,7 +128,7 @@ async function loadSettings() {
   try {
     await loadOverview(); const o = overview, pct = o.total ? Math.round(o.named / o.total * 100) : 0;
     $('progress').innerHTML = '<div class="bar"><i style="width:' + pct + '%"></i></div><div class="small">ตั้งชื่อแล้ว <b>' + o.named + '</b> จาก ' + o.total + ' คน (' + pct + '%)</div>';
-    $('stOpen').classList.toggle('on', o.state === 'open'); $('stClosed').classList.toggle('on', o.state === 'closed');
+    $('stOpen').classList.toggle('on', o.state === 'open'); $('stClosed').classList.toggle('on', o.state === 'closed'); setChip(o.state === 'open');
     const rows = await exportRows(false);
     $('exportPreview').innerHTML = rows.length ? rows.map((g) => esc(g.name) + ' ' + g.people.length + ' คน').join(' · ') : 'ยังไม่มีรายชื่อในระบบ';
   } catch (e) { toast(e.message, true); }

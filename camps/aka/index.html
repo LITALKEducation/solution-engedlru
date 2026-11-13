@@ -7,16 +7,16 @@
 <title>ระบบ AKA · Camps</title>
 <link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=1">
+<link rel="stylesheet" href="./style.css?v=2">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 </head>
 <body>
-<header class="top">
- <div class="top-in">
-  <a class="back" href="/" aria-label="กลับไปหน้ากิจกรรมค่าย">‹ กิจกรรมค่าย</a>
-  <div class="title"><b>ระบบ AKA</b><small>ชื่อที่เรียกกันในค่าย · English Education · LRU</small></div>
+<header class="hero"><i class="orb3"></i>
+ <div class="herotop">
+  <a class="back" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> กิจกรรมค่าย</a>
   <span id="account" class="account">กำลังตรวจสอบ…</span>
  </div>
+ <div class="hero-body"><div class="eyebrow">ระบบ AKA · ชื่อที่เรียกกันในค่าย</div><h1>ตั้งชื่อค่ายของคุณ <span id="heroChip" class="state-chip hidden"></span></h1><p>ตั้งชื่อเล่นและ AKA ให้เพื่อนในค่ายเรียก เปลี่ยนได้ตลอดเวลาจนกว่าผู้ดูแลจะปิดรับการตั้งชื่อ</p></div>
 </header>
 <main>
  <section id="login" class="card hidden">
@@ -36,7 +36,7 @@
   <section id="view-me" class="view">
    <div class="card narrow">
     <div id="stateBanner"></div>
-    <h2>ตั้งชื่อค่ายของคุณ</h2>
+    <h2>ชื่อของคุณในค่าย</h2>
     <div id="meProblem" class="hidden"></div>
     <div id="meBody" class="hidden">
      <dl class="kv" id="meInfo"></dl>
@@ -45,7 +45,7 @@
       <input id="nick" maxlength="30" autocomplete="off" placeholder="เช่น ชาย">
       <label for="akaName">AKA — ชื่อที่เรียกกันในค่าย <small>(ไม่เกิน 40 ตัวอักษร)</small></label>
       <input id="akaName" maxlength="40" autocomplete="off" placeholder="เช่น หมีขาว">
-      <p class="hint" id="preview"></p>
+      <div class="nametag" aria-live="polite"><div class="nt-top">Hello · เรียกฉันว่า</div><div class="nt-body" id="preview"></div></div>
       <div class="row"><button id="saveBtn" class="btn primary" type="submit">บันทึกชื่อ</button></div>
      </form>
      <p class="hint" id="savedAt"></p>
