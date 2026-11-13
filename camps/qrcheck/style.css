@@ -128,3 +128,8 @@ select{appearance:auto}
 .akabox{display:grid;gap:2px;justify-items:center;text-align:center;background:#fff8e6;border:2px solid #f0c75e;border-radius:12px;padding:14px 12px;margin-bottom:14px}
 .akabox small{color:#7a5a00;font-weight:600}.akabox b{font-size:30px;line-height:1.25;color:#4a3500;word-break:break-word}.akabox span{color:#7a5a00;font-size:14px}
 .akabox.none{background:#f3f4f6;border-color:var(--line);border-style:dashed}.akabox.none b{font-size:18px;color:var(--mute)}.akabox.none small,.akabox.none span{color:var(--mute)}
+
+/* Google sign-in button (same as the HR and Budget pages) */
+.gbtn{width:100%;height:54px;border:1.5px solid #dadce0;border-radius:27px;background:#fff;color:#3c4043;font:inherit;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 1px 2px #0000000f;cursor:pointer;padding:0 20px;min-height:0;transition:background-color .15s,transform .12s}
+.gbtn:hover{background:#f8f9fa}.gbtn:active{background:#f1f3f4;transform:scale(.98)}.gbtn:disabled{opacity:.6;cursor:not-allowed}
+.g-logo{width:22px;height:22px;flex:none}
