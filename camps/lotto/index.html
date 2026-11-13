@@ -35,7 +35,7 @@
 <textarea id="csvInput" rows="5" placeholder="หรือวางรายชื่อตรงนี้&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,เลขจับสลาก&#10;6740102220,สมชาย ใจดี,001"></textarea><button id="importBtn" class="primary">นำเข้ารายชื่อ</button><div id="importRes" class="importres" aria-live="polite"></div></details>
 <div class="toolbar"><input id="search" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="refresh" class="secondary">รีเฟรช</button></div><div id="studentTable" class="table-wrap"></div>
 </section>
-<section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบ QR · เช็คชื่อ · เปิดของขวัญ</h2><p>สแกน QR แล้ว<b>เช็คชื่อให้เลย</b> จากนั้นแตะ<b>เปิดของขวัญ</b>เพื่อดูเลขสลาก</p></div><span class="pill ok" id="vModePill">เช็คชื่อ + ของขวัญ</span></div>
+<section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบ QR · เช็คชื่อ · เปิดของขวัญ</h2><p>สแกน QR แล้ว<b>เช็คชื่อเลย</b> จากนั้นแตะ<b>เปิดของขวัญ</b>เพื่อดูเลขสลาก</p></div><span class="pill ok" id="vModePill">เช็คชื่อ + ของขวัญ</span></div>
 <label class="chk vauto"><input type="checkbox" id="vAuto" checked><span><b>เช็คชื่อและเปิดของขวัญเลย</b><small>ปิดไว้ถ้าแค่อยากดูว่าเช็คชื่อแล้วหรือยัง</small></span></label>
 <div class="scanner-grid"><div class="scan-box"><div id="vReader"></div><button id="vStart" class="primary">เปิดกล้องตรวจสอบ QR</button><button id="vStop" class="secondary hidden">ปิดกล้อง</button></div>
 <div class="manual"><h3>กรอกรหัสด้วยตนเอง</h3><label for="vId">รหัสนักศึกษา</label><div class="inline"><input id="vId" inputmode="numeric" placeholder="เช่น 6740102220"><button id="vGo" class="primary">ตรวจสอบ</button></div><div id="vResult" aria-live="polite" class="result empty">รอการสแกน QR Code</div></div></div>
