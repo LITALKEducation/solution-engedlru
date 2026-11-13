@@ -278,7 +278,7 @@ async function loadDepartments() {
   if (PAGE !== 'student') return;
   let r;
   if (!auth0Client || !me) return;
-  try { r = await api('/camps/departments'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
+  try { r = await api('/camps/departments'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadDepartments()'); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { if (!deps.length) $('depts').innerHTML = failBox(await errMsg(r), 'loadDepartments()'); return; }
   const d = await r.json(); deps = d.departments || []; state = d.registration || 'pending'; applyInfo(d);
@@ -330,7 +330,7 @@ function getPosition() {
 }
 async function loadMe() {
   let r;
-  try { r = await api('/camps/me'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); renderGate({ error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
+  try { r = await api('/camps/me'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); renderGate({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
   me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderNav();
@@ -390,7 +390,7 @@ async function unselect() {
 }
 
 // ---------- admin pages ----------
-const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธิ์ผู้ดูแล</h2><div class="warn">บัญชี ' + esc(m.email) + ' ไม่ได้รับสิทธิ์ผู้ดูแลฝ่ายบุคคล ต้องมี Auth0 role <b>camp_admin</b> หรือ <b>budget_admin</b></div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary sm" href="/hr/">กลับไปหน้าลงทะเบียน</a><button class="btn sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div></div>';
+const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธิ์ผู้ดูแล</h2><div class="warn">บัญชี ' + esc(m.email) + ' ไม่ได้รับสิทธิ์ผู้ดูแลฝ่ายบุคคล กรุณาติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์</div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary sm" href="/hr/">กลับไปหน้าลงทะเบียน</a><button class="btn sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div></div>';
 function renderAdmin(x) {
   const box = $('adminBox'); if (!box) return;
   if (x && x.error) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button></div>'; return; }
@@ -403,7 +403,7 @@ async function loadAdminPage() {
   const body = $('adminBody');
   if (TAB === 'students') return loadStudents();
   let r;
-  try { r = await api('/camps/admin/overview'); } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } body.innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadAdminPage()'); return; }
+  try { r = await api('/camps/admin/overview'); } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } body.innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadAdminPage()'); return; }
   if (!r.ok) { body.innerHTML = failBox(await errMsg(r), 'loadAdminPage()'); return; }
   adminData = await r.json(); state = adminData.registration; applyInfo(adminData);
   if (TAB === 'overview') renderOverview(); else if (TAB === 'quota') renderQuota(); else renderSettings();
@@ -421,7 +421,7 @@ function renderOverview() {
 const openReg = new Set(); let allStudents = [];
 async function loadRegList() {
   const box = $('regList'); if (!box) return;
-  let r; try { r = await api('/camps/admin/students'); } catch (e) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadRegList()'); return; }
+  let r; try { r = await api('/camps/admin/students'); } catch (e) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadRegList()'); return; }
   if (!r.ok) { box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3>' + failBox(await errMsg(r), 'loadRegList()'); return; }
   allStudents = (await r.json()).students || [];
   box.innerHTML = '<h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="filerow" style="margin:0 0 8px"><button class="btn sm primary" type="button" onclick="exportRegXlsx()">ส่งออก Excel (แยกฝ่าย)</button><button class="btn sm primary" type="button" onclick="exportRegPdf()">ส่งออก PDF (แยกฝ่าย)</button></div><p class="muted" style="margin:-4px 0 8px">ผู้ดูแลเพิ่มหรือนำชื่อออกจากฝ่ายเองได้</p>' + adminData.departments.map((d) => {
@@ -477,7 +477,7 @@ function pickerDialog(code) {
 async function assignDialog(i) {
   const s = students[i];
   if (!s.gender) return toast('ยังไม่ได้ระบุเพศของ ' + s.name + ' กด "แก้ไข" เพื่อระบุเพศก่อน', true);
-  let r; try { r = await api('/camps/admin/overview'); } catch (e) { return toast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', true); }
+  let r; try { r = await api('/camps/admin/overview'); } catch (e) { return toast('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', true); }
   if (!r.ok) return toast(await errMsg(r), true);
   adminData = await r.json();
   const opts = adminData.departments.map((x) => { const q = x.quota[s.gender][s.year], f = x.filled[s.gender][s.year], cur = s.department_code === x.code; return '<option value="' + x.code + '"' + (cur ? ' selected' : '') + '>' + esc(x.name) + ' — ปี ' + s.year + ' ' + GL[s.gender] + ' ' + f + '/' + q + (q && f >= q ? ' (เต็ม)' : !q ? ' (ไม่รับ)' : '') + (cur ? ' · ปัจจุบัน' : '') + '</option>'; }).join('');
@@ -521,7 +521,7 @@ function schedulePanel() {
 }
 function geoPanel() {
   const g = adminData.geo || {};
-  return '<div class="panel" id="geoPanel"><h3>ตรวจสอบตำแหน่งก่อนลงทะเบียน</h3><p class="muted" style="margin-bottom:8px">เมื่อเปิดใช้ นักศึกษาต้องอยู่ในรัศมีที่กำหนดจากจุดที่ตั้ง (ละติจูด / ลองจิจูด) จึงจะลงทะเบียนได้ ระบบเทียบตำแหน่งที่เบราว์เซอร์ส่งมา (ยอมให้ GPS คลาดเคลื่อนได้ไม่เกิน 50 เมตร) ข้อจำกัด: ตำแหน่งมาจากอุปกรณ์ของนักศึกษา จึงไม่ใช่การป้องกันที่เด็ดขาด</p>'
+  return '<div class="panel" id="geoPanel"><h3>ตรวจสอบตำแหน่งก่อนลงทะเบียน</h3><p class="muted" style="margin-bottom:8px">เมื่อเปิดใช้ นักศึกษาต้องอยู่ในรัศมีที่กำหนดจากจุดที่ตั้งจึงจะลงทะเบียนได้ (ยอมให้ตำแหน่งคลาดเคลื่อนได้เล็กน้อย) หมายเหตุ: ตำแหน่งมาจากโทรศัพท์ของนักศึกษา จึงเป็นเพียงการกันเบื้องต้น</p>'
     + '<label class="chk" style="margin:6px 0"><input type="checkbox" id="geoOn"' + (g.enabled ? ' checked' : '') + '> เปิดการตรวจสอบตำแหน่ง</label>'
     + '<div class="form cols"><label>ชื่อสถานที่ (แสดงให้นักศึกษาเห็น)<input id="geoName" maxlength="120" value="' + esc(g.name || '') + '" placeholder="เช่น โรงเรียนบ้านตัวอย่าง"></label><label>ละติจูด<input type="number" id="geoLat" step="any" min="-90" max="90" value="' + (g.lat ?? '') + '" placeholder="16.700000"></label><label>ลองจิจูด<input type="number" id="geoLng" step="any" min="-180" max="180" value="' + (g.lng ?? '') + '" placeholder="101.250000"></label><label>รัศมี (เมตร)<input type="number" id="geoRad" min="10" max="100000" step="1" value="' + (g.radius ?? 200) + '"></label></div>'
     + '<div class="qact"><button class="btn sm" type="button" id="geoHere">ใช้ตำแหน่งปัจจุบันของฉัน</button><a class="btn sm" id="geoMap" target="_blank" rel="noopener" href="#">เปิดดูใน Google Maps</a><button class="btn primary sm" type="button" id="geoSave">บันทึก</button></div></div>';
@@ -658,7 +658,7 @@ async function loadStudentList() {
   const list = $('stList'); if (!list) return;
   const q = new URLSearchParams(); if (stQuery) q.set('q', stQuery); if (stYear) q.set('year', stYear); if (stGender) q.set('gender', stGender);
   let r;
-  try { r = await api('/camps/admin/students?' + q); } catch (e) { list.innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadStudentList()'); return; }
+  try { r = await api('/camps/admin/students?' + q); } catch (e) { list.innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadStudentList()'); return; }
   if (!r.ok) { list.innerHTML = failBox(await errMsg(r), 'loadStudentList()'); return; }
   students = (await r.json()).students || [];
   $('stCount').textContent = '(' + students.length + ' คน)';

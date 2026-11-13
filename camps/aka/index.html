@@ -7,7 +7,7 @@
 <title>ระบบ AKA · Camps</title>
 <link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=2">
+<link rel="stylesheet" href="./style.css?v=3">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 </head>
 <body>
@@ -71,14 +71,30 @@
   <section id="view-settings" class="view hidden">
    <div class="grid2">
     <div class="card">
-     <h2>การตั้งชื่อ</h2>
+     <h2>เปิด-ปิดรับการตั้งชื่อ</h2>
      <p class="hint">นักศึกษาตั้งและเปลี่ยนชื่อได้ตลอดเวลา จนกว่าผู้ดูแลจะปิดรับการตั้งชื่อ (ผู้ดูแลยังแก้ไขชื่อให้ได้เสมอ)</p>
      <div id="progress" class="progress"></div>
      <div class="seg" role="group" aria-label="สถานะการตั้งชื่อ"><button id="stOpen" type="button">เปิดรับการตั้งชื่อ</button><button id="stClosed" type="button">ปิดรับการตั้งชื่อ</button></div>
     </div>
+    <div class="card" id="schedCard">
+     <h2>ตั้งเวลาเปิด-ปิดรับอัตโนมัติ</h2>
+     <p class="hint">เลือกวันและเวลาที่จะเปิดและปิดรับการตั้งชื่อ หรือให้นับถอยหลังว่าจะเปิดในอีกกี่ชั่วโมง นักศึกษาจะเห็นเวลานับถอยหลังที่หัวหน้าเว็บ ขณะตั้งเวลา ปุ่มเปิด/ปิดด้านบนจะยังไม่มีผล</p>
+     <div class="schedstate" id="schedState"></div>
+     <div class="seg" role="group" aria-label="วิธีตั้งเวลา"><button type="button" id="scModeDT">กำหนดวันและเวลา</button><button type="button" id="scModeCD">นับถอยหลัง</button></div>
+     <div id="scDT">
+      <div class="two"><label>เปิดรับเมื่อ<input type="datetime-local" id="scOpen"></label><label>ปิดรับเมื่อ<input type="datetime-local" id="scClose"></label></div>
+      <p class="hint">ไม่ใส่เวลาเปิด = เปิดทันที · ไม่ใส่เวลาปิด = ไม่ปิดเอง</p>
+     </div>
+     <div id="scCD" class="hidden">
+      <div class="two"><label>เริ่มเปิดในอีก (ชั่วโมง)<input type="number" id="cdInH" min="0" max="2160" placeholder="0"></label><label>และ (นาที)<input type="number" id="cdInM" min="0" max="59" placeholder="0"></label></div>
+      <div class="two"><label>เปิดรับนาน (ชั่วโมง)<input type="number" id="cdForH" min="0" max="2160" placeholder="เว้นว่าง = ไม่ปิดเอง"></label><label>และ (นาที)<input type="number" id="cdForM" min="0" max="59" placeholder="0"></label></div>
+      <p class="hint">ใส่ 0 ชั่วโมง 0 นาที = เปิดทันที ระบบจะเปิดและปิดตามเวลาเองแม้ปิดหน้านี้ไว้</p>
+     </div>
+     <div class="row"><button id="scSave" class="btn primary" type="button">บันทึกเวลา</button><button id="scStop" class="btn hidden" type="button">หยุดตั้งเวลา</button></div>
+    </div>
     <div class="card">
      <h2>ส่งออกรายชื่อ</h2>
-     <p class="hint">แยกตามฝ่าย เรียงชั้นปีจากสูงสุดไปต่ำสุด (ปี 4 → 1) มี 4 คอลัมน์: <b>รหัสนักศึกษา · ชื่อ-สกุล · ชื่อเล่น · AKA</b> นักศึกษาที่ยังไม่เลือกฝ่ายอยู่ท้ายสุด</p>
+     <p class="hint">ได้รายชื่อแยกตามฝ่าย เรียงจากปี 4 ลงมาถึงปี 1 มี 4 ช่อง: <b>รหัสนักศึกษา · ชื่อ-สกุล · ชื่อเล่น · AKA</b> คนที่ยังไม่เลือกฝ่ายจะอยู่ท้ายสุด</p>
      <label class="chk"><input type="checkbox" id="onlyNamed"> เฉพาะผู้ที่ตั้งชื่อแล้ว</label>
      <div class="row"><button id="exportXlsx" class="btn primary" type="button">ดาวน์โหลด Excel</button><button id="exportPdf" class="btn" type="button">ดาวน์โหลด PDF</button></div>
      <div id="exportPreview" class="small"></div>

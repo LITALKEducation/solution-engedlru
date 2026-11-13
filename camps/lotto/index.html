@@ -18,7 +18,7 @@
 <div class="hero-body"><span class="eyebrow">ENGLISH EDUCATION · LRU</span><h1>ระบบจัดการการจับสลาก</h1><p>จัดการรายชื่อและหมายเลขสลาก ตรวจสอบสิทธิ์ด้วย QR Code และป้องกันการใช้สิทธิ์ซ้ำ</p></div>
 </header>
 <main>
-<section id="login" class="panel hidden"><h2>เข้าสู่ระบบผู้ดูแล / เจ้าหน้าที่</h2><p>ใช้บัญชี Google มหาวิทยาลัยที่ได้รับสิทธิ์ camp_admin หรือ budget_admin</p><button id="loginBtn" class="primary">เข้าสู่ระบบด้วย Google</button></section>
+<section id="login" class="panel hidden"><h2>เข้าสู่ระบบผู้ดูแล / เจ้าหน้าที่</h2><p>ใช้บัญชี Google มหาวิทยาลัยที่ผู้ดูแลอนุญาตให้ใช้งานระบบนี้</p><button id="loginBtn" class="primary">เข้าสู่ระบบด้วย Google</button></section>
 <div id="app" class="hidden">
 <nav class="tabs"><button data-tab="scan" class="active">สแกนเช็คชื่อ</button><button data-tab="students">รายชื่อและเลขสลาก</button><button data-tab="verify">ตรวจสอบสถานะ</button><button data-tab="scanners">เจ้าหน้าที่สแกน</button></nav>
 <section id="stats" class="stats"></section>
@@ -35,7 +35,7 @@
 <textarea id="csvInput" rows="5" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,เลขจับสลาก&#10;6740102220,สมชาย ใจดี,001"></textarea><button id="importBtn" class="primary">นำเข้ารายชื่อ</button><div id="importRes" class="importres" aria-live="polite"></div></details>
 <div class="toolbar"><input id="search" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก"><button id="refresh" class="secondary">รีเฟรช</button></div><div id="studentTable" class="table-wrap"></div>
 </section>
-<section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบ QR · เช็คชื่อ · เปิดของขวัญ</h2><p>สแกนเพื่อตรวจว่า QR <b>มีในฐานข้อมูลหรือไม่</b> ถ้ามีจะ <b>เช็คชื่อให้ทันที</b> แล้วแตะ <b>เปิดของขวัญ</b> เพื่อดูเลขจับสลาก</p></div><span class="pill ok" id="vModePill">เช็คชื่อ + ของขวัญ</span></div>
+<section id="view-verify" class="view panel hidden"><div class="section-head"><div><h2>ตรวจสอบ QR · เช็คชื่อ · เปิดของขวัญ</h2><p>สแกนเพื่อตรวจว่า QR <b>อยู่ในรายชื่อหรือไม่</b> ถ้ามีจะ <b>เช็คชื่อให้ทันที</b> แล้วแตะ <b>เปิดของขวัญ</b> เพื่อดูเลขจับสลาก</p></div><span class="pill ok" id="vModePill">เช็คชื่อ + ของขวัญ</span></div>
 <label class="chk vauto"><input type="checkbox" id="vAuto" checked><span><b>เช็คชื่อและเปิดของขวัญอัตโนมัติ</b><small>ปิด = ดูสถานะเฉย ๆ ไม่ตัดสิทธิ์ ไม่เปิดของขวัญ</small></span></label>
 <div class="scanner-grid"><div class="scan-box"><div id="vReader"></div><button id="vStart" class="primary">เปิดกล้องตรวจสอบ QR</button><button id="vStop" class="secondary hidden">ปิดกล้อง</button></div>
 <div class="manual"><h3>กรอกรหัสด้วยตนเอง</h3><label for="vId">รหัสนักศึกษา</label><div class="inline"><input id="vId" inputmode="numeric" placeholder="เช่น 6740102220"><button id="vGo" class="primary">ตรวจสอบ</button></div><div id="vResult" aria-live="polite" class="result empty">รอการสแกน QR Code</div></div></div>

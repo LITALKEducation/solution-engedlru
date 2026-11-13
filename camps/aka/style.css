@@ -112,3 +112,12 @@ footer{text-align:center;color:var(--mute);font-size:12px;padding:8px 20px calc(
  td::before{content:attr(data-l);color:var(--mute);font-size:12px;font-weight:800;text-align:left;flex:none}
  td.act{justify-content:flex-end}td.act::before{display:none}td.empty{display:block}td.empty::before{display:none}
 }
+
+/* countdown in the hero + schedule form */
+.cdbox{margin-top:16px;display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:#ffffff26;border:1px solid #ffffff40;border-radius:20px;padding:10px 16px}
+.cdbox.closing{background:#fef3c733}.cdl{font-weight:700;font-size:15px}.cdn{display:inline-flex;gap:6px}
+.cdn b{display:inline-flex;flex-direction:column;align-items:center;min-width:54px;background:#fff;color:var(--brand-d);border-radius:12px;padding:5px 8px;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
+.cdn small{font-size:10px;font-weight:700;color:var(--mute);margin-top:1px}
+.schedstate{background:var(--panel);border-radius:16px;padding:10px 14px;font-size:14px;color:var(--mute);margin:6px 0 4px}.schedstate.on{background:var(--ok-l);color:#14532d}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:640px){.two{grid-template-columns:1fr}.cdn b{min-width:46px;font-size:20px}}

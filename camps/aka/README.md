@@ -17,6 +17,12 @@ Sign in with Google (university email → student id, like the HR system). The p
 ### Export
 **Excel** (one sheet per department) and **PDF** (one page per department, Thai font embedded, year sub-headings), grouped by **ฝ่าย** in the HR order, students with no department last (“ยังไม่เลือกฝ่าย”). Inside a department students are ordered from the **highest year to the lowest (4 → 1)**, then by student id. The Excel sheets have exactly four columns: **รหัสนักศึกษา · ชื่อ-สกุล · ชื่อเล่น · AKA**. "เฉพาะผู้ที่ตั้งชื่อแล้ว" leaves out students who have not named themselves (they appear with empty cells otherwise, so gaps are visible).
 
+## Schedule / countdown (admins, ตั้งค่าและส่งออก)
+Optional automatic open and close, same idea as the HR registration: **กำหนดวันและเวลา** (open at / close at, either may be empty) or **นับถอยหลัง** ("starts in H:M, stays open H:M", turned into real times when the admin presses the button, so it keeps running with no browser open). While a schedule is on it decides (before the open time naming is "ยังไม่เปิด", after the close time it is closed) and the manual เปิด / ปิด switch has no effect until the schedule is stopped. Students and admins see a live countdown in the page header (server clock); at zero the page refreshes the state itself. Stored in `camp_settings` (`aka_schedule_enabled`, `aka_schedule_mode`, `aka_open_at`, `aka_close_at`); `POST /camps/aka/admin/schedule`; `GET status|me|overview` return `schedule`, `now` and the effective `state`.
+
+## Wording
+Everything students and officers read is plain language (no role names, table names or system terms); the technical notes live in these READMEs only.
+
 ## Link with the QR check system
 `/qrcheck/` shows the student's AKA (and nickname) in a highlighted box for the check type **เทียบป้ายกับ AKA**, so the officer compares the badge with the name the student chose.
 

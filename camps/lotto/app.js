@@ -6,7 +6,7 @@ let auth=null, scanner=null, rows=[], isAdmin=false;
 function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
 async function token(){return auth.getTokenSilently()}
 async function api(path,opt={}){let t=await token(),r=await fetch(API+path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}});if(r.status===401){t=await auth.getTokenSilently({cacheMode:'off'});r=await fetch(API+path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}})}return r}
-async function data(path,opt){const r=await api(path,opt),d=await r.json().catch(()=>({error:'ตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง'}));if(!r.ok)throw Object.assign(new Error(d.error||'เกิดข้อผิดพลาด'),{status:r.status,data:d});return d}
+async function data(path,opt){const r=await api(path,opt),d=await r.json().catch(()=>({error:'เกิดข้อผิดพลาด กรุณาลองใหม่'}));if(!r.ok)throw Object.assign(new Error(d.error||'เกิดข้อผิดพลาด'),{status:r.status,data:d});return d}
 const post=(path,body)=>data(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 function fmt(s){return s?new Date(s.replace(' ','T')+'Z').toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'—'}
 async function init(){
@@ -134,15 +134,15 @@ async function handleVerifyAuto(value,fromCamera){
   catch(e){if(e.status===409&&e.data?.student){student=e.data.student;picture=e.data.picture}else throw e}
   presentGift(student,picture,first);
   if(isAdmin){refreshStats();refresh($('search').value)}
- }catch(e){const nf=e.status===404;box.className='result error';box.textContent=e.message;showPopup({kind:'error',message:e.message,id,banner:nf?'✕ ไม่พบในฐานข้อมูล':null});toast(e.message)}
+ }catch(e){const nf=e.status===404;box.className='result error';box.textContent=e.message;showPopup({kind:'error',message:e.message,id,banner:nf?'✕ ไม่พบรายชื่อนี้':null});toast(e.message)}
 }
 function giftCard(x,opened,first){
  const box=$('vResult');box.className='result '+(opened||!first?'duplicate':'success');
- box.innerHTML='<b>พบในฐานข้อมูล · '+(first?'เช็คชื่อสำเร็จ':'เช็คชื่อไปแล้ว')+(opened?' · เปิดของขวัญแล้ว':' · ยังไม่เปิดของขวัญ')+'</b>'+esc(x.student_name)+'<small>รหัส '+esc(x.student_id)+(opened?' · เลขจับสลาก '+esc(x.draw_number):'')+'</small>'+(x.checked_at?'<small>เช็คชื่อ '+esc(fmt(x.checked_at))+' · '+esc(x.checked_by||'—')+'</small>':'')+(opened?'<small>เปิดของขวัญ '+esc(fmt(x.gift_opened_at))+' · '+esc(x.gift_opened_by||'—')+'</small>':'')}
+ box.innerHTML='<b>พบรายชื่อ · '+(first?'เช็คชื่อสำเร็จ':'เช็คชื่อไปแล้ว')+(opened?' · เปิดของขวัญแล้ว':' · ยังไม่เปิดของขวัญ')+'</b>'+esc(x.student_name)+'<small>รหัส '+esc(x.student_id)+(opened?' · เลขจับสลาก '+esc(x.draw_number):'')+'</small>'+(x.checked_at?'<small>เช็คชื่อ '+esc(fmt(x.checked_at))+' · '+esc(x.checked_by||'—')+'</small>':'')+(opened?'<small>เปิดของขวัญ '+esc(fmt(x.gift_opened_at))+' · '+esc(x.gift_opened_by||'—')+'</small>':'')}
 function presentGift(student,picture,first){
  const opened=!!student.gift_opened_at;
  giftCard(student,opened,first);
- showPopup({kind:opened||!first?'duplicate':'success',student,picture,giftClosed:!opened,banner:opened?'🎁 เปิดของขวัญไปแล้ว · เช็คชื่อแล้ว':first?'✓ พบในฐานข้อมูล · เช็คชื่อสำเร็จ':'! พบในฐานข้อมูล · เช็คชื่อไปแล้ว (ยังไม่เปิดของขวัญ)'});
+ showPopup({kind:opened||!first?'duplicate':'success',student,picture,giftClosed:!opened,banner:opened?'🎁 เปิดของขวัญไปแล้ว · เช็คชื่อแล้ว':first?'✓ พบรายชื่อ · เช็คชื่อสำเร็จ':'! พบรายชื่อ · เช็คชื่อไปแล้ว (ยังไม่เปิดของขวัญ)'});
  if(opened){$('spMeta').textContent='รหัส '+student.student_id+' · เปิดเมื่อ '+fmt(student.gift_opened_at)+' โดย '+(student.gift_opened_by||'—')}
  else{$('spMeta').textContent='รหัส '+student.student_id;const g=$('giftBtn');g.disabled=false;g.focus();g.onclick=async()=>{g.disabled=true;
   try{const d=await post('/camps/lotto/scanner/gift/open',{studentId:student.student_id});g.classList.add('opening');

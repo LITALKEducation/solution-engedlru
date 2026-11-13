@@ -221,7 +221,7 @@ export async function lotto(req, env, url) {
     return fail(req,env,"Not Found",404);
   } catch(e) {
     console.error("[lotto] error:",e?.message||e);
-    if (/no such (table|column)/i.test(String(e?.message))) return fail(req,env,"ฐานข้อมูลยังไม่ได้ติดตั้ง migration ของระบบจับสลาก",503,{code:"MIGRATION_REQUIRED"});
-    return fail(req,env,"ระบบขัดข้อง กรุณาลองใหม่",500);
+    if (/no such (table|column)/i.test(String(e?.message))) return fail(req,env,"ระบบจับสลากยังไม่พร้อมใช้งาน กรุณาแจ้งผู้ดูแล",503,{code:"MIGRATION_REQUIRED"});
+    return fail(req,env,"เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",500);
   }
 }

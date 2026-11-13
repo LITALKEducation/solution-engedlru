@@ -11,7 +11,7 @@ const REASONS = {
   email_not_verified: 'อีเมลของบัญชีนี้ยังไม่ได้ยืนยัน กรุณายืนยันอีเมลกับ Google ก่อน',
   not_in_roster: 'ไม่พบรหัสนักศึกษาของคุณในรายชื่อ กรุณาติดต่อผู้ดูแล'
 };
-let auth = null, me = null, isAdmin = false;
+let auth = null, me = null, isAdmin = false, schedule = null, srvOff = 0;
 
 // ---------- helpers ----------
 let toastT;
@@ -22,7 +22,7 @@ async function api(path, opt = {}) {
 }
 async function data(method, path, body) {
   const r = await api(path, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
-  const d = await r.json().catch(() => ({ error: 'ตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง' }));
+  const d = await r.json().catch(() => ({ error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' }));
   if (!r.ok) throw Object.assign(new Error(d.error || 'เกิดข้อผิดพลาด'), { status: r.status, data: d });
   return d;
 }
@@ -46,7 +46,7 @@ async function init() {
     $('login').querySelector('p').textContent = e.message || 'ไม่สามารถเชื่อมต่อระบบได้'; $('account').textContent = 'เกิดข้อผิดพลาด';
   }
 }
-async function loadMe() { me = await data('GET', '/camps/aka/me'); isAdmin = !!me.isAdmin; }
+async function loadMe() { me = await data('GET', '/camps/aka/me'); isAdmin = !!me.isAdmin; applyInfo(me); }
 function signOut() { try { sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: REDIRECT } }); }
 $('loginBtn').onclick = () => { const ap = { connection: 'google-oauth2' }; try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ } auth.loginWithRedirect({ authorizationParams: ap }); };
 
@@ -57,11 +57,37 @@ document.querySelectorAll('#tabs button').forEach((b) => b.onclick = () => {
   if (b.dataset.tab === 'me') renderMe(); else if (b.dataset.tab === 'list') loadList(); else if (b.dataset.tab === 'settings') loadSettings();
 });
 
+// ---------- countdown in the page header ----------
+function applyInfo(d) { if (d.schedule) schedule = d.schedule; if (typeof d.now === 'number') srvOff = d.now - Date.now(); renderCountdown(); }
+const pad2 = (n) => String(n).padStart(2, '0');
+let cdFired = 0;
+function renderCountdown() {
+  const host = document.querySelector('.hero-body'); if (!host) return;
+  let box = $('cdBox'); if (!box) { box = document.createElement('div'); box.id = 'cdBox'; box.className = 'cdbox hidden'; box.setAttribute('role', 'timer'); host.appendChild(box); }
+  const now = Date.now() + srvOff, s = schedule; let target = null, label = '';
+  if (s && s.enabled) {
+    if (s.openAt != null && now < s.openAt) { target = s.openAt; label = 'เปิดรับการตั้งชื่อในอีก'; }
+    else if (s.closeAt != null && now < s.closeAt) { target = s.closeAt; label = 'ปิดรับการตั้งชื่อในอีก'; }
+  }
+  if (target == null) { box.classList.add('hidden'); return; }
+  const left = Math.max(0, Math.ceil((target - now) / 1000)), d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), sec = left % 60;
+  const cells = (d ? [[d, 'วัน']] : []).concat([[pad2(h), 'ชม.'], [pad2(m), 'นาที'], [pad2(sec), 'วินาที']]);
+  box.classList.remove('hidden'); box.classList.toggle('closing', label.startsWith('ปิด'));
+  const html = '<span class="cdl">' + label + '</span><span class="cdn">' + cells.map(([v, u]) => '<b>' + v + '<small>' + u + '</small></b>').join('') + '</span>';
+  if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
+  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700); }   // time is up: pick up the new state
+}
+async function refreshAfterCountdown() { try { await loadMe(); const tab = document.querySelector('#tabs button.on'); if (tab && tab.dataset.tab === 'settings') loadSettings(); else renderMe(); } catch (e) { /* the next tick tries again */ } }
+setInterval(() => { if (schedule && schedule.enabled) renderCountdown(); }, 1000);
+
 // ---------- my names ----------
-function setChip(open) { const c = $('heroChip'); c.textContent = open ? 'เปิดรับการตั้งชื่อ' : 'ปิดรับแล้ว'; c.className = 'state-chip ' + (open ? 'open' : 'closed'); }
+const CHIP = { open: ['เปิดรับการตั้งชื่อ', 'open'], pending: ['ยังไม่เปิด', ''], closed: ['ปิดรับแล้ว', 'closed'] };
+function setChip(state) { const c = $('heroChip'), v = CHIP[state] || CHIP.closed; c.textContent = v[0]; c.className = 'state-chip ' + v[1]; }
 function renderMe() {
-  const open = me.state === 'open'; setChip(open);
-  $('stateBanner').innerHTML = '<div class="banner ' + (open ? 'ok' : 'warn') + '"><b>' + (open ? 'เปิดรับการตั้งชื่อ' : 'ปิดรับการตั้งชื่อแล้ว') + '</b><span>' + (open ? 'ตั้งชื่อและเปลี่ยนชื่อได้ตลอดเวลา จนกว่าผู้ดูแลจะปิดรับ' : 'ไม่สามารถเปลี่ยนชื่อได้แล้ว หากต้องการแก้ไขให้ติดต่อผู้ดูแล') + '</span></div>';
+  const st = me.state, open = st === 'open'; setChip(st);
+  $('stateBanner').innerHTML = open ? '<div class="banner ok"><b>เปิดรับการตั้งชื่อ</b><span>ตั้งชื่อและเปลี่ยนชื่อได้ตลอดเวลา จนกว่าจะปิดรับ</span></div>'
+    : st === 'pending' ? '<div class="banner warn"><b>ยังไม่ถึงเวลาเปิดรับ</b><span>เมื่อถึงเวลา หน้านี้จะเปิดให้ตั้งชื่อเอง</span></div>'
+    : '<div class="banner warn"><b>ปิดรับการตั้งชื่อแล้ว</b><span>เปลี่ยนชื่อเองไม่ได้แล้ว หากต้องการแก้ไขให้ติดต่อผู้ดูแล</span></div>';
   if (me.reason) { $('meBody').classList.add('hidden'); $('meProblem').classList.remove('hidden'); $('meProblem').innerHTML = '<div class="banner bad"><b>ตั้งชื่อไม่ได้</b><span>' + esc(REASONS[me.reason] || 'ไม่พบข้อมูลนักศึกษา') + '</span></div>' + (me.reason !== 'not_in_roster' || !isAdmin ? '<div class="row"><button class="btn" id="switchBtn" type="button">ใช้บัญชี Google อื่น</button></div>' : ''); const sw = $('switchBtn'); if (sw) sw.onclick = signOut; return; }
   $('meProblem').classList.add('hidden'); $('meBody').classList.remove('hidden');
   const s = me.student;
@@ -81,7 +107,7 @@ $('nameForm').onsubmit = async (e) => {
   if (!aka) { $('akaName').focus(); return toast('กรอกชื่อ AKA', true); }
   $('saveBtn').disabled = true;
   try { const d = await data('POST', '/camps/aka/save', { nickname, aka }); me.student = d.student; renderMe(); toast('บันทึกชื่อแล้ว'); }
-  catch (er) { toast(er.message, true); if (er.data && er.data.code === 'CLOSED') { await loadMe(); renderMe(); } else $('saveBtn').disabled = false; }
+  catch (er) { toast(er.message, true); if (er.data && (er.data.code === 'CLOSED' || er.data.code === 'NOT_OPEN')) { await loadMe(); renderMe(); } else $('saveBtn').disabled = false; }
 };
 
 // ---------- list (admin) ----------
@@ -126,20 +152,50 @@ $('eClear').onclick = async () => {
 // ---------- settings + export (admin) ----------
 async function loadSettings() {
   try {
-    await loadOverview(); const o = overview, pct = o.total ? Math.round(o.named / o.total * 100) : 0;
+    await loadOverview(); applyInfo(overview); setChip(overview.state); const o = overview, pct = o.total ? Math.round(o.named / o.total * 100) : 0;
     $('progress').innerHTML = '<div class="bar"><i style="width:' + pct + '%"></i></div><div class="small">ตั้งชื่อแล้ว <b>' + o.named + '</b> จาก ' + o.total + ' คน (' + pct + '%)</div>';
-    $('stOpen').classList.toggle('on', o.state === 'open'); $('stClosed').classList.toggle('on', o.state === 'closed'); setChip(o.state === 'open');
+    $('stOpen').classList.toggle('on', o.manual === 'open'); $('stClosed').classList.toggle('on', o.manual === 'closed');
+    renderSchedule();
     const rows = await exportRows(false);
     $('exportPreview').innerHTML = rows.length ? rows.map((g) => esc(g.name) + ' ' + g.people.length + ' คน').join(' · ') : 'ยังไม่มีรายชื่อในระบบ';
   } catch (e) { toast(e.message, true); }
 }
 async function setState(state) {
-  if (overview && overview.state === state) return;
+  if (overview && overview.manual === state) return;
   if (!confirm(state === 'closed' ? 'ปิดรับการตั้งชื่อ? นักศึกษาจะเปลี่ยนชื่อไม่ได้อีก (ผู้ดูแลยังแก้ไขได้)' : 'เปิดรับการตั้งชื่ออีกครั้ง?')) return;
   try { await data('POST', '/camps/aka/admin/state', { state }); toast(state === 'closed' ? 'ปิดรับการตั้งชื่อแล้ว' : 'เปิดรับการตั้งชื่อแล้ว'); loadSettings(); }
   catch (e) { toast(e.message, true); }
 }
 $('stOpen').onclick = () => setState('open'); $('stClosed').onclick = () => setState('closed');
+
+// ---------- automatic schedule (admin) ----------
+const toLocalInput = (ms) => (ms == null ? '' : new Date(ms - new Date(ms).getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+const fromLocalInput = (v) => (v ? new Date(v).getTime() : null);
+const fmtWhen = (ms) => new Date(ms).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+function showMode(cd) { $('scModeDT').classList.toggle('on', !cd); $('scModeCD').classList.toggle('on', cd); $('scDT').classList.toggle('hidden', cd); $('scCD').classList.toggle('hidden', !cd); $('scSave').textContent = cd ? 'เริ่มนับถอยหลัง' : 'บันทึกเวลา'; }
+function renderSchedule() {
+  const sc = overview.schedule || {}, cd = sc.mode === 'countdown';
+  showMode(cd);
+  $('scOpen').value = cd ? '' : toLocalInput(sc.openAt); $('scClose').value = cd ? '' : toLocalInput(sc.closeAt);
+  const word = { pending: 'ยังไม่เปิด', open: 'เปิดรับอยู่', closed: 'ปิดรับแล้ว' }[overview.state];
+  $('schedState').className = 'schedstate' + (sc.enabled ? ' on' : '');
+  $('schedState').textContent = sc.enabled ? 'ตั้งเวลาอยู่ · ตอนนี้' + word + (sc.openAt != null ? ' · เปิด ' + fmtWhen(sc.openAt) : '') + (sc.closeAt != null ? ' · ปิด ' + fmtWhen(sc.closeAt) : '') : 'ยังไม่ได้ตั้งเวลา';
+  $('scStop').classList.toggle('hidden', !sc.enabled);
+}
+$('scModeDT').onclick = () => showMode(false); $('scModeCD').onclick = () => showMode(true);
+async function saveSchedule(payload, msg) { try { await data('POST', '/camps/aka/admin/schedule', payload); toast(msg); await loadSettings(); } catch (e) { toast(e.message, true); } }
+$('scSave').onclick = () => {
+  if ($('scModeCD').classList.contains('on')) {
+    const inSec = (Number($('cdInH').value) || 0) * 3600 + (Number($('cdInM').value) || 0) * 60;
+    const hasFor = $('cdForH').value !== '' || $('cdForM').value !== '', forSec = (Number($('cdForH').value) || 0) * 3600 + (Number($('cdForM').value) || 0) * 60;
+    if (hasFor && forSec < 10) return toast('ระยะเวลาที่เปิดรับต้องมากกว่า 10 วินาที', true);
+    return saveSchedule({ enabled: true, mode: 'countdown', startInSec: inSec, durationSec: hasFor ? forSec : null }, 'เริ่มนับถอยหลังแล้ว');
+  }
+  const openAt = fromLocalInput($('scOpen').value), closeAt = fromLocalInput($('scClose').value);
+  if (openAt == null && closeAt == null) return toast('ใส่เวลาเปิดหรือเวลาปิดอย่างน้อยหนึ่งอย่าง', true);
+  return saveSchedule({ enabled: true, mode: 'datetime', openAt, closeAt }, 'บันทึกเวลาแล้ว');
+};
+$('scStop').onclick = () => { if (confirm('หยุดตั้งเวลา? การเปิด-ปิดรับจะกลับไปใช้ปุ่มเปิด/ปิดแทน')) saveSchedule({ enabled: false, mode: (overview.schedule || {}).mode }, 'หยุดตั้งเวลาแล้ว'); };
 
 // groups by department (HR order, "ยังไม่เลือกฝ่าย" last); inside a department: year 4 -> 1, then student id (the server already sorts this way)
 async function exportRows(onlyNamed) {

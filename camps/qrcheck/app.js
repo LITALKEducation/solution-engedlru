@@ -16,7 +16,7 @@ async function api(path, opt = {}) {
   let r = await go(false); if (r.status === 401) r = await go(true); return r;
 }
 async function data(path, opt) {
-  const r = await api(path, opt), d = await r.json().catch(() => ({ error: 'ตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง' }));
+  const r = await api(path, opt), d = await r.json().catch(() => ({ error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' }));
   if (!r.ok) throw Object.assign(new Error(d.error || 'เกิดข้อผิดพลาด'), { status: r.status, data: d });
   return d;
 }
@@ -70,7 +70,7 @@ async function loadChecks() {
 }
 function showCheckInfo() {
   const c = curCheck();
-  $('checkInfo').innerHTML = c ? esc(c.description || '') + ' <span class="badge ' + (c.kind === 'aka' ? 'info' : 'muted') + '">' + KIND[c.kind] + '</span>' + (c.requireRegistered ? ' <span class="badge muted">ต้องลงทะเบียนเลือกฝ่ายแล้ว</span>' : '') : (isAdmin ? 'เพิ่มรายการตรวจที่แท็บ “ตั้งค่า”' : 'ติดต่อผู้ดูแลให้เพิ่มรายการตรวจ');
+  $('checkInfo').innerHTML = c ? esc(c.description || '') + ' <span class="badge ' + (c.kind === 'aka' ? 'info' : 'muted') + '">' + KIND[c.kind] + '</span>' + (c.requireRegistered ? ' <span class="badge muted">ต้องเลือกฝ่ายแล้ว</span>' : '') : (isAdmin ? 'เพิ่มรายการตรวจที่แท็บ “ตั้งค่า”' : 'ติดต่อผู้ดูแลให้เพิ่มรายการตรวจ');
 }
 $('checkSel').onchange = () => { checkId = Number($('checkSel').value) || null; try { localStorage.setItem('qrcheck.check', String(checkId)); } catch (e) { /* ignore */ } showCheckInfo(); if (cur) lookup(cur.student.studentId, false, true, true); };
 
@@ -96,7 +96,7 @@ async function lookup(value, fromCamera, quiet, readOnly) {
 }
 function renderProblem(e, id) {
   const nf = e.data && e.data.code === 'NOT_FOUND';
-  $('result').innerHTML = '<div class="banner bad big"><b>' + (nf ? 'ไม่พบในฐานข้อมูลลงทะเบียน' : 'ตรวจสอบไม่ได้') + '</b><span>' + esc(e.message) + '</span></div>' + (nf ? '<p class="hint">รหัสที่สแกน: <b>' + esc(e.data.studentId || id) + '</b> ไม่อยู่ในรายชื่อนักศึกษาของระบบลงทะเบียน ไม่ได้บันทึกการตรวจ กรุณาตรวจสอบกับผู้ดูแล</p>' : '') + nextButton();
+  $('result').innerHTML = '<div class="banner bad big"><b>' + (nf ? 'ไม่พบรายชื่อนี้' : 'ตรวจสอบไม่ได้') + '</b><span>' + esc(e.message) + '</span></div>' + (nf ? '<p class="hint">รหัสที่สแกน: <b>' + esc(e.data.studentId || id) + '</b> ไม่มีอยู่ในรายชื่อนักศึกษา จึงไม่ได้บันทึกการตรวจ ลองสแกนใหม่ หรือแจ้งผู้ดูแล</p>' : '') + nextButton();
   bindNext();
 }
 const nextButton = () => '<div class="row end"><button id="nextBtn" class="btn primary" type="button">ตรวจคนต่อไป</button></div>';
@@ -110,13 +110,13 @@ function renderResult(d, quiet) {
   const photo = d.picture ? '<img class="avatar" alt="" referrerpolicy="no-referrer" src="' + esc(d.picture) + '">' : '<span class="avatar ph">' + esc(initial) + '</span>';
   // 1. the outcome, first and large
   let h;
-  if (d.blocked) h = '<div class="banner bad big"><b>บันทึกไม่ได้</b><span>' + esc(d.blocked) + ' (รายการตรวจ “' + esc(c.name) + '” ต้องลงทะเบียนเลือกฝ่ายก่อน)</span></div>';
+  if (d.blocked) h = '<div class="banner bad big"><b>บันทึกไม่ได้</b><span>' + esc(d.blocked) + ' (รายการตรวจ “' + esc(c.name) + '” ต้องเลือกฝ่ายก่อน)</span></div>';
   else if (!r) h = '<div class="banner big"><b>ยังไม่ได้ตรวจ</b><span>รายการตรวจ “' + esc(c.name) + '” ยังไม่มีการบันทึกของนักศึกษาคนนี้</span></div>';
   else if (r.result === 'fail') h = '<div class="banner bad big"><b>ตรวจแล้ว · ไม่ผ่าน</b><span>' + esc(c.name) + ' · ' + esc(fmt(r.checked_at)) + ' · ' + esc(r.checked_by) + '</span></div>';
   else if (d.justRecorded) h = '<div class="banner ok big"><b>ตรวจแล้ว</b><span>บันทึกผลการตรวจ “' + esc(c.name) + '” เรียบร้อย · ' + esc(fmt(r.checked_at)) + ' · ' + esc(r.checked_by) + '</span></div>';
   else h = '<div class="banner warn big"><b>ตรวจแล้ว (บันทึกไว้ก่อนหน้านี้)</b><span>' + esc(c.name) + ' · เมื่อ ' + esc(fmt(r.checked_at)) + ' โดย ' + esc(r.checked_by) + ' · ไม่ได้บันทึกซ้ำ</span></div>';
   // 2. who it is (from the registration database)
-  h += '<div class="person">' + photo + '<div><div class="pname">' + esc(s.name) + '</div><div class="pid">รหัสนักศึกษา ' + esc(s.studentId) + ' · พบในฐานข้อมูลลงทะเบียน</div></div></div>'
+  h += '<div class="person">' + photo + '<div><div class="pname">' + esc(s.name) + '</div><div class="pid">รหัสนักศึกษา ' + esc(s.studentId) + ' · พบรายชื่อในการลงทะเบียน</div></div></div>'
     + '<dl class="kv"><dt>ชั้นปี</dt><dd>ปี ' + esc(s.year) + '</dd><dt>เพศ</dt><dd>' + esc(GENDER[s.gender] || '—') + '</dd><dt>ฝ่าย</dt><dd>' + (s.departmentName ? esc(s.departmentName) : '<span class="muted-t">ยังไม่ได้ลงทะเบียนเลือกฝ่าย</span>') + '</dd>'
     + (d.aka ? '<dt>ชื่อเล่น</dt><dd>' + esc(d.aka.nickname || '—') + '</dd><dt>AKA</dt><dd>' + esc(d.aka.aka || '—') + '</dd>' : '') + (r ? '<dt>ผลการตรวจ</dt><dd>' + badge(r.result) + (r.reference ? ' · ข้อความบนป้าย <b>' + esc(r.reference) + '</b>' : '') + (r.note ? '<div class="small">หมายเหตุ: ' + esc(r.note) + '</div>' : '') + (r.updated_at ? '<div class="small">แก้ไขล่าสุด ' + esc(fmt(r.updated_at)) + ' โดย ' + esc(r.updated_by || '—') + '</div>' : '') + '</dd>' : '') + '</dl>';
   if (c.kind === 'aka') h += d.aka && d.aka.aka
@@ -163,7 +163,7 @@ async function loadResults() {
     const d = await data('/camps/qrcheck/admin/checks');
     $('sumTable').innerHTML = '<thead><tr><th>รายการตรวจ</th><th>ประเภท</th><th class="num">ตรวจแล้ว</th><th class="num">ผ่าน</th><th class="num">ไม่ผ่าน</th><th class="num">ยังไม่ตรวจ*</th></tr></thead><tbody>'
       + d.checks.map((c) => '<tr><td data-l="รายการตรวจ"><b>' + esc(c.name) + '</b>' + (c.active ? '' : ' <span class="badge muted">ปิดใช้งาน</span>') + '</td><td data-l="ประเภท">' + KIND[c.kind] + '</td><td class="num" data-l="ตรวจแล้ว">' + c.results + '</td><td class="num" data-l="ผ่าน">' + c.passed + '</td><td class="num" data-l="ไม่ผ่าน">' + c.failed + '</td><td class="num" data-l="ยังไม่ตรวจ">' + Math.max(0, d.registered - c.results) + '</td></tr>').join('') + '</tbody>'
-      + '<tfoot><tr><td colspan="6" class="small">ฐานข้อมูลลงทะเบียน: นักศึกษาในรายชื่อ ' + d.roster + ' คน · เลือกฝ่ายแล้ว ' + d.registered + ' คน · *ยังไม่ตรวจ นับจากผู้ที่เลือกฝ่ายแล้ว</td></tr></tfoot>';
+      + '<tfoot><tr><td colspan="6" class="small">นักศึกษาทั้งหมด ' + d.roster + ' คน · เลือกฝ่ายแล้ว ' + d.registered + ' คน · *ยังไม่ตรวจ นับจากผู้ที่เลือกฝ่ายแล้ว</td></tr></tfoot>';
     const sel = $('fCheck'), keep = sel.value;
     sel.innerHTML = '<option value="">ทุกรายการ</option>' + d.checks.map((c) => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join(''); sel.value = keep;
     await loadResultRows();

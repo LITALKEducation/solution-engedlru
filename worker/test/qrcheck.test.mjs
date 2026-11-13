@@ -16,6 +16,7 @@ r = await call('gmail', 'GET', '/camps/qrcheck/me'); ok(r.s === 403, 'unassigned
 r = await call('admin', 'GET', '/camps/qrcheck/me'); ok(r.s === 200 && r.d.isAdmin, 'admin allowed');
 r = await call('admin', 'GET', '/camps/qrcheck/checks'); ok(r.d.checks.length === 2 && r.d.checks[0].name === 'ตรวจครั้งที่ 1' && r.d.checks[1].kind === 'aka', 'seed checks: ตรวจครั้งที่ 1 and ตรวจสอบป้ายกับ AKA');
 const C1 = r.d.checks[0].id, CAKA = r.d.checks[1].id;
+ok(r.d.checks[0].description === 'ตรวจ QR และข้อมูลของนักศึกษา' && r.d.checks[1].description === 'เทียบป้ายของนักศึกษากับชื่อ AKA ที่นักศึกษาตั้งไว้', 'example checks carry plain-language descriptions');
 // officers
 r = await call('s1', 'POST', '/camps/qrcheck/admin/officers', { email: 'sb6740102220@lru.ac.th' }); ok(r.s === 403, 'student cannot add officers');
 r = await call('admin', 'POST', '/camps/qrcheck/admin/officers', { email: 'sb6740102220@lru.ac.th' }); ok(r.s === 200, 'admin adds an officer');

@@ -22,7 +22,7 @@
 <main>
  <section id="login" class="card hidden">
   <h1>เข้าสู่ระบบ</h1>
-  <p>ใช้บัญชี Google มหาวิทยาลัยที่ผู้ดูแลมอบหมายให้ใช้ระบบเช็ค QR หรือบัญชีผู้ดูแล (camp_admin / budget_admin)</p>
+  <p>ใช้บัญชี Google มหาวิทยาลัยที่ผู้ดูแลอนุญาตให้ใช้งานระบบนี้</p>
   <button id="loginBtn" class="btn primary">เข้าสู่ระบบด้วย Google</button>
  </section>
 
@@ -45,7 +45,7 @@
      </div>
      <div class="block">
       <h2><span class="step">2</span> สแกน QR หรือกรอกรหัสนักศึกษา</h2>
-      <p class="hint">เมื่อสแกนพบนักศึกษาในฐานข้อมูล ระบบ<b>บันทึกว่า “ตรวจแล้ว”</b> ให้ทันที</p>
+      <p class="hint">เมื่อสแกนแล้วพบรายชื่อนักศึกษา ระบบจะ<b>บันทึกว่า “ตรวจแล้ว”</b> ให้ทันที</p>
       <div id="reader"></div>
       <div class="row"><button id="camStart" class="btn primary">เปิดกล้องสแกน</button><button id="camStop" class="btn hidden">ปิดกล้อง</button></div>
       <div class="or"><span>หรือ</span></div>
@@ -81,7 +81,7 @@
   <section id="view-settings" class="view hidden">
    <div class="card">
     <h2>รายการตรวจ</h2>
-    <p class="hint">กำหนดว่าจะตรวจอะไรบ้าง เช่น ตรวจครั้งที่ 1 หรือ ตรวจสอบป้ายกับ AKA เจ้าหน้าที่เลือกรายการตรวจก่อนสแกน ผลของแต่ละรายการบันทึกแยกกัน</p>
+    <p class="hint">เพิ่มรายการที่ต้องตรวจ เช่น ตรวจครั้งที่ 1 หรือ ตรวจสอบป้ายกับ AKA เจ้าหน้าที่เลือกรายการก่อนสแกน และผลของแต่ละรายการจะแยกกัน</p>
     <div class="table-wrap"><table id="checksTable"></table></div>
     <form id="checkForm" class="formgrid">
      <h3>เพิ่มรายการตรวจ</h3>
@@ -91,11 +91,11 @@
      <label class="chk"><input type="checkbox" id="cReq" checked> ต้องลงทะเบียนเลือกฝ่ายแล้วจึงจะตรวจได้</label>
      <div><button class="btn primary" type="submit">เพิ่มรายการตรวจ</button></div>
     </form>
-    <p class="hint">ประเภท “เทียบป้ายกับ AKA”: หน้าตรวจจะแสดงชื่อ AKA ที่นักศึกษาตั้งไว้ในระบบ AKA เป็นกรอบเด่น เจ้าหน้าที่เทียบกับป้ายที่นักศึกษาสวมอยู่ แล้วบันทึกผล (พิมพ์ข้อความบนป้ายไว้ได้ถ้าไม่ตรง)</p>
+    <p class="hint">ประเภท “เทียบป้ายกับ AKA”: หน้าตรวจจะแสดงชื่อ AKA ที่นักศึกษาตั้งไว้เป็นกรอบเด่น ให้เจ้าหน้าที่เทียบกับป้ายที่นักศึกษาสวมอยู่ แล้วกดบันทึกผล (ถ้าไม่ตรงพิมพ์ข้อความบนป้ายไว้ได้)</p>
    </div>
    <div class="card">
     <h2>เจ้าหน้าที่ผู้ตรวจ</h2>
-    <p class="hint">ผู้ดูแล (camp_admin / budget_admin) ใช้ได้เสมอ เพิ่มอีเมลบัญชีมหาวิทยาลัยของเจ้าหน้าที่ที่ให้บันทึกผลได้ (ไม่เกี่ยวกับเจ้าหน้าที่สแกนของระบบจับสลาก)</p>
+    <p class="hint">เพิ่มอีเมลมหาวิทยาลัยของเจ้าหน้าที่ที่จะบันทึกผลการตรวจ ผู้ดูแลใช้งานได้อยู่แล้วโดยไม่ต้องเพิ่ม</p>
     <form id="officerForm" class="row"><input id="oEmail" type="email" required placeholder="อีเมลเจ้าหน้าที่ เช่น sb6740102221@lru.ac.th"><button class="btn primary" type="submit">เพิ่ม</button></form>
     <div class="table-wrap"><table id="officersTable"></table></div>
    </div>

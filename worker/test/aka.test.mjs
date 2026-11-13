@@ -1,6 +1,6 @@
 // ระบบ AKA API: students set a nickname + camp name (AKA) until an admin closes naming; people/departments come from the HR tables.
 import { makeEnv, installFetch } from './env.mjs';
-const { aka, parseStudentEmail } = await import('../src/handlers/aka.js');
+const { aka, parseStudentEmail, effectiveState } = await import('../src/handlers/aka.js');
 installFetch(); const { db, env } = makeEnv();
 let pass = 0, fl = 0; const ok = (c, m) => { if (c) pass++; else { fl++; console.log('  FAIL:', m); } };
 async function call(who, method, path, body) {
@@ -58,6 +58,28 @@ r = await call('admin', 'GET', '/camps/aka/admin/list?q=' + encodeURIComponent('
 r = await call('s1', 'GET', '/camps/aka/admin/list'); ok(r.s === 403, 'list: student refused');
 r = await call('admin', 'POST', '/camps/aka/admin/set', { studentId: '6740100009', clear: true }); ok(r.s === 200, 'admin clears a name');
 r = await call('admin', 'GET', '/camps/aka/admin/list?named=1'); ok(r.d.students.length === 4 && !r.d.students.some((x) => x.studentId === '6740100009'), 'cleared name is gone');
+// schedule / countdown
+{const base = { manual: 'closed', schedule: { enabled: true, mode: 'datetime', openAt: 1000, closeAt: 2000 } };
+ ok(effectiveState(base, 500) === 'pending' && effectiveState(base, 1500) === 'open' && effectiveState(base, 2000) === 'closed', 'effectiveState follows the clock');
+ ok(effectiveState({ ...base, schedule: { ...base.schedule, enabled: false } }, 1500) === 'closed', 'schedule off -> manual state');
+ ok(effectiveState({ manual: 'open', schedule: { enabled: true, mode: 'datetime', openAt: null, closeAt: null } }, 1500) === 'open', 'schedule without times -> manual state');}
+const NOW = Date.now();
+r = await call('s1', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'datetime', openAt: NOW + 1000 }); ok(r.s === 403, 'schedule: student refused');
+await call('admin', 'POST', '/camps/aka/admin/state', { state: 'open' });
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'datetime', openAt: NOW + 3600e3, closeAt: NOW + 7200e3 }); ok(r.s === 200 && r.d.state === 'pending', 'schedule: opens in 1 h -> pending even though the manual state is open');
+r = await call(null, 'GET', '/camps/aka/status'); ok(r.d.state === 'pending' && r.d.schedule.openAt === NOW + 3600e3 && Math.abs(r.d.now - Date.now()) < 5000, 'public status carries the schedule and the server time');
+r = await call('s1', 'GET', '/camps/aka/me'); ok(r.d.state === 'pending' && r.d.schedule.enabled, 'me carries the schedule');
+r = await call('s1', 'POST', '/camps/aka/save', { nickname: 'ชาย', aka: 'ยังไม่เปิด' }); ok(r.s === 403 && r.d.code === 'NOT_OPEN', 'before the open time students cannot save');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'datetime', openAt: NOW - 3600e3, closeAt: NOW + 3600e3 }); r = await call('s1', 'POST', '/camps/aka/save', { nickname: 'ชาย', aka: 'หมีใหญ่' }); ok(r.s === 200, 'inside the window students can save');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'datetime', openAt: NOW - 7200e3, closeAt: NOW - 3600e3 }); r = await call('s1', 'POST', '/camps/aka/save', { nickname: 'ชาย', aka: 'เลยเวลา' }); ok(r.s === 403 && r.d.code === 'CLOSED', 'after the close time students cannot save');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'datetime', openAt: NOW + 1000, closeAt: NOW + 500 }); ok(r.s === 400, 'close before open rejected');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'datetime' }); ok(r.s === 400, 'enabled without any time rejected');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'countdown', startInSec: -1 }); ok(r.s === 400, 'negative countdown rejected');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'countdown', startInSec: 0, durationSec: 3 }); ok(r.s === 400, 'duration under 10 s rejected');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'countdown', startInSec: 600, durationSec: 1800 }); ok(r.s === 200 && r.d.schedule.mode === 'countdown' && r.d.schedule.closeAt - r.d.schedule.openAt === 1800e3 && Math.abs(r.d.schedule.openAt - (Date.now() + 600e3)) < 5000 && r.d.state === 'pending', 'countdown: opens in 10 min for 30 min (stored as real times)');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: true, mode: 'countdown', startInSec: 0, durationSec: 3600 }); ok(r.d.state === 'open', 'countdown with 0 s start: open now');
+r = await call('admin', 'GET', '/camps/aka/admin/overview'); ok(r.d.schedule.enabled && r.d.manual === 'open' && r.d.state === 'open', 'overview: manual state, schedule and the state in force');
+r = await call('admin', 'POST', '/camps/aka/admin/schedule', { enabled: false }); ok(r.s === 200 && r.d.state === 'open' && r.d.schedule.enabled === false, 'schedule off: back to the manual state');
 ok(db.prepare("select count(*) c from budget_audit_logs where entity_type='aka'").get().c >= 5, 'admin actions are audited');
 console.log(fl ? fl + ' FAILED' : `all ${pass} aka checks passed`);
 process.exit(fl ? 1 : 0);

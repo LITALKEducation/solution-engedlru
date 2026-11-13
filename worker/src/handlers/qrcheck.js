@@ -16,16 +16,16 @@ const KINDS = ["manual", "aka"];
 // admin, or an officer an admin assigned (verified email). { adminOnly } restricts to admins.
 async function actor(req, env, { adminOnly = false } = {}) {
   const a = await getAuth0UserFromRequest(req, env);
-  if (!a.user) return { response: fail(req, env, a.unavailable ? "ระบบยืนยันตัวตนไม่พร้อมใช้งาน" : "กรุณาเข้าสู่ระบบ", a.unavailable ? 503 : 401) };
+  if (!a.user) return { response: fail(req, env, a.unavailable ? "ยังเข้าสู่ระบบไม่ได้ในขณะนี้ ลองใหม่อีกครั้ง" : "กรุณาเข้าสู่ระบบ", a.unavailable ? 503 : 401) };
   const email = clean(a.user.email || "", 254).toLowerCase();
   let isAdmin = false;
   try { isAdmin = (await getAuth0Roles(env, a.user.sub)).some((r) => ADMIN_ROLES.includes(r)); }
-  catch (e) { console.error("[qrcheck] role lookup:", e?.message || e); if (adminOnly) return { response: fail(req, env, "ตรวจสอบสิทธิ์ผู้ดูแลไม่ได้", 503) }; }
+  catch (e) { console.error("[qrcheck] role lookup:", e?.message || e); if (adminOnly) return { response: fail(req, env, "ตรวจสอบสิทธิ์ผู้ดูแลไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
   if (isAdmin) return { user: a.user, email: email || "unknown", isAdmin: true };
   if (adminOnly) return { response: fail(req, env, "ต้องเป็นผู้ดูแลระบบ", 403) };
   if (!email || a.user.email_verified !== true) return { response: fail(req, env, "บัญชีต้องยืนยันอีเมลก่อนใช้งาน", 403) };
   const o = await env.DB.prepare("SELECT email FROM camp_qr_officers WHERE email=?").bind(email).first();
-  if (!o) return { response: fail(req, env, "บัญชีนี้ยังไม่ได้รับมอบหมายให้ใช้ระบบเช็ค QR", 403) };
+  if (!o) return { response: fail(req, env, "บัญชีนี้ยังไม่ได้รับอนุญาตให้ใช้ระบบเช็ค QR", 403) };
   return { user: a.user, email, isAdmin: false };
 }
 async function audit(env, a, action, entityId, metadata = {}) {
@@ -67,7 +67,7 @@ async function describe(req, env, b) {
   const check = await activeCheck(env, b?.checkId);
   if (!check || !check.active) return { response: fail(req, env, "เลือกรายการตรวจที่เปิดใช้งานก่อน", 400, { code: "NO_CHECK" }) };
   const st = await env.DB.prepare(STUDENT_SQL).bind(id).first();
-  if (!st) return { response: fail(req, env, "ไม่พบรหัสนักศึกษานี้ในฐานข้อมูลลงทะเบียน", 404, { code: "NOT_FOUND", studentId: id }) };
+  if (!st) return { response: fail(req, env, "ไม่พบรหัสนักศึกษานี้ในรายชื่อ", 404, { code: "NOT_FOUND", studentId: id }) };
   return { id, check, st };
 }
 async function payload(env, { id, check, st }) {
@@ -81,7 +81,7 @@ async function payload(env, { id, check, st }) {
   const registered = !!st.department_code;
   return {
     ok: true, check: shapeCheck(check), registered,
-    blocked: check.require_registered && !registered ? "นักศึกษายังไม่ได้ลงทะเบียนเลือกฝ่าย" : null,
+    blocked: check.require_registered && !registered ? "นักศึกษายังไม่ได้เลือกฝ่าย" : null,
     student: { studentId: st.student_id, name: st.name, year: st.year, gender: st.gender, departmentCode: st.department_code, departmentName: st.department_name },
     aka: names && (names.aka || names.nickname) ? { nickname: names.nickname || "", aka: names.aka || "" } : null,
     result: result || null, history: hist.results || [], picture
@@ -118,8 +118,8 @@ async function record(req, env) {
   const note = clean(b?.note, 300), reference = clean(b?.reference, 60);
   if (b.result === "fail" && !note) return fail(req, env, "ระบุเหตุผลเมื่อบันทึกว่าไม่ผ่าน", 400, { code: "NOTE_REQUIRED" });
   const st = await env.DB.prepare(STUDENT_SQL).bind(id).first();
-  if (!st) return fail(req, env, "ไม่พบรหัสนักศึกษานี้ในฐานข้อมูลลงทะเบียน", 404, { code: "NOT_FOUND" });
-  if (check.require_registered && !st.department_code) return fail(req, env, "นักศึกษายังไม่ได้ลงทะเบียนเลือกฝ่าย จึงบันทึกผลการตรวจนี้ไม่ได้", 409, { code: "NOT_REGISTERED" });
+  if (!st) return fail(req, env, "ไม่พบรหัสนักศึกษานี้ในรายชื่อ", 404, { code: "NOT_FOUND" });
+  if (check.require_registered && !st.department_code) return fail(req, env, "นักศึกษายังไม่ได้เลือกฝ่าย จึงบันทึกผลการตรวจนี้ไม่ได้", 409, { code: "NOT_REGISTERED" });
   const overwrite = b?.overwrite === true;
   if (overwrite && !a.isAdmin) {   // officers may only correct what they recorded themselves
     const own = await env.DB.prepare(RESULT_SQL).bind(check.id, id).first();
@@ -257,7 +257,7 @@ export async function qrcheck(req, env, url) {
     return fail(req, env, "Not Found", 404);
   } catch (e) {
     console.error("[qrcheck] error:", e?.message || e);
-    if (/no such (table|column)/i.test(String(e?.message))) return fail(req, env, "ฐานข้อมูลยังไม่ได้ติดตั้ง migration ของระบบเช็ค QR", 503, { code: "MIGRATION_REQUIRED" });
-    return fail(req, env, "ระบบขัดข้อง กรุณาลองใหม่", 500);
+    if (/no such (table|column)/i.test(String(e?.message))) return fail(req, env, "ระบบเช็ค QR ยังไม่พร้อมใช้งาน กรุณาแจ้งผู้ดูแล", 503, { code: "MIGRATION_REQUIRED" });
+    return fail(req, env, "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง", 500);
   }
 }
