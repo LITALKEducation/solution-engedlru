@@ -266,3 +266,16 @@ body.gated .hrnav{display:none!important}
 .depts.heads .dept:first-child{grid-column:auto}
 /* iPad portrait: info cards need the full width for the 4 year columns */
 @media(min-width:760px) and (max-width:1099px){.depts:not(.heads){grid-template-columns:minmax(0,1fr)!important}.depts:not(.heads) .dept:first-child{grid-column:auto}}
+
+/* countdown + location rule (hero) */
+.cdbox{margin-top:16px;display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:#ffffff26;border:1px solid #ffffff40;border-radius:20px;padding:10px 16px}
+.cdbox.closing{background:#fef3c733}
+.cdl{font-weight:700;font-size:15px}
+.cdn{display:inline-flex;gap:6px}
+.cdn b{display:inline-flex;flex-direction:column;align-items:center;min-width:54px;background:#fff;color:var(--brand-d);border-radius:12px;padding:5px 8px;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
+.cdn small{font-size:10px;font-weight:700;color:var(--mute);margin-top:1px}
+.geobox{margin-top:12px;display:flex;gap:8px;align-items:flex-start;background:#ffffff1f;border-radius:16px;padding:9px 14px;font-size:14px;max-width:560px}
+.schedstate{background:var(--panel);border-radius:14px;padding:9px 12px;font-size:14px;color:var(--mute)}.schedstate.on{background:#dcfce7;color:#14532d}
+@media(max-width:480px){.cdn b{min-width:46px;font-size:20px}}
+.panel .chk{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}
+.panel .chk input[type=checkbox]{width:22px;height:22px;min-height:0;padding:0;accent-color:var(--brand);flex:none}

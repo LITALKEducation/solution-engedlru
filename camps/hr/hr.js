@@ -31,6 +31,7 @@ const STATE_TEXT = {
 const ADMIN_PAGES = [['overview', 'ภาพรวม', '/hr/overview'], ['quota', 'โควตา', '/hr/quota'], ['students', 'นักศึกษา', '/hr/students'], ['settings', 'ตั้งค่า', '/hr/settings']];
 
 let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null;
+let schedule = null, geo = { enabled: false }, srvOff = 0;   // automatic open/close schedule, location rule, server-clock offset (ms)
 const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(msg)), ms))]);
 
 // ---------- ui helpers ----------
@@ -280,8 +281,52 @@ async function loadDepartments() {
   try { r = await api('/camps/departments'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadDepartments()'); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { if (!deps.length) $('depts').innerHTML = failBox(await errMsg(r), 'loadDepartments()'); return; }
-  const d = await r.json(); deps = d.departments || []; state = d.registration || 'pending';
+  const d = await r.json(); deps = d.departments || []; state = d.registration || 'pending'; applyInfo(d);
   renderState(); renderDepts(); if (me) renderAcct();
+}
+// ---------- schedule countdown + location rule (student pages and the admin hero) ----------
+function applyInfo(d) {
+  if (d.schedule) schedule = d.schedule;
+  if (d.geo) geo = d.geo;
+  if (typeof d.now === 'number') srvOff = d.now - Date.now();
+  renderState(); renderCountdown(); renderGeoNote();
+}
+const pad2 = (n) => String(n).padStart(2, '0');
+let cdFired = 0;
+function renderCountdown() {
+  const host = document.querySelector('.hero-body'); if (!host) return;
+  let box = $('cdBox');
+  if (!box) { box = document.createElement('div'); box.id = 'cdBox'; box.className = 'cdbox hidden'; box.setAttribute('role', 'timer'); host.appendChild(box); }
+  const now = Date.now() + srvOff, s = schedule;
+  let target = null, label = '';
+  if (s && s.enabled) {
+    if (s.openAt != null && now < s.openAt) { target = s.openAt; label = 'เปิดลงทะเบียนในอีก'; }
+    else if (s.closeAt != null && now < s.closeAt) { target = s.closeAt; label = 'ปิดรับลงทะเบียนในอีก'; }
+  }
+  if (target == null) { box.classList.add('hidden'); return; }
+  const left = Math.max(0, Math.ceil((target - now) / 1000)), d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), sec = left % 60;
+  const cells = (d ? [[d, 'วัน']] : []).concat([[pad2(h), 'ชม.'], [pad2(m), 'นาที'], [pad2(sec), 'วินาที']]);
+  box.classList.remove('hidden'); box.classList.toggle('closing', label.startsWith('ปิด'));
+  const html = '<span class="cdl">' + label + '</span><span class="cdn">' + cells.map(([v, u]) => '<b>' + v + '<small>' + u + '</small></b>').join('') + '</span>';
+  if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
+  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700); }   // the clock hit zero: pick up the new state from the server
+}
+function refreshAfterCountdown() {
+  if (PAGE === 'student') { if (me) { loadDepartments(); loadMe(); } } else if (me && me.isAdmin) loadAdminPage();
+}
+setInterval(() => { if (schedule && schedule.enabled) renderCountdown(); }, 1000);
+function renderGeoNote() {
+  const host = document.querySelector('.hero-body'); if (!host || PAGE !== 'student') return;
+  let el = $('geoBox');
+  if (!geo.enabled) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'geoBox'; el.className = 'geobox'; host.appendChild(el); }
+  el.innerHTML = '<span aria-hidden="true">📍</span><span>ต้องอยู่ในรัศมี <b>' + esc(geo.radius) + ' เมตร</b>' + (geo.name ? ' จาก <b>' + esc(geo.name) + '</b>' : ' จากสถานที่ลงทะเบียน') + ' จึงจะลงทะเบียนได้ (เบราว์เซอร์จะขอใช้ตำแหน่งตอนกดลงทะเบียน)</span>';
+}
+function getPosition() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej({ code: 0 });
+    navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+  });
 }
 async function loadMe() {
   let r;
@@ -317,7 +362,18 @@ async function register() {
   const cur = me.selection && deps.find((x) => x.code === me.selection.department_code);
   const ok = await confirmDlg(cur ? 'เปลี่ยนฝ่าย?' : 'ยืนยันลงทะเบียน?', cur ? 'เปลี่ยนจาก ' + cur.name + ' เป็น ' + d.name + ' (ที่นั่งเดิมจะถูกคืน)' : 'ลงทะเบียน ' + d.name + ' (ชั้นปี ' + me.student.year + ' ' + GL[me.student.gender] + ') เปลี่ยนฝ่ายได้ตลอดช่วงที่เปิดลงทะเบียน', cur ? 'เปลี่ยนฝ่าย' : 'ลงทะเบียน');
   if (!ok) return;
-  const r = await post('/camps/select', { departmentCode: d.code });
+  const body = { departmentCode: d.code };
+  if (geo.enabled) {
+    toast('กำลังตรวจสอบตำแหน่งของคุณ…');
+    try { const p = await getPosition(); body.lat = p.coords.latitude; body.lng = p.coords.longitude; body.accuracy = p.coords.accuracy; }
+    catch (e) {
+      const msg = e && e.code === 1 ? 'เว็บยังไม่ได้รับอนุญาตให้ใช้ตำแหน่งของคุณ กรุณาเปิดการเข้าถึงตำแหน่ง (Location) สำหรับเว็บนี้ในการตั้งค่าเบราว์เซอร์หรือเครื่อง แล้วกดลงทะเบียนอีกครั้ง'
+        : e && e.code === 0 ? 'อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง'
+        : 'หาตำแหน่งของคุณไม่ได้ (สัญญาณ GPS อ่อนหรือหมดเวลา) ลองออกไปที่โล่งหรือเปิด GPS แล้วกดลงทะเบียนอีกครั้ง';
+      await infoDlg('ตรวจสอบตำแหน่งไม่ได้', msg, 'ตกลง'); return;
+    }
+  }
+  const r = await post('/camps/select', body);
   if (!r.ok) toast(await errMsg(r), true); else { toast('ลงทะเบียน' + d.name + 'เรียบร้อยแล้ว'); setPicked(null); }
   await Promise.all([loadDepartments(), loadMe()]);
 }
@@ -349,7 +405,7 @@ async function loadAdminPage() {
   let r;
   try { r = await api('/camps/admin/overview'); } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } body.innerHTML = failBox('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'loadAdminPage()'); return; }
   if (!r.ok) { body.innerHTML = failBox(await errMsg(r), 'loadAdminPage()'); return; }
-  adminData = await r.json();
+  adminData = await r.json(); state = adminData.registration; applyInfo(adminData);
   if (TAB === 'overview') renderOverview(); else if (TAB === 'quota') renderQuota(); else renderSettings();
 }
 const cell = (d, g, y) => { const q = d.quota[g][y], f = d.filled[g][y]; return '<div class="gc' + (q > 0 && f >= q ? ' full' : '') + '"><span>' + GL[g].replace('ชาย', 'ช').replace('หญิง', 'ญ') + '</span> ' + f + '/' + q + '</div>'; };
@@ -445,9 +501,75 @@ async function saveQuota(code) {
   } finally { if (btn) btn.disabled = false; }
 }
 function renderSettings() {
-  const s = adminData.registration;
+  const s = adminData.manual || adminData.registration, auto = adminData.schedule && adminData.schedule.enabled;
   const opts = [['pending', 'เร็วๆ นี้'], ['open', 'เปิดลงทะเบียน'], ['closed', 'ปิดลงทะเบียน']];
-  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p></div>' + depInfoPanel();
+  $('adminBody').innerHTML = '<div class="panel"><h3>สถานะการลงทะเบียน</h3><div class="seg">' + opts.map(([k, l]) => '<button class="' + (s === k ? 'on' : '') + '" onclick="setState(\'' + k + '\')">' + l + '</button>').join('') + '</div><p class="muted" style="margin-top:10px">เร็วๆ นี้ = แสดงป้ายยังไม่เปิด · เปิดลงทะเบียน = นักศึกษาลงทะเบียน/เปลี่ยนฝ่ายได้ · ปิดลงทะเบียน = ล็อกทั้งหมด (ผู้ดูแลยังล้างการลงทะเบียนรายคนได้)</p>' + (auto ? '<div class="warn" style="margin-top:10px">ตอนนี้ระบบเปิด-ปิดอัตโนมัติทำงานอยู่ ปุ่มด้านบนจึงยังไม่มีผลจนกว่าจะหยุดระบบอัตโนมัติ</div>' : '') + '</div>' + schedulePanel() + geoPanel() + depInfoPanel();
+  bindSettings();
+}
+// local <input type="datetime-local"> value <-> epoch ms
+const toLocalInput = (ms) => (ms == null ? '' : new Date(ms - new Date(ms).getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+const fromLocalInput = (v) => (v ? new Date(v).getTime() : null);
+const fmtWhen = (ms) => new Date(ms).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'medium' });
+function schedulePanel() {
+  const sc = adminData.schedule || {}, cd = sc.mode === 'countdown';
+  return '<div class="panel" id="schedPanel"><h3>เปิด-ปิดลงทะเบียนอัตโนมัติ</h3><p class="muted" style="margin-bottom:8px">เมื่อเปิดใช้ ระบบจะเปิดและปิดการลงทะเบียนตามเวลาเอง (ไม่ใช้สถานะที่กดเองด้านบน) นักศึกษาจะเห็นตัวนับถอยหลังบนหน้าเว็บ</p>'
+    + '<div class="schedstate" id="schedState"></div>'
+    + '<div class="seg" style="margin:10px 0"><button type="button" id="scModeDT" class="' + (cd ? '' : 'on') + '">กำหนดวันที่และเวลา</button><button type="button" id="scModeCD" class="' + (cd ? 'on' : '') + '">นับถอยหลัง</button></div>'
+    + '<div id="scDT" class="' + (cd ? 'hidden' : '') + '"><div class="form cols"><label>เปิดลงทะเบียนเมื่อ<input type="datetime-local" id="scOpen" value="' + toLocalInput(cd ? null : sc.openAt) + '"></label><label>ปิดลงทะเบียนเมื่อ<input type="datetime-local" id="scClose" value="' + toLocalInput(cd ? null : sc.closeAt) + '"></label></div><p class="muted">เว้นว่างเวลาเปิด = เปิดทันที · เว้นว่างเวลาปิด = ไม่ปิดอัตโนมัติ (ใช้เวลาตามเครื่องของคุณ)</p></div>'
+    + '<div id="scCD" class="' + (cd ? '' : 'hidden') + '"><div class="form cols"><label>เริ่มเปิดในอีก (ชั่วโมง)<input type="number" id="cdInH" min="0" max="2160" placeholder="0"></label><label>และ (นาที)<input type="number" id="cdInM" min="0" max="59" placeholder="0"></label><label>เปิดรับนาน (ชั่วโมง)<input type="number" id="cdForH" min="0" max="2160" placeholder="ว่าง = ไม่ปิด"></label><label>และ (นาที)<input type="number" id="cdForM" min="0" max="59" placeholder="0"></label></div><p class="muted">กด "เริ่มนับถอยหลัง" แล้วระบบจะคำนวณเวลาเปิด-ปิดจากตอนนี้ (0 ชั่วโมง 0 นาที = เปิดทันที) เมื่อครบเวลาจะเปลี่ยนสถานะเองแม้ปิดหน้านี้</p></div>'
+    + '<div class="qact"><button class="btn primary sm" type="button" id="scSave">' + (cd ? 'เริ่มนับถอยหลัง' : 'บันทึกและเปิดใช้') + '</button>' + (sc.enabled ? '<button class="btn sm" type="button" id="scStop">หยุดระบบอัตโนมัติ</button>' : '') + '</div></div>';
+}
+function geoPanel() {
+  const g = adminData.geo || {};
+  return '<div class="panel" id="geoPanel"><h3>ตรวจสอบตำแหน่งก่อนลงทะเบียน</h3><p class="muted" style="margin-bottom:8px">เมื่อเปิดใช้ นักศึกษาต้องอยู่ในรัศมีที่กำหนดจากจุดที่ตั้ง (ละติจูด / ลองจิจูด) จึงจะลงทะเบียนได้ ระบบเทียบตำแหน่งที่เบราว์เซอร์ส่งมา (ยอมให้ GPS คลาดเคลื่อนได้ไม่เกิน 50 เมตร) ข้อจำกัด: ตำแหน่งมาจากอุปกรณ์ของนักศึกษา จึงไม่ใช่การป้องกันที่เด็ดขาด</p>'
+    + '<label class="chk" style="margin:6px 0"><input type="checkbox" id="geoOn"' + (g.enabled ? ' checked' : '') + '> เปิดการตรวจสอบตำแหน่ง</label>'
+    + '<div class="form cols"><label>ชื่อสถานที่ (แสดงให้นักศึกษาเห็น)<input id="geoName" maxlength="120" value="' + esc(g.name || '') + '" placeholder="เช่น โรงเรียนบ้านตัวอย่าง"></label><label>ละติจูด<input type="number" id="geoLat" step="any" min="-90" max="90" value="' + (g.lat ?? '') + '" placeholder="16.700000"></label><label>ลองจิจูด<input type="number" id="geoLng" step="any" min="-180" max="180" value="' + (g.lng ?? '') + '" placeholder="101.250000"></label><label>รัศมี (เมตร)<input type="number" id="geoRad" min="10" max="100000" step="1" value="' + (g.radius ?? 200) + '"></label></div>'
+    + '<div class="qact"><button class="btn sm" type="button" id="geoHere">ใช้ตำแหน่งปัจจุบันของฉัน</button><a class="btn sm" id="geoMap" target="_blank" rel="noopener" href="#">เปิดดูใน Google Maps</a><button class="btn primary sm" type="button" id="geoSave">บันทึก</button></div></div>';
+}
+function bindSettings() {
+  const upd = () => {
+    const sc = adminData.schedule || {}, el = $('schedState'); if (!el) return;
+    const now = Date.now() + srvOff;
+    let t = 'ระบบอัตโนมัติ: ปิดใช้งาน';
+    if (sc.enabled) {
+      t = 'ระบบอัตโนมัติ: เปิดใช้งาน · ตอนนี้ ' + ({ pending: 'ยังไม่เปิด', open: 'เปิดลงทะเบียน', closed: 'ปิดลงทะเบียนแล้ว' }[adminData.registration] || '') + (sc.openAt != null ? ' · เปิด ' + fmtWhen(sc.openAt) : '') + (sc.closeAt != null ? ' · ปิด ' + fmtWhen(sc.closeAt) : '');
+    } else if (sc.openAt != null || sc.closeAt != null) t += ' (มีเวลาที่ตั้งไว้ครั้งก่อน)';
+    el.textContent = t; el.className = 'schedstate' + (sc.enabled ? ' on' : '');
+    const lat = $('geoLat') && Number($('geoLat').value), lng = $('geoLng') && Number($('geoLng').value), a = $('geoMap');
+    if (a) { const okc = $('geoLat').value !== '' && $('geoLng').value !== '' && Number.isFinite(lat) && Number.isFinite(lng); a.href = okc ? 'https://www.google.com/maps?q=' + lat + ',' + lng : '#'; a.style.opacity = okc ? '' : '.5'; }
+  };
+  upd(); ['geoLat', 'geoLng'].forEach((id) => $(id).addEventListener('input', upd));
+  const mode = (cd) => { $('scModeDT').classList.toggle('on', !cd); $('scModeCD').classList.toggle('on', cd); $('scDT').classList.toggle('hidden', cd); $('scCD').classList.toggle('hidden', !cd); $('scSave').textContent = cd ? 'เริ่มนับถอยหลัง' : 'บันทึกและเปิดใช้'; };
+  $('scModeDT').onclick = () => mode(false); $('scModeCD').onclick = () => mode(true);
+  const saveSched = async (payload, msg) => {
+    const r = await post('/camps/admin/schedule', payload);
+    if (!r.ok) return toast(await errMsg(r), true);
+    toast(msg); await loadAdminPage();
+  };
+  $('scSave').onclick = async () => {
+    const cd = $('scModeCD').classList.contains('on');
+    if (cd) {
+      const inSec = (Number($('cdInH').value) || 0) * 3600 + (Number($('cdInM').value) || 0) * 60;
+      const forRaw = $('cdForH').value !== '' || $('cdForM').value !== '', forSec = (Number($('cdForH').value) || 0) * 3600 + (Number($('cdForM').value) || 0) * 60;
+      if (forRaw && forSec < 10) return toast('ระยะเวลาที่เปิดรับต้องมากกว่า 10 วินาที', true);
+      return saveSched({ enabled: true, mode: 'countdown', startInSec: inSec, durationSec: forRaw ? forSec : null }, 'เริ่มนับถอยหลังแล้ว');
+    }
+    const openAt = fromLocalInput($('scOpen').value), closeAt = fromLocalInput($('scClose').value);
+    if (openAt == null && closeAt == null) return toast('กำหนดเวลาเปิดหรือเวลาปิดอย่างน้อยหนึ่งอย่าง', true);
+    return saveSched({ enabled: true, mode: 'datetime', openAt, closeAt }, 'บันทึกเวลาเปิด-ปิดแล้ว');
+  };
+  if ($('scStop')) $('scStop').onclick = async () => { if (await confirmDlg('หยุดระบบอัตโนมัติ?', 'สถานะจะกลับไปใช้ค่าที่กดเอง', 'หยุด')) saveSched({ enabled: false, mode: (adminData.schedule || {}).mode }, 'หยุดระบบอัตโนมัติแล้ว'); };
+  $('geoHere').onclick = async () => {
+    try { const p = await getPosition(); $('geoLat').value = p.coords.latitude.toFixed(6); $('geoLng').value = p.coords.longitude.toFixed(6); upd(); toast('ใช้ตำแหน่งปัจจุบัน (ความแม่นยำ ±' + Math.round(p.coords.accuracy) + ' ม.)'); }
+    catch (e) { toast(e && e.code === 1 ? 'ไม่ได้อนุญาตให้ใช้ตำแหน่ง' : 'หาตำแหน่งไม่ได้', true); }
+  };
+  $('geoSave').onclick = async () => {
+    const on = $('geoOn').checked, lat = $('geoLat').value, lng = $('geoLng').value;
+    if (on && (lat === '' || lng === '')) return toast('ต้องใส่ละติจูดและลองจิจูด', true);
+    const r = await post('/camps/admin/geo', { enabled: on, name: $('geoName').value, lat: lat === '' ? null : Number(lat), lng: lng === '' ? null : Number(lng), radius: Number($('geoRad').value) });
+    if (!r.ok) return toast(await errMsg(r), true);
+    toast(on ? 'เปิดการตรวจสอบตำแหน่งแล้ว' : 'บันทึกแล้ว (ปิดการตรวจสอบตำแหน่ง)'); await loadAdminPage();
+  };
 }
 function depInfoPanel() {
   return '<div class="panel"><h3>หัวหน้าฝ่ายและหน้าที่ของแต่ละฝ่าย</h3><p class="muted" style="margin-bottom:6px">แสดงให้นักศึกษาเห็นในหน้าเลือกฝ่าย (ตัวอย่างก่อนลงทะเบียน)</p>' + adminData.departments.map((d) => {
@@ -497,12 +619,12 @@ async function saveDepInfo(code) {
   toast('บันทึกข้อมูลฝ่ายแล้ว');
 }
 async function setState(k) {
-  if (k === adminData.registration) return;
+  if (k === (adminData.manual || adminData.registration)) return;
   if (k === 'open' && !(await confirmDlg('เปิดลงทะเบียน?', 'นักศึกษาในรายชื่อจะเริ่มลงทะเบียนได้ทันที ตรวจสอบรายชื่อและโควตาให้เรียบร้อยก่อน', 'เปิดลงทะเบียน'))) return;
   if (k === 'closed' && !(await confirmDlg('ปิดลงทะเบียน?', 'นักศึกษาจะลงทะเบียนหรือเปลี่ยนฝ่ายไม่ได้อีก', 'ปิดลงทะเบียน'))) return;
   const r = await post('/camps/admin/state', { registration: k });
   if (!r.ok) return toast(await errMsg(r), true);
-  toast('อัปเดตสถานะแล้ว'); state = k; renderState(); loadAdminPage();
+  toast('อัปเดตสถานะแล้ว'); loadAdminPage();
 }
 
 // students: add / edit, CSV import, list

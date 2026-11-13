@@ -89,10 +89,41 @@ const upsertSelectionStmt = (env, id, code, year, gender) => env.DB.prepare(
   `INSERT INTO camp_selections (student_id,department_code,year,gender,selected_at) VALUES (?,?,?,?,datetime('now'))
    ON CONFLICT(student_id) DO UPDATE SET department_code=excluded.department_code,year=excluded.year,gender=excluded.gender,selected_at=excluded.selected_at`).bind(id, code, year, gender);
 
-async function registrationState(env) {
-  const r = await env.DB.prepare("SELECT value FROM camp_settings WHERE key='registration_state'").first();
-  return STATES.includes(r?.value) ? r.value : "pending";
+// ---------- settings: manual state, automatic schedule / countdown, location check ----------
+// All stored in camp_settings (key/value), no migration needed:
+//   registration_state                      manual: pending | open | closed
+//   schedule_enabled (1/0), schedule_mode (datetime|countdown), open_at, close_at   (epoch milliseconds, "" = none)
+//   geo_enabled (1/0), geo_name, geo_lat, geo_lng, geo_radius (metres)
+const num = (v) => { const n = Number(v); return v !== "" && v != null && Number.isFinite(n) ? n : null; };
+async function loadSettings(env) {
+  const rows = (await env.DB.prepare("SELECT key,value FROM camp_settings").all()).results || [];
+  const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const manual = STATES.includes(m.registration_state) ? m.registration_state : "pending";
+  const schedule = { enabled: m.schedule_enabled === "1", mode: m.schedule_mode === "countdown" ? "countdown" : "datetime", openAt: num(m.open_at), closeAt: num(m.close_at) };
+  const geo = { enabled: m.geo_enabled === "1", name: m.geo_name || "", lat: num(m.geo_lat), lng: num(m.geo_lng), radius: num(m.geo_radius) ?? 200 };
+  return { manual, schedule, geo };
 }
+// with the schedule on, the state follows the clock (manual state ignored); a schedule with no times behaves like it is off
+export function effectiveState(st, now = Date.now()) {
+  const s = st.schedule;
+  if (!s.enabled || (s.openAt == null && s.closeAt == null)) return st.manual;
+  if (s.openAt != null && now < s.openAt) return "pending";
+  if (s.closeAt != null && now >= s.closeAt) return "closed";
+  return "open";
+}
+async function registrationState(env) { return effectiveState(await loadSettings(env)); }
+// what clients need: effective state + the schedule (for the countdown) + the public part of the location rule (no coordinates)
+async function registrationInfo(env) {
+  const st = await loadSettings(env), now = Date.now();
+  return { registration: effectiveState(st, now), schedule: st.schedule, geo: { enabled: st.geo.enabled, name: st.geo.name, radius: st.geo.radius }, now };
+}
+// great-circle distance in metres
+export function distanceMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371008.8, rad = Math.PI / 180, dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+const setSetting = (env, key, value) => env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? ""));
 
 async function audit(env, w, action, entityId, metadata = {}) {
   await env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
@@ -133,7 +164,8 @@ async function requireAdmin(request, env) {
 
 // ---------- public ----------
 async function status(request, env) {
-  return json(request, env, { registration: await registrationState(env) });
+  const i = await registrationInfo(env);
+  return json(request, env, { registration: i.registration, schedule: i.schedule, now: i.now });
 }
 
 const grid = () => ({ M: { 1: 0, 2: 0, 3: 0, 4: 0 }, F: { 1: 0, 2: 0, 3: 0, 4: 0 } });
@@ -191,8 +223,8 @@ async function departmentsWithSlots(env) {
 }
 async function departments(request, env) {
   const w = await who(request, env); if (w.response) return w.response;   // sign-in required to see anything
-  const [list, reg] = await Promise.all([departmentsWithSlots(env), registrationState(env)]);
-  return json(request, env, { registration: reg, departments: list });
+  const [list, info] = await Promise.all([departmentsWithSlots(env), registrationInfo(env)]);
+  return json(request, env, { ...info, departments: list });
 }
 
 // ---------- student ----------
@@ -234,6 +266,16 @@ async function select(request, env) {
   const code = clean(b?.departmentCode, 40);
   const dep = await env.DB.prepare("SELECT code,name FROM camp_departments WHERE code=?").bind(code).first();
   if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
+  // location rule: the browser's position must be inside the circle (radius in metres) around the configured place
+  const { geo } = await loadSettings(env);
+  let where = null;
+  if (geo.enabled && geo.lat != null && geo.lng != null) {
+    const lat = num(b?.lat), lng = num(b?.lng), acc = Math.max(0, num(b?.accuracy) ?? 0);
+    if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail(request, env, "ต้องอนุญาตให้เว็บใช้ตำแหน่งของคุณก่อนลงทะเบียน", 400, { code: "LOCATION_REQUIRED" });
+    const dist = distanceMeters(lat, lng, geo.lat, geo.lng), slack = Math.min(acc, 50);   // allow up to 50 m of GPS inaccuracy
+    where = { distance: Math.round(dist), accuracy: Math.round(acc) };
+    if (dist > geo.radius + slack) return fail(request, env, `คุณอยู่นอกพื้นที่ลงทะเบียน${geo.name ? ` (${geo.name})` : ""} — ห่าง ${Math.round(dist)} เมตร ต้องอยู่ในรัศมี ${geo.radius} เมตร`, 403, { code: "OUT_OF_RANGE", distance: Math.round(dist), radius: geo.radius });
+  }
   const cur = await env.DB.prepare("SELECT department_code FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
   if (cur?.department_code === code) return json(request, env, { ok: true, unchanged: true });
   // One atomic statement: insert/switch only while the department still has a free slot for this year and gender.
@@ -245,7 +287,7 @@ async function select(request, env) {
      ON CONFLICT(student_id) DO UPDATE SET department_code=excluded.department_code,year=excluded.year,gender=excluded.gender,selected_at=excluded.selected_at`
   ).bind(student.student_id, code, student.year, student.gender, code, student.year, student.gender, code, student.year, student.gender).run();
   if (!res?.meta?.changes) return fail(request, env, `${dep.name} เต็มแล้วสำหรับ${GL[student.gender]}ชั้นปี ${student.year}`, 409, { code: "FULL" });
-  await audit(env, w, "CAMP_SELECT", student.student_id, { department: code, year: student.year, gender: student.gender, from: cur?.department_code || null });
+  await audit(env, w, "CAMP_SELECT", student.student_id, { department: code, year: student.year, gender: student.gender, from: cur?.department_code || null, ...(where ? { distance: where.distance, accuracy: where.accuracy } : {}) });
   return json(request, env, { ok: true });
 }
 
@@ -261,14 +303,15 @@ async function unselect(request, env) {
 // ---------- admin ----------
 async function adminOverview(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
-  const [deps, reg, byYear, selected] = await Promise.all([
-    departmentsWithSlots(env), registrationState(env),
+  const [deps, st, byYear, selected] = await Promise.all([
+    departmentsWithSlots(env), loadSettings(env),
     env.DB.prepare("SELECT gender,year,COUNT(*) c FROM camp_students GROUP BY gender,year").all(),
     env.DB.prepare("SELECT COUNT(*) c FROM camp_selections").first()
   ]);
   const students = grid();
   for (const r of byYear.results || []) if (students[r.gender]) students[r.gender][r.year] = r.c;
-  return json(request, env, { registration: reg, departments: deps, students, selectedTotal: selected?.c || 0 });
+  const now = Date.now();
+  return json(request, env, { registration: effectiveState(st, now), manual: st.manual, schedule: st.schedule, geo: st.geo, now, departments: deps, students, selectedTotal: selected?.c || 0 });
 }
 
 async function adminSetState(request, env) {
@@ -277,6 +320,46 @@ async function adminSetState(request, env) {
   if (!STATES.includes(b?.registration)) return fail(request, env, "สถานะไม่ถูกต้อง");
   await env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES ('registration_state',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(b.registration).run();
   await audit(env, a, "CAMP_STATE", null, { registration: b.registration });
+  return json(request, env, { ok: true });
+}
+
+// automatic open/close. mode "datetime": { openAt, closeAt } (epoch ms, either may be null);
+// mode "countdown": { startInSec, durationSec } turned into absolute times *now*, so it keeps running without the admin's browser
+async function adminSetSchedule(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null), now = Date.now(), YEAR = 366 * 86400 * 1000;
+  const enabled = b?.enabled === true, mode = b?.mode === "countdown" ? "countdown" : "datetime";
+  const cur = await loadSettings(env);
+  let openAt = cur.schedule.openAt, closeAt = cur.schedule.closeAt;
+  if (enabled || b?.openAt !== undefined || b?.startInSec !== undefined) {
+    if (mode === "countdown") {
+      const startIn = Number(b?.startInSec ?? 0), dur = b?.durationSec == null || b.durationSec === "" ? null : Number(b.durationSec);
+      if (!Number.isFinite(startIn) || startIn < 0 || startIn > 90 * 86400) return fail(request, env, "เวลาเริ่มนับถอยหลังต้องอยู่ระหว่าง 0 วินาที ถึง 90 วัน");
+      if (dur != null && (!Number.isFinite(dur) || dur < 10 || dur > 90 * 86400)) return fail(request, env, "ระยะเวลาที่เปิดรับต้องอยู่ระหว่าง 10 วินาที ถึง 90 วัน");
+      openAt = now + Math.round(startIn) * 1000; closeAt = dur == null ? null : openAt + Math.round(dur) * 1000;
+    } else {
+      openAt = b?.openAt == null || b.openAt === "" ? null : Number(b.openAt); closeAt = b?.closeAt == null || b.closeAt === "" ? null : Number(b.closeAt);
+      for (const t of [openAt, closeAt]) if (t != null && (!Number.isFinite(t) || t < now - YEAR || t > now + 5 * YEAR)) return fail(request, env, "วันที่หรือเวลาไม่ถูกต้อง");
+      if (openAt != null && closeAt != null && closeAt <= openAt) return fail(request, env, "เวลาปิดต้องอยู่หลังเวลาเปิด");
+    }
+    if (enabled && openAt == null && closeAt == null) return fail(request, env, "ต้องกำหนดเวลาเปิดหรือเวลาปิดอย่างน้อยหนึ่งอย่าง");
+  }
+  await env.DB.batch([setSetting(env, "schedule_enabled", enabled ? "1" : "0"), setSetting(env, "schedule_mode", mode), setSetting(env, "open_at", openAt ?? ""), setSetting(env, "close_at", closeAt ?? "")]);
+  await audit(env, a, "CAMP_SCHEDULE", null, { enabled, mode, openAt, closeAt });
+  return json(request, env, { ok: true, schedule: { enabled, mode, openAt, closeAt }, now });
+}
+
+// location check: { enabled, name, lat, lng, radius (metres) }
+async function adminSetGeo(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null);
+  const enabled = b?.enabled === true, lat = num(b?.lat), lng = num(b?.lng), radius = Math.round(num(b?.radius) ?? 200), name = clean(b?.name, 120);
+  if (enabled || lat != null || lng != null) {
+    if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail(request, env, "ละติจูดต้องอยู่ระหว่าง -90 ถึง 90 และลองจิจูดระหว่าง -180 ถึง 180");
+  }
+  if (!Number.isInteger(radius) || radius < 10 || radius > 100000) return fail(request, env, "รัศมีต้องเป็นเมตร ระหว่าง 10 ถึง 100,000");
+  await env.DB.batch([setSetting(env, "geo_enabled", enabled ? "1" : "0"), setSetting(env, "geo_name", name), setSetting(env, "geo_lat", lat ?? ""), setSetting(env, "geo_lng", lng ?? ""), setSetting(env, "geo_radius", radius)]);
+  await audit(env, a, "CAMP_GEO", null, { enabled, name, lat, lng, radius });
   return json(request, env, { ok: true });
 }
 
@@ -484,6 +567,8 @@ export async function camps(request, env, url) {
     if (m === "POST" && p === "/camps/select") return await select(request, env);
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
+    if (m === "POST" && p === "/camps/admin/schedule") return await adminSetSchedule(request, env);
+    if (m === "POST" && p === "/camps/admin/geo") return await adminSetGeo(request, env);
     if (m === "POST" && p === "/camps/admin/state") return await adminSetState(request, env);
     if (m === "POST" && p === "/camps/admin/department/photo") return await adminSetPhoto(request, env, url);
     if (m === "POST" && p === "/camps/admin/department/photo/delete") return await adminDeletePhoto(request, env);
