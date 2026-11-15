@@ -37,12 +37,31 @@ const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setT
 // ---------- ui helpers ----------
 let toastT;
 function toast(msg, err) { const t = $('toast'); t.textContent = msg; t.className = (err ? 'err ' : '') + 'show'; clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3400); }
+// dialogs: named, focus moves in and stays in, Esc closes, focus goes back to where it was
+let dlgN = 0;
+function dlgA11y(d) {
+  const prev = document.activeElement, box = d.querySelector('[role=dialog]'); if (!box) return;
+  box.setAttribute('tabindex', '-1');
+  const h = box.querySelector('h3,h2'); if (h) { h.id = h.id || ('dlgT' + (++dlgN)); box.setAttribute('aria-labelledby', h.id); }
+  const items = () => [...box.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter((e) => !e.disabled && e.offsetParent !== null);
+  (box.querySelector('[data-r="1"],[data-pick],.btn.primary') || items()[0] || box).focus();
+  d.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { const c = box.querySelector('[data-r="0"],[data-x]'); if (c) { e.preventDefault(); c.click(); } return; }
+    if (e.key !== 'Tab') return;
+    const f = items(); if (!f.length) { e.preventDefault(); return; }
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === box)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+  const mo = new MutationObserver(() => { if (!document.body.contains(d)) { mo.disconnect(); try { if (prev && prev.focus) prev.focus(); } catch (x) { /* ignore */ } } });
+  mo.observe(document.body, { childList: true });
+}
 function confirmDlg(title, text, okLabel, cancelLabel) {
   return new Promise((resolve) => {
     const d = document.createElement('div'); d.className = 'dlg';
     d.innerHTML = '<div class="box" role="dialog" aria-modal="true"><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p><div class="btns"><button class="btn" data-r="0">' + esc(cancelLabel || 'ยกเลิก') + '</button><button class="btn primary" data-r="1">' + esc(okLabel || 'ยืนยัน') + '</button></div></div>';
     d.addEventListener('click', (e) => { const r = e.target.closest('[data-r]'); if (r || e.target === d) { d.remove(); resolve(!!r && r.dataset.r === '1'); } });
-    document.body.appendChild(d); d.querySelector('[data-r="1"]').focus();
+    document.body.appendChild(d); dlgA11y(d);
   });
 }
 const infoDlg = (title, text, okLabel) => confirmDlg(title, text, okLabel, 'ปิด');
@@ -50,7 +69,7 @@ function openDlg(html) {
   const d = document.createElement('div'); d.className = 'dlg';
   d.innerHTML = '<div class="box wide" role="dialog" aria-modal="true">' + html + '</div>';
   d.addEventListener('mousedown', (e) => { if (e.target === d) d.remove(); });
-  document.body.appendChild(d); return d;
+  document.body.appendChild(d); dlgA11y(d); return d;
 }
 const failBox = (msg, retry) => '<div class="failbox"><b>โหลดข้อมูลไม่สำเร็จ</b><p>' + esc(msg) + '</p><button class="btn primary sm" onclick="' + retry + '">ลองใหม่</button></div>';
 async function errMsg(r) { try { const d = await r.json(); return d.error || ('เกิดข้อผิดพลาด (' + r.status + ')'); } catch (e) { return 'เกิดข้อผิดพลาด (' + r.status + ')'; } }
@@ -185,10 +204,13 @@ function yrsHtml(d) {
     return '<div class="gr ' + st.c + (y === my && g === mg ? ' me' : '') + '"><span class="gn">' + GL[g] + '</span><b>' + (q ? f + '/' + q : '–') + '</b><span class="st ' + st.c + '" title="' + esc(st.note) + '">' + st.t + (st.c === 'off' && st.note !== 'ปิดลงทะเบียน' ? ' · ' + (q ? 'เต็ม' : 'ไม่รับ') : '') + '</span></div>';
   }).join('') + '</div>').join('');
 }
+const mySlot = (d) => { const y = myYear(), g = myGender(); return y && g ? slot(d.quota[g][y], d.filled[g][y]) : null; };
 function deptCard(d) {
-  const reg = myDept() === d.code, pk = picked === d.code;
+  const reg = myDept() === d.code, pk = picked === d.code, st = mySlot(d), h = d.head || {};
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
-  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}"><div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p><div class="hd">' + avatar(d, 'md') + '<span>หัวหน้าฝ่าย<br><b>' + (headOf(d) ? esc(headOf(d)) : 'ยังไม่ประกาศ') + '</b>' + (d.head && d.head.contact ? '<small>ติดต่อ: ' + esc(d.head.contact) + '</small>' : '') + '</span></div></div>' + tag + '</div><div class="yrs">' + yrsHtml(d) + '</div><div class="more">ดูรายละเอียด ›</div></div>';
+  return '<div class="dept pickable ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="ดูรายละเอียด ' + esc(d.name) + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}">'
+    + '<div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p></div>' + tag + '</div>'
+    + '<div class="dfoot"><span class="hd">หัวหน้าฝ่าย <b>' + (h.name ? esc(h.name) : 'ยังไม่ประกาศ') + '</b></span>' + (st ? '<span class="st ' + st.c + '">' + esc(st.note) + '</span>' : '<span class="more">ดูรายละเอียด ›</span>') + '</div></div>';
 }
 // /hr/select: one dropdown + register button (no browsing)
 function renderSelect() {
@@ -211,7 +233,7 @@ function renderSelect() {
 function headCard(d) {
   const reg = myDept() === d.code, pk = picked === d.code, h = d.head || {};
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
-  return '<div class="dept pickable headcard ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="' + esc(d.name) + ' หัวหน้าฝ่าย ' + esc(h.name || 'ยังไม่ประกาศ') + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}">' + tag + avatar(d, 'xl') + '<div class="hn"><span class="dn">' + esc(d.name) + '</span><span class="hl">หัวหน้าฝ่าย</span><b>' + (h.name ? esc(h.name) : 'ยังไม่ประกาศ') + '</b>' + (h.contact ? '<small>ติดต่อ: ' + esc(h.contact) + '</small>' : '') + '</div><div class="more">' + (reg ? 'ดูรายละเอียด ›' : 'ดูรายละเอียดและเลือกฝ่าย ›') + '</div></div>';
+  return '<div class="dept pickable headcard ' + (TONE[d.code] || '') + (reg ? ' mine' : '') + (pk ? ' picked' : '') + '" role="button" tabindex="0" aria-label="' + esc(d.name) + ' หัวหน้าฝ่าย ' + esc(h.name || 'ยังไม่ประกาศ') + '" onclick="preview(\'' + d.code + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();preview(\'' + d.code + '\')}">' + tag + avatar(d, 'xl') + '<div class="hn"><span class="dn">' + esc(d.name) + '</span><span class="hl">หัวหน้าฝ่าย</span><b>' + (h.name ? esc(h.name) : 'ยังไม่ประกาศ') + '</b>' + '</div><div class="more">' + (reg ? 'ดูรายละเอียด ›' : 'เลือกฝ่ายนี้ ›') + '</div></div>';
 }
 // preview first: tap a department card -> details, head and slots; switch between departments with the chips; then "เลือกฝ่ายนี้"
 let pvDlg = null;
@@ -230,8 +252,9 @@ function preview(code) {
       + '<div class="pvhead ' + (TONE[d.code] || '') + '"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div><h3>' + esc(d.name) + '</h3>' + (reg ? '<span class="tag ok">✓ คุณลงทะเบียนฝ่ายนี้แล้ว</span>' : '') + '</div></div>'
       + '<div class="pvsec"><b>หน้าที่ของฝ่าย</b><p>' + esc(d.description) + '</p></div>'
       + '<div class="pvsec"><b>หัวหน้าฝ่าย</b>' + '<div class="pvperson">' + avatar(d, 'lg') + '<div>' + (head.name ? '<p class="pvhd">' + esc(head.name) + '</p>' + (head.contact ? '<p class="muted">ติดต่อ: ' + esc(head.contact) + '</p>' : '') : '<p class="muted">ยังไม่ประกาศ</p>') + '</div></div></div>'
-      + '<div class="pvsec"><b>จำนวนที่รับ / ลงทะเบียนแล้ว</b><div class="yrs">' + yrsHtml(d) + '</div>' + (st ? '<p class="muted" style="margin-top:8px">ชั้นปี ' + y + ' ' + GL[g] + ' ของคุณ: ' + esc(st.note) + '</p>' : '') + '</div>'
+      + '<div class="pvsec"><b>ที่ว่าง</b>' + (st ? '<p class="pvslot ' + st.c + '">ชั้นปี ' + y + ' ' + GL[g] + ' ของคุณ: <b>' + esc(st.note) + '</b></p>' : '') + '<details class="pvall"><summary>ดูทุกชั้นปี</summary><div class="yrs">' + yrsHtml(d) + '</div></details></div>'
       + '<div class="btns"><button class="btn" data-x>ปิด</button>' + (reg ? '' : '<button class="btn primary" data-pick="' + d.code + '">' + (!CHOOSE ? 'ไปเลือกฝ่ายนี้ ›' : picked === d.code ? '✓ เลือกฝ่ายนี้อยู่' : 'เลือกฝ่ายนี้') + '</button>') + '</div>';
+    { const t = $('pvBody').querySelector('.pvhead h3'); if (t) { t.id = 'pvTitle'; const bx = pvDlg.querySelector('[role=dialog]'); bx.setAttribute('aria-labelledby', 'pvTitle'); if (!bx.contains(document.activeElement) || document.activeElement === bx) { const f = $('pvBody').querySelector('[data-pick],[data-x]'); if (f) f.focus(); } } }
     const act = $('pvBody').querySelector('.pvchips .on'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center' });
   };
   pvDlg.addEventListener('click', (e) => {
@@ -244,12 +267,12 @@ function preview(code) {
   draw(code);
 }
 function renderSummary() {
-  if (!deps.length || !$('sumBox')) return;
-  const my = myYear(), mg = myGender();
-  $('sumBox').innerHTML = '<h2>ภาพรวมการลงทะเบียน</h2><div class="sumgrid">' + YEARS.map((y) => '<div class="sy' + (y === my ? ' mine' : '') + '"><div class="sh"><b>ปี ' + y + (y === my ? ' (คุณ)' : '') + '</b></div>' + GENDERS.map((g) => {
-    const q = deps.reduce((a, d) => a + d.quota[g][y], 0), f = deps.reduce((a, d) => a + d.filled[g][y], 0), st = slot(q, f), pct = q ? Math.min(100, Math.round(f / q * 100)) : 0;
-    return '<div class="sg' + (y === my && g === mg ? ' me' : '') + '"><div class="sl"><span>' + GL[g] + ' <b>' + f + '</b><small>/' + q + '</small></span><span class="st ' + st.c + '">' + st.t + '</span></div><div class="prog"><i style="width:' + pct + '%"></i></div></div>';
-  }).join('') + '</div>').join('') + '</div>';
+  const box = $('sumBox'); if (!deps.length || !box) return;
+  const y = myYear(), g = myGender();
+  if (!y || !g) { box.classList.add('hidden'); return; }   // admins without a student record: nothing personal to show
+  box.classList.remove('hidden');
+  const q = deps.reduce((a, d) => a + d.quota[g][y], 0), f = deps.reduce((a, d) => a + d.filled[g][y], 0), left = Math.max(0, q - f), pct = q ? Math.min(100, Math.round(f / q * 100)) : 0;
+  box.innerHTML = '<h2>ที่ว่างของคุณ</h2><p class="sumline">ชั้นปี ' + y + ' · ' + GL[g] + '</p><div class="bigleft"><b>' + left + '</b><span>ที่ว่างทั้งค่าย จากทั้งหมด ' + q + ' ที่</span></div><div class="prog" aria-hidden="true"><i style="width:' + pct + '%"></i></div>';
 }
 function renderDepts() { if (!$('depts')) return; if (SELECT) { renderSelect(); renderSummary(); return; } $('depts').innerHTML = deps.map(CHOOSE ? headCard : deptCard).join(''); renderSummary(); renderBar(); }
 function pick(code) { setPicked(picked === code ? null : code); renderDepts(); }
@@ -309,7 +332,7 @@ function renderCountdown() {
   box.classList.remove('hidden'); box.classList.toggle('closing', label.startsWith('ปิด'));
   const html = '<span class="cdl">' + label + '</span><span class="cdn">' + cells.map(([v, u]) => '<b>' + v + '<small>' + u + '</small></b>').join('') + '</span>';
   if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
-  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700); }   // the clock hit zero: pick up the new state from the server
+  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700 + jitter(2500)); }   // the clock hit zero: pick up the new state from the server
 }
 function refreshAfterCountdown() {
   if (PAGE === 'student') { if (me) { loadDepartments(); loadMe(); } } else if (me && me.isAdmin) loadAdminPage();
@@ -330,11 +353,12 @@ function getPosition() {
 }
 async function loadMe() {
   let r;
-  try { r = await api('/camps/me'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); renderGate({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); return; }
+  try { r = await api(PAGE === 'student' ? '/camps/me' : '/camps/me?admin=1'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); renderGate({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
+  if ((r.status === 429 || r.status >= 500) && (loadMe.tries = (loadMe.tries || 0) + 1) <= 4) { setTimeout(loadMe, 1500 * loadMe.tries + jitter(2000)); return; }   // busy right now: try again by itself
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
-  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderNav();
-  if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); } else { renderDepts(); renderAdmin(); }
+  loadMe.tries = 0; const wasAdmin = !!(me && me.isAdmin); me = await r.json(); if (me.adminDeferred && wasAdmin) me.isAdmin = true; state = me.registration || state; renderState(); renderAcct(); renderNav();
+  if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); checkAdminLater(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
 }
 // student pages show nothing until the visitor has signed in with Google
@@ -348,7 +372,11 @@ function renderGate(x) {
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
-function startPolling() { if (polling) return; polling = true; setInterval(() => { if (!document.hidden && me) loadDepartments(); }, 30000); }
+const jitter = (ms) => Math.round(Math.random() * ms);
+// poll only while registration is open, every 45-60 s per person (not all at once)
+function startPolling() { if (polling) return; polling = true; const tick = () => { if (!document.hidden && me && state === 'open') loadDepartments(); setTimeout(tick, 45000 + jitter(15000)); }; setTimeout(tick, 45000 + jitter(15000)); }
+// students: check the admin role a few seconds later, spread out, so the first screen never waits for it
+function checkAdminLater() { if (!me || !me.adminDeferred) return; setTimeout(async () => { try { const r = await api('/camps/me?admin=1'); if (r.ok) { const j = await r.json(); if (j.isAdmin) { me.isAdmin = true; renderNav(); renderAcct(); } } } catch (e) {} }, 3000 + jitter(9000)); }
 async function register() {
   const d = deps.find((x) => x.code === picked); if (!d) return;
   if (!authReady) return toast('เข้าสู่ระบบไม่ได้ในตอนนี้ ลองรีเฟรชหน้า', true);
@@ -396,7 +424,7 @@ function renderAdmin(x) {
   if (x && x.error) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button></div>'; return; }
   if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบ</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลที่มีสิทธิ์แอดมิน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '</div>'; return; }
   if (!me.isAdmin) { box.innerHTML = NO_PERM(me); return; }
-  box.innerHTML = '<div id="adminBody"><div class="skeleton"></div></div>';
+  box.innerHTML = '<h2 class="sr">เมนูแอดมิน</h2><div id="adminBody"><div class="skeleton"></div></div>';
   loadAdminPage();
 }
 async function loadAdminPage() {
@@ -412,8 +440,8 @@ const cell = (d, g, y) => { const q = d.quota[g][y], f = d.filled[g][y]; return 
 function renderOverview() {
   const a = adminData, sumG = (g) => YEARS.reduce((s, y) => s + (a.students[g][y] || 0), 0), total = sumG('M') + sumG('F');
   const rows = a.departments.map((d) => '<tr><td><b>' + esc(d.name) + '</b></td>' + YEARS.map((y) => '<td>' + GENDERS.map((g) => cell(d, g, y)).join('') + '</td>').join('') + '<td>' + GENDERS.map((g) => { const q = YEARS.reduce((s, y) => s + d.quota[g][y], 0), f = YEARS.reduce((s, y) => s + d.filled[g][y], 0); return '<div class="gc"><span>' + (g === 'M' ? 'ช' : 'ญ') + '</span> ' + f + '/' + q + '</div>'; }).join('') + '</td></tr>').join('');
-  $('adminBody').innerHTML = '<div class="panel"><h3>ลงทะเบียนแล้ว / โควตา (ช = ชาย · ญ = หญิง)</h3><div class="tbl-wrap"><table><thead><tr><th>ฝ่าย</th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
-    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap"><table><thead><tr><th></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportXlsx()">ดาวน์โหลด Excel (รายชื่อ + ฝ่าย)</button> <button class="btn sm" onclick="exportCsv()">CSV</button></div></div>'
+  $('adminBody').innerHTML = '<div class="panel"><h3>ลงทะเบียนแล้ว / โควตา (ช = ชาย · ญ = หญิง)</h3><div class="tbl-wrap" tabindex="0" role="region" aria-label="ตารางลงทะเบียนแล้วต่อโควตา"><table><thead><tr><th>ฝ่าย</th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
+    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap" tabindex="0" role="region" aria-label="ตารางจำนวนนักศึกษาในรายชื่อ"><table><thead><tr><th><span class="sr">เพศ</span></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportXlsx()">ดาวน์โหลด Excel (รายชื่อ + ฝ่าย)</button> <button class="btn sm" onclick="exportCsv()">CSV</button></div></div>'
     + '<div class="panel" id="regList"><h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="skeleton"></div></div>';
   loadRegList();
 }
@@ -536,7 +564,7 @@ function bindSettings() {
     } else if (sc.openAt != null || sc.closeAt != null) t += ' (มีเวลาที่ตั้งไว้ครั้งก่อน)';
     el.textContent = t; el.className = 'schedstate' + (sc.enabled ? ' on' : '');
     const lat = $('geoLat') && Number($('geoLat').value), lng = $('geoLng') && Number($('geoLng').value), a = $('geoMap');
-    if (a) { const okc = $('geoLat').value !== '' && $('geoLng').value !== '' && Number.isFinite(lat) && Number.isFinite(lng); a.href = okc ? 'https://www.google.com/maps?q=' + lat + ',' + lng : '#'; a.style.opacity = okc ? '' : '.5'; }
+    if (a) { const okc = $('geoLat').value !== '' && $('geoLng').value !== '' && Number.isFinite(lat) && Number.isFinite(lng); a.href = okc ? 'https://www.google.com/maps?q=' + lat + ',' + lng : '#'; a.classList.toggle('off', !okc); a.setAttribute('aria-disabled', okc ? 'false' : 'true'); }
   };
   upd(); ['geoLat', 'geoLng'].forEach((id) => $(id).addEventListener('input', upd));
   const mode = (cd) => { $('scModeDT').classList.toggle('on', !cd); $('scModeCD').classList.toggle('on', cd); $('scDT').classList.toggle('hidden', cd); $('scCD').classList.toggle('hidden', !cd); $('scSave').textContent = cd ? 'เริ่มนับถอยหลัง' : 'บันทึกและเปิดใช้'; };
@@ -641,7 +669,7 @@ async function loadStudents() {
     + '<div class="panel"><h3>นำเข้าจากไฟล์ Excel / CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ รองรับไฟล์ Excel (.xlsx) โดยอ่านจากชีตแรก</p>'
     + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ Excel / CSV</label><input id="csvFile" type="file" accept=".xlsx,.xls,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง (Excel)</button><span id="csvName" class="muted"></span></div>'
     + '<textarea id="bulk" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย&#10;6840100001,สมหญิง รักเรียน,2,หญิง"></textarea><div style="margin-top:10px"><button class="btn primary sm" id="bulkBtn">นำเข้า</button></div><div id="bulkRes" class="result"></div></div>'
-    + '<div class="panel"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><div class="form fl"><input id="stQ" type="search" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
+    + '<div class="panel"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><div class="form fl"><input id="stQ" type="search" aria-label="ค้นหาชื่อหรือรหัส" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF" aria-label="กรองตามชั้นปี"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG" aria-label="กรองตามเพศ"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
   $('stId').addEventListener('input', () => { const y = suggestYear($('stId').value); if (y && !$('stYr').dataset.touched) $('stYr').value = y; });
   $('stName').addEventListener('input', () => { const g = /^(นาย|เด็กชาย)/.test($('stName').value.trim()) ? 'M' : /^(นางสาว|นาง|เด็กหญิง)/.test($('stName').value.trim()) ? 'F' : ''; if (g && !$('stG').dataset.touched) $('stG').value = g; });
   $('stYr').addEventListener('change', () => { $('stYr').dataset.touched = '1'; });

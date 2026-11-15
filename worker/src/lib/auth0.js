@@ -20,7 +20,7 @@ function auth0ManagementDomain(env) {
 
 // Auth0 rate-limits /userinfo, the M2M token endpoint and the Management API. The Budget app fires several
 // requests at once (dashboard, meta, notifications, ...), so cache per isolate and share in-flight calls.
-const USER_TTL = 30_000, ROLES_TTL = 60_000;
+const USER_TTL = 120_000, ROLES_TTL = 300_000;
 const userCache = new Map(), rolesCache = new Map();
 let mgmtToken = null; // { token, exp, promise }
 function remember(map, key, ttl, promise, ok) {

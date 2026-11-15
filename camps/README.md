@@ -5,6 +5,7 @@ Cloudflare Pages project, root directory `camps`, no build command.
 | Path | What |
 | --- | --- |
 | `/` | Camps home: choose **งบประมาณ** (finance) or **ฝ่ายบุคคล** (coming soon). Plain web page. |
+| `/admin/` | **Admin hub** — one page that links to every system's admin pages (HR overview / quota / students / settings, lotto, QR check, AKA, budget). Plain links, no sign-in of its own; each system still signs in with its own Auth0 application and checks the admin role. |
 | `/lotto/` | **Lottery scanning system.** Admins and assigned officers scan a student's QR to verify the draw number and mark them as registered (check in, then open the gift); roster / draw-number management for admins. See `lotto/README.md`. |
 | `/aka/` | **ระบบ AKA** — each student sets a nickname and a camp name (AKA) until an admin closes naming; admins edit and export by department (year 4 → 1). Separate system with its own Auth0 application. See `aka/README.md`. |
 | `/qrcheck/` | **ระบบเช็ค QR.** Looks the student up in the HR registration data (name, year, department) and records the result of admin-defined checks (ตรวจครั้งที่ 1, ตรวจสอบป้ายกับ AKA, …). Separate system with its own Auth0 application. See `qrcheck/README.md`. |
