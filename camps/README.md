@@ -85,3 +85,7 @@ Both are stored in `camp_settings` (no migration) and enforced by the Worker, no
 
 ### In-app browsers are blocked
 Every page (except the public receipt verification page) loads `/assets/inapp-guard.js` first. Opened inside LINE, Facebook, Messenger, Instagram, TikTok, WeChat, X, Snapchat, Kakao, Naver, Pinterest, LinkedIn, Slack, the Google app or any other web view (iOS web view without the Safari token, Android `; wv)`), the page is replaced by a screen asking the visitor to open it in Safari / Chrome: a button that reopens it in the external browser where that is possible (LINE `?openExternalBrowser=1`, Android Chrome intent), step-by-step instructions for the app, and a copy-link button. Why: Google refuses sign-in in embedded browsers (`disallowed_useragent`), and location and installing the web app are unreliable there. Installed home-screen web apps are not blocked. None of the page's own scripts run inside the web view. `npm run check` fails when a page forgets the script; `npm test` covers the user-agent list. If a normal browser is ever flagged by mistake, fix `detect()` in that file (the list is deliberately conservative).
+
+## Cache busting
+Pages load scripts and styles as `app.js?v=<hash>`. The hash is the file's content, so a browser always picks up a changed file.
+After editing any `.js` or `.css` under `camps/` (except `budget/`), run `cd worker && npm run stamp`; `npm run check` and CI fail when a value is out of date.
