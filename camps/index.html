@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=8">
+<link rel="stylesheet" href="/assets/site.css?v=9">
 </head>
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
@@ -36,6 +36,7 @@ fetch(API+"/camps/status").then(function(r){return r.ok?r.json():null}).then(fun
 var b=document.getElementById("hrBadge"),c=document.getElementById("hrCta"),t=document.getElementById("hrText");
 if(d.registration==="open"){b.textContent="เปิดลงทะเบียน";b.className="badge open";t.textContent="เลือกฝ่ายที่สนใจ ดูจำนวนที่ลงทะเบียนแล้วของแต่ละชั้นปี แล้วกดลงทะเบียน";c.firstChild.textContent="ลงทะเบียนเลือกฝ่าย "}
 else if(d.registration==="closed"){b.textContent="ปิดลงทะเบียนแล้ว";b.className="badge closed";c.firstChild.textContent="ดูรายละเอียดฝ่าย "}
+var k=d.seats;if(k&&k.quota>0&&d.registration!=="pending"){t.textContent+=" ที่ว่างเหลือ "+k.remaining+" จาก "+k.quota+" ที่"}
 }).catch(function(){})})();
 </script>
 </body></html>

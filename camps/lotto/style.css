@@ -194,3 +194,16 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:26px 0 0}
 .skip:focus{top:12px}
 main:focus{outline:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- minimal look: white, flat, one red accent ---- */
+body{background:#fff}
+.hero{background:#fff;color:var(--ink);border-radius:0;padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 6px;max-width:1120px;margin:0 auto;overflow:visible}
+.hero::before,.hero::after,.eyebrow{display:none}
+.hero-body{margin-top:16px}.hero h1{font-size:26px;font-weight:700;margin:0 0 6px}.hero p{font-size:15px;color:var(--muted);opacity:1}
+.back{background:none;padding:6px 0;color:var(--muted)}
+main{margin-top:0}
+.card{box-shadow:none;border:1px solid var(--line);border-radius:16px}
+.tabs{box-shadow:none;background:none;border-bottom:1px solid var(--line);border-radius:0;padding:0;gap:4px}
+.tabs button{border-radius:0;border-bottom:2px solid transparent;margin-bottom:-1px}.tabs button:hover{background:none}
+.tabs button.active{background:none;color:var(--red-d,var(--red));border-bottom-color:var(--red);box-shadow:none}
+.btn.primary,.primary{box-shadow:none}

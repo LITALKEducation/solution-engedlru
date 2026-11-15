@@ -86,3 +86,22 @@ footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:
 .skip:focus{top:12px}
 main:focus{outline:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- minimal home: white, flat ---- */
+body:not([data-page]) .hero{background:#fff;color:var(--ink);border-radius:0;padding:calc(env(safe-area-inset-top,0px) + 18px) 20px 8px;max-width:1040px;margin:0 auto;overflow:visible}
+body:not([data-page]) .hero .orb,body:not([data-page]) .eyebrow{display:none}
+body:not([data-page]) .hero-body{margin-top:20px}
+body:not([data-page]) .hero h1{font-size:28px;font-weight:700;margin:0 0 6px}
+body:not([data-page]) .hero p{font-size:15px;color:var(--mute);opacity:1}
+body:not([data-page]) main{margin-top:0;padding-top:10px}
+body:not([data-page]) .card{box-shadow:none;border:1px solid var(--line);border-radius:16px;padding:20px}
+body:not([data-page]) a.card:hover{transform:none;background:var(--panel);box-shadow:none}
+body:not([data-page]) .icon,body:not([data-page]) .soon .icon{background:var(--panel);color:var(--mute);width:44px;height:44px;border-radius:12px}
+body:not([data-page]) .tags{display:none}
+body:not([data-page]) .card h2{font-size:19px}
+body:not([data-page]) .card p{font-size:15px}
+body:not([data-page]) .badge{background:var(--panel);color:var(--mute);font-weight:600}
+body:not([data-page]) .badge.open{background:#e7f6ec;color:#166534}body:not([data-page]) .badge.closed{background:#fbeaea;color:#a12020}
+body:not([data-page]) .cta{color:var(--brand-d);font-size:15px}
+@media(min-width:760px){body:not([data-page]) .hero{padding-left:48px;padding-right:48px}}
+@media(min-width:1100px){body:not([data-page]) .hero{padding-left:max(48px,calc(50% - 552px));padding-right:max(48px,calc(50% - 552px));max-width:none}}

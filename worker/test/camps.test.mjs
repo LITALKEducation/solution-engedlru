@@ -11,6 +11,7 @@ let r=await call(null,'GET','/camps/status');ok(r.s===200&&r.d.registration==='p
 r=await call('admin','GET','/camps/departments');ok(r.d.departments.length===5&&r.d.departments[0].quota.M[3]===0&&r.d.departments[0].quota.F[3]===0,'5 departments, gender-split quota grid');
 r=await call(null,'GET','/camps/departments');ok(r.s===401,'departments need sign-in (anon 401)');
 r=await call('gmail','GET','/camps/departments');ok(r.s===200,'any signed-in account can see departments');
+r=await call(null,'GET','/camps/status');ok(r.d.seats&&r.d.seats.quota===0&&r.d.seats.remaining===0,'status shows seat totals (no quota yet)');
 console.log('2. identity');
 r=await call(null,'GET','/camps/me');ok(r.s===401,'me w/o token 401');
 r=await call('gmail','GET','/camps/me');ok(r.d.reason==='not_university_email'&&!r.d.isAdmin,'gmail -> not university email');

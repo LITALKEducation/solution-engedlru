@@ -133,3 +133,19 @@ footer{text-align:center;color:var(--mute);font-size:13px;padding:8px 20px calc(
 .skip:focus{top:12px}
 main:focus{outline:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- minimal look: white, flat, one red accent ---- */
+body{background:#fff}
+.hero{background:#fff;color:var(--ink);border-radius:0;padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 6px;max-width:1040px;margin:0 auto;overflow:visible}
+.hero::before,.hero::after,.orb3,.eyebrow{display:none}
+.hero-body{margin-top:16px}.hero h1{font-size:26px;font-weight:700;margin:0 0 6px}.hero p{font-size:15px;color:var(--mute);opacity:1}
+.back{background:none;padding:6px 0;color:var(--mute)}
+.account{background:var(--panel);color:var(--ink)}.account .badge{background:#fff}.account .link{background:#fff;color:var(--ink);border:1px solid var(--line)}
+main{margin-top:0}
+.card,.nametag{box-shadow:none;border:1px solid var(--line);border-radius:16px}.nametag{border:2px solid var(--brand)}
+.tabs{box-shadow:none;background:none;border-bottom:1px solid var(--line);border-radius:0;padding:0;gap:4px}
+.tabs button{border-radius:0;border-bottom:2px solid transparent;margin-bottom:-1px}.tabs button:hover{background:none}
+.tabs button.on{background:none;color:var(--brand-d);border-bottom-color:var(--brand)}
+.btn.primary{box-shadow:none}
+@media(min-width:760px){.hero{padding-left:48px;padding-right:48px}}
+@media(min-width:1100px){.hero{padding-left:max(48px,calc(50% - 552px));padding-right:max(48px,calc(50% - 552px));max-width:none}}

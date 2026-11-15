@@ -163,9 +163,18 @@ async function requireAdmin(request, env) {
 }
 
 // ---------- public ----------
+// public: totals only (no names), cached a few seconds because the home page of every visitor asks for it
+let seatsCache = { exp: 0, v: null };
+async function seatTotals(env) {
+  if (seatsCache.exp > Date.now()) return seatsCache.v;
+  const list = await departmentsWithSlots(env); let quota = 0, remaining = 0;
+  for (const d of list) for (const g of GENDERS) for (const y of YEARS) { quota += d.quota[g][y]; remaining += d.remaining[g][y]; }
+  seatsCache = { exp: Date.now() + 5000, v: { quota, remaining } };
+  return seatsCache.v;
+}
 async function status(request, env) {
-  const i = await registrationInfo(env);
-  return json(request, env, { registration: i.registration, schedule: i.schedule, now: i.now });
+  const [i, seats] = await Promise.all([registrationInfo(env), seatTotals(env)]);
+  return json(request, env, { registration: i.registration, schedule: i.schedule, now: i.now, seats });
 }
 
 const grid = () => ({ M: { 1: 0, 2: 0, 3: 0, 4: 0 }, F: { 1: 0, 2: 0, 3: 0, 4: 0 } });
