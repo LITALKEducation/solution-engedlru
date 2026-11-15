@@ -4,9 +4,9 @@
   if (document.getElementById('brandBar')) return;
   var LINKS = [['/hr/', 'เลือกฝ่าย'], ['/aka/', 'ตั้งชื่อ AKA'], ['/lotto/', 'จับสลาก'], ['/qrcheck/', 'เช็ก QR'], ['/budget/', 'งบประมาณ'], ['/admin/', 'แอดมิน']];
   var css = '#brandBar{position:sticky;top:0;z-index:40;background:#fff;border-bottom:1px solid #efe6e5;font-family:"Noto Sans Thai",system-ui,sans-serif}'
-    + '#brandBar .bb{max-width:1200px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 0px) 20px 0;min-height:60px;display:flex;align-items:center;gap:14px}'
+    + '#brandBar .bb{max-width:1200px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 0px) 20px 0;min-height:64px;display:flex;align-items:center;gap:14px}'
     + '#brandBar .bl{display:flex;align-items:center;gap:10px;color:#171212;text-decoration:none;font-weight:700;font-size:18px;flex:none;min-height:44px}'
-    + '#brandBar .bl img{width:34px;height:34px;border-radius:9px}'
+    + '#brandBar .bl img{height:40px;width:auto;display:block}'
     + '#brandBar .bn{margin-left:auto;display:flex;gap:2px;align-items:center}'
     + '#brandBar .bn a{color:#171212;text-decoration:none;font-weight:600;font-size:15px;padding:0 14px;min-height:44px;display:inline-flex;align-items:center;border-radius:10px;white-space:nowrap}'
     + '#brandBar .bn a:hover{background:#faf3f2}'
@@ -24,7 +24,7 @@
   var bar = document.createElement('nav');
   bar.setAttribute('aria-label', 'เมนูหลัก');
   bar.id = 'brandBar';
-  bar.innerHTML = '<div class="bb"><a class="bl" href="/"><img src="/icons/camps-logo.svg" alt="">Camps</a>'
+  bar.innerHTML = '<div class="bb"><a class="bl" href="/"><img src="/assets/logo-english-education.png" alt="English Education Faculty of Education"></a>'
     + '<button class="bm" type="button" aria-expanded="false" aria-controls="brandNav">เมนู</button>'
     + '<div id="brandNav" class="bn">' + items + '</div></div>';
   var skip = document.querySelector('.skip');
