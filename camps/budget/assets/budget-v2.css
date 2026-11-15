@@ -1,4 +1,4 @@
-:root{--brand:#d32f2f;--brand-d:#b71c1c;--brand-l:#fde8e8;--panel:#faf3f2;--ink:#171212;--mute:#82787a;--line:#efe6e5;--page:#e8eaea;--in:#15803d;--don:#6d28d9;--r:24px;--nav-h:68px;--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px);--col:520px}
+:root{--brand:#d32f2f;--brand-d:#b71c1c;--brand-l:#fde8e8;--panel:#faf3f2;--ink:#171212;--mute:#6b6163;--line:#efe6e5;--page:#e8eaea;--in:#15803d;--don:#6d28d9;--r:24px;--nav-h:68px;--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px);--col:520px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;font-family:'Noto Sans Thai',system-ui,sans-serif;background:var(--page);color:var(--ink);overscroll-behavior-y:contain}
@@ -17,7 +17,7 @@ svg{display:block}
 .auth-card h1{font-size:24px;margin:4px 0 6px}
 .auth-card .cta{margin-top:10px}
 .logo{width:72px;height:72px;border-radius:20px;margin:0 auto 14px;display:block}
-.eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.eyebrow{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
 .spinner{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -551,3 +551,9 @@ input,select,textarea{transition:border-color .18s,box-shadow .18s}
 #euErr{margin:0;color:var(--brand-d)}
 #editUser .t-input-wrap.is-error #euErr{opacity:1;visibility:visible;max-height:60px;margin-top:2px}
 .eu-id .av{background:#fff;color:var(--brand-d)}
+
+/* accessibility helpers: skip link, screen-reader-only text */
+.skip{position:absolute;left:12px;top:-70px;z-index:100;background:#171212;color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;text-decoration:none}
+.skip:focus{top:12px}
+main:focus{outline:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

@@ -108,7 +108,8 @@ let restartCam=null;
 function closePopup(){const m=$('scanModal');m.classList.add('hidden');const r=restartCam;restartCam=null;if(r)r();}
 $('spClose').onclick=closePopup;
 $('scanModal').addEventListener('click',e=>{if(e.target===$('scanModal'))closePopup()});
-document.addEventListener('keydown',e=>{if(!$('scanModal').classList.contains('hidden')&&(e.key==='Escape'||(e.key==='Enter'&&e.target.id!=='giftBtn')))closePopup()});
+document.addEventListener('keydown',e=>{if(!$('scanModal').classList.contains('hidden')&&e.key==='Tab'){const f=[...$('scanModal').querySelectorAll('button,[href],input')].filter(x=>!x.disabled&&x.offsetParent!==null);if(f.length){const a=document.activeElement,first=f[0],last=f[f.length-1];if(e.shiftKey&&a===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&(a===last||!$('scanModal').contains(a))){e.preventDefault();first.focus()}}}
+if(!$('scanModal').classList.contains('hidden')&&(e.key==='Escape'||(e.key==='Enter'&&e.target.id!=='giftBtn')))closePopup()});
 const stoppers=[];
 function bindScanner({readerId,startId,stopId,inputId,goId,view,onValue}){
  let cam=null;
@@ -162,6 +163,6 @@ async function handleVerify(value,fromCamera){
  }catch(e){box.className='result error';box.textContent=e.message;showPopup({kind:'error',message:e.message,id});toast(e.message)}
 }
 $('refresh').onclick=()=>refresh($('search').value);$('search').oninput=()=>{clearTimeout(window.__searchTimer);window.__searchTimer=setTimeout(()=>refresh($('search').value),250)};$('verifyBtn').onclick=async()=>{if(isAdmin){await refresh($('verifySearch').value);return}try{const d=await data('/camps/lotto/scanner/lookup?q='+encodeURIComponent($('verifySearch').value));renderTable('verifyTable',d.students||[],false)}catch(e){toast(e.message)}};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{stoppers.forEach(f=>f());document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$('view-'+b.dataset.tab).classList.remove('hidden');if(b.dataset.tab==='verify'){if(isAdmin)refresh($('verifySearch').value);else $('verifyBtn').click()}if(b.dataset.tab==='scanners')refreshScanners()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{stoppers.forEach(f=>f());document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===b);if(x===b)x.setAttribute('aria-current','true');else x.removeAttribute('aria-current')});document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$('view-'+b.dataset.tab).classList.remove('hidden');if(b.dataset.tab==='verify'){if(isAdmin)refresh($('verifySearch').value);else $('verifyBtn').click()}if(b.dataset.tab==='scanners')refreshScanners()});
 init();
 })();

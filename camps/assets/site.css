@@ -1,4 +1,4 @@
-:root{--brand:#d32f2f;--brand-d:#b71c1c;--brand-l:#fde8e8;--panel:#faf3f2;--ink:#171212;--mute:#82787a;--line:#efe6e5;--page:#e8eaea;--in:#15803d;--don:#6d28d9}
+:root{--brand:#d32f2f;--brand-d:#b71c1c;--brand-l:#fde8e8;--panel:#faf3f2;--ink:#171212;--mute:#6b6163;--line:#efe6e5;--page:#e8eaea;--in:#15803d;--don:#6d28d9}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--page);color:var(--ink);font-family:'Noto Sans Thai',system-ui,sans-serif;line-height:1.5}
@@ -13,9 +13,9 @@ body{background:#fff}
 .hero .o1{width:260px;height:260px;top:-90px;right:-70px}.hero .o2{width:160px;height:160px;bottom:-60px;left:-40px}.hero .o3{width:56px;height:56px;top:90px;left:28px;background:#ffffff2e}
 .brand{position:relative;display:flex;align-items:center;gap:12px}
 .brand img{width:44px;height:44px;border-radius:13px;background:#fff}
-.brand b{display:block;font-size:17px}.brand small{opacity:.85;font-size:12px}
+.brand b{display:block;font-size:17px}.brand small{opacity:.85;font-size:13px}
 .hero-body{position:relative;margin-top:34px;max-width:620px}
-.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
 .hero h1{font-size:34px;line-height:1.2;margin:6px 0 8px;font-weight:800}
 .hero p{opacity:.92;font-size:16px;max-width:520px}
 .back{position:relative;display:inline-flex;align-items:center;gap:6px;background:#ffffff26;border-radius:999px;padding:8px 16px 8px 12px;font-size:14px;font-weight:600;margin-bottom:6px}
@@ -33,13 +33,13 @@ a.card:active{transform:scale(.99)}
 .card h2{font-size:22px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .card p{color:var(--mute);font-size:15px}
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
-.tag{background:var(--panel);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;color:#5b4f51}
+.tag{background:var(--panel);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;color:#5b4f51}
 .cta{margin-top:auto;padding-top:8px;display:flex;align-items:center;gap:8px;font-weight:700;color:var(--brand)}
 .cta svg{width:20px;height:20px;transition:transform .2s}
 a.card:hover .cta svg{transform:translateX(4px)}
 .soon{background:linear-gradient(180deg,#fff,#fbf7f6)}
 .soon .icon{background:#ede9fe;color:var(--don)}
-.badge{display:inline-flex;align-items:center;background:#ede9fe;color:var(--don);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:800}
+.badge{display:inline-flex;align-items:center;background:#ede9fe;color:var(--don);border-radius:999px;padding:3px 12px;font-size:13px;font-weight:800}
 .soon .cta{color:var(--don)}
 @media(min-width:760px){
  .hero{padding:32px max(48px,calc(50% - 472px)) 110px}.hero h1{font-size:44px}.hero p{font-size:18px}
@@ -67,7 +67,7 @@ a.card:hover .cta svg{transform:translateX(4px)}
 @media(min-width:760px){.steps{grid-template-columns:repeat(3,1fr)}}
 .notice{background:#faf5ff;border:1px solid #e9d5ff;color:#5b21b6;border-radius:20px;padding:14px 18px;font-size:14px;margin-top:18px}
 
-footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:center;color:var(--mute);font-size:12px}
+footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:center;color:var(--mute);font-size:13px}
 .fade{animation:up .5s cubic-bezier(.2,.8,.2,1) both}
 .fade:nth-child(2){animation-delay:.07s}.fade:nth-child(3){animation-delay:.14s}.fade:nth-child(4){animation-delay:.2s}.fade:nth-child(5){animation-delay:.26s}
 @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
@@ -80,3 +80,9 @@ footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:
 /* iPad: 3 home cards fill the row in landscape, and the odd one spans the row in portrait */
 /* four home cards: 2 x 2 from iPad up (an odd last card spans the row) */
 .cards>.card:last-child:nth-child(odd){grid-column:1/-1}
+
+/* accessibility helpers: skip link, screen-reader-only text */
+.skip{position:absolute;left:12px;top:-70px;z-index:100;background:#171212;color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;text-decoration:none}
+.skip:focus{top:12px}
+main:focus{outline:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

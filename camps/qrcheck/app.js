@@ -54,7 +54,7 @@ $('loginBtn').onclick = () => { const ap = { connection: 'google-oauth2' }; try 
 // ---------- tabs ----------
 document.querySelectorAll('#tabs button').forEach((b) => b.onclick = async () => {
   await stopCamera();
-  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('#tabs button').forEach((x) => { x.classList.toggle('on', x === b); if (x === b) x.setAttribute('aria-current', 'true'); else x.removeAttribute('aria-current'); });
   document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
   $('view-' + b.dataset.tab).classList.remove('hidden');
   if (b.dataset.tab === 'results') loadResults(); else if (b.dataset.tab === 'settings') loadSettings();
@@ -126,7 +126,7 @@ function renderResult(d, quiet) {
   if (!r && !d.blocked) h += '<div class="row end"><button id="recNow" class="btn ok" type="button">บันทึกว่าตรวจแล้ว</button></div>';
   if (canRefine) h += refineForm(c, r, !mine && isAdmin);
   else if (r && !isAdmin) h += '<p class="hint">แก้ผลได้เฉพาะคนที่บันทึกไว้ หรือแอดมิน</p>';
-  if (d.history && d.history.length) h += '<h3 class="mt">ประวัติการตรวจของนักศึกษา</h3><ul class="hist">' + d.history.map((x) => '<li><span>' + esc(x.name) + '</span>' + badge(x.result) + '<small>' + esc(fmtShort(x.checked_at)) + '</small></li>').join('') + '</ul>';
+  if (d.history && d.history.length) h += '<details class="histbox"><summary>ประวัติการตรวจของนักศึกษา (' + d.history.length + ')</summary><ul class="hist">' + d.history.map((x) => '<li><span>' + esc(x.name) + '</span>' + badge(x.result) + '<small>' + esc(fmtShort(x.checked_at)) + '</small></li>').join('') + '</ul></details>';
   h += nextButton();
   $('result').innerHTML = h; bindNext(); bindActions();
   const im = document.querySelector('#result img.avatar'); if (im) im.onerror = () => { const sp = document.createElement('span'); sp.className = 'avatar ph'; sp.textContent = initial; im.replaceWith(sp); };

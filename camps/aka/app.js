@@ -51,7 +51,7 @@ function signOut() { try { sessionStorage.setItem('chooseGoogle', '1'); } catch 
 $('loginBtn').onclick = () => { const ap = { connection: 'google-oauth2' }; try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ } auth.loginWithRedirect({ authorizationParams: ap }); };
 
 document.querySelectorAll('#tabs button').forEach((b) => b.onclick = () => {
-  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('#tabs button').forEach((x) => { x.classList.toggle('on', x === b); if (x === b) x.setAttribute('aria-current', 'true'); else x.removeAttribute('aria-current'); });
   document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
   $('view-' + b.dataset.tab).classList.remove('hidden');
   if (b.dataset.tab === 'me') renderMe(); else if (b.dataset.tab === 'list') loadList(); else if (b.dataset.tab === 'settings') loadSettings();
@@ -103,8 +103,9 @@ $('nick').oninput = $('akaName').oninput = preview;
 $('nameForm').onsubmit = async (e) => {
   e.preventDefault();
   const nickname = $('nick').value.trim(), aka = $('akaName').value.trim();
-  if (!nickname) { $('nick').focus(); return toast('กรอกชื่อเล่น', true); }
-  if (!aka) { $('akaName').focus(); return toast('กรอกชื่อ AKA', true); }
+  $('nick').removeAttribute('aria-invalid'); $('akaName').removeAttribute('aria-invalid');
+  if (!nickname) { $('nick').setAttribute('aria-invalid', 'true'); $('nick').focus(); return toast('กรอกชื่อเล่น', true); }
+  if (!aka) { $('akaName').setAttribute('aria-invalid', 'true'); $('akaName').focus(); return toast('กรอกชื่อ AKA', true); }
   $('saveBtn').disabled = true;
   try { const d = await data('POST', '/camps/aka/save', { nickname, aka }); me.student = d.student; renderMe(); toast('บันทึกชื่อแล้ว'); }
   catch (er) { toast(er.message, true); if (er.data && (er.data.code === 'CLOSED' || er.data.code === 'NOT_OPEN')) { await loadMe(); renderMe(); } else $('saveBtn').disabled = false; }

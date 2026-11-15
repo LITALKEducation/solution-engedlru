@@ -7,10 +7,11 @@
 <title>ระบบ AKA · Camps</title>
 <link rel="icon" href="/icons/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=5">
+<link rel="stylesheet" href="./style.css?v=7">
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
 <header class="hero"><i class="orb3"></i>
  <div class="herotop">
   <a class="back" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> กิจกรรมค่าย</a>
@@ -18,7 +19,7 @@
  </div>
  <div class="hero-body"><div class="eyebrow">AKA · ชื่อที่เรียกกันในค่าย</div><h1>ตั้งชื่อค่ายของคุณ <span id="heroChip" class="state-chip hidden"></span></h1><p>ตั้งชื่อเล่นกับ AKA ของตัวเอง แก้ได้จนกว่าจะปิดรับ</p></div>
 </header>
-<main>
+<main id="main" tabindex="-1">
  <section id="login" class="card hidden">
   <h1>เข้าสู่ระบบ</h1>
   <p>เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อตั้งชื่อของคุณ</p>
@@ -26,8 +27,8 @@
  </section>
 
  <div id="app" class="hidden">
-  <nav class="tabs" id="tabs">
-   <button data-tab="me" class="on">ชื่อของฉัน</button>
+  <nav class="tabs" id="tabs" aria-label="เมนู">
+   <button data-tab="me" class="on" aria-current="true">ชื่อของฉัน</button>
    <button data-tab="list" class="adm">รายชื่อ</button>
    <button data-tab="settings" class="adm">ตั้งค่าและส่งออก</button>
   </nav>
@@ -42,9 +43,9 @@
      <dl class="kv" id="meInfo"></dl>
      <form id="nameForm" novalidate>
       <label for="nick">ชื่อเล่น <small>(ไม่เกิน 30 ตัวอักษร)</small></label>
-      <input id="nick" maxlength="30" autocomplete="off" placeholder="เช่น ชาย">
+      <input id="nick" required aria-required="true" maxlength="30" autocomplete="off" placeholder="เช่น ชาย">
       <label for="akaName">AKA <small>(ชื่อที่ใช้เรียกกันในค่าย ไม่เกิน 40 ตัวอักษร)</small></label>
-      <input id="akaName" maxlength="40" autocomplete="off" placeholder="เช่น หมีขาว">
+      <input id="akaName" required aria-required="true" aria-describedby="preview" maxlength="40" autocomplete="off" placeholder="เช่น หมีขาว">
       <div class="nametag" aria-live="polite"><div class="nt-top">Hello · เรียกฉันว่า</div><div class="nt-body" id="preview"></div></div>
       <div class="row"><button id="saveBtn" class="btn primary" type="submit">บันทึกชื่อ</button></div>
      </form>
@@ -63,7 +64,7 @@
      <label>สถานะ<select id="fNamed"><option value="">ทั้งหมด</option><option value="1">ตั้งชื่อแล้ว</option><option value="0">ยังไม่ตั้งชื่อ</option></select></label>
      <label>ค้นหา<input id="fQ" placeholder="ชื่อ / รหัส / ชื่อเล่น / AKA"></label>
     </div>
-    <div class="table-wrap"><table id="listTable"></table></div>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="รายชื่อและชื่อ AKA"><table id="listTable"></table></div>
    </div>
   </section>
 
@@ -114,5 +115,5 @@
  </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=2" defer></script>
+<script src="./app.js?v=3" defer></script>
 </body></html>
