@@ -332,7 +332,7 @@ function renderCountdown() {
   box.classList.remove('hidden'); box.classList.toggle('closing', label.startsWith('ปิด'));
   const html = '<span class="cdl">' + label + '</span><span class="cdn">' + cells.map(([v, u]) => '<b>' + v + '<small>' + u + '</small></b>').join('') + '</span>';
   if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
-  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700); }   // the clock hit zero: pick up the new state from the server
+  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700 + jitter(2500)); }   // the clock hit zero: pick up the new state from the server
 }
 function refreshAfterCountdown() {
   if (PAGE === 'student') { if (me) { loadDepartments(); loadMe(); } } else if (me && me.isAdmin) loadAdminPage();
@@ -353,11 +353,12 @@ function getPosition() {
 }
 async function loadMe() {
   let r;
-  try { r = await api('/camps/me'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); renderGate({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); return; }
+  try { r = await api(PAGE === 'student' ? '/camps/me' : '/camps/me?admin=1'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); renderGate({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
+  if ((r.status === 429 || r.status >= 500) && (loadMe.tries = (loadMe.tries || 0) + 1) <= 4) { setTimeout(loadMe, 1500 * loadMe.tries + jitter(2000)); return; }   // busy right now: try again by itself
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
-  me = await r.json(); state = me.registration || state; renderState(); renderAcct(); renderNav();
-  if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); } else { renderDepts(); renderAdmin(); }
+  loadMe.tries = 0; const wasAdmin = !!(me && me.isAdmin); me = await r.json(); if (me.adminDeferred && wasAdmin) me.isAdmin = true; state = me.registration || state; renderState(); renderAcct(); renderNav();
+  if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); checkAdminLater(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
 }
 // student pages show nothing until the visitor has signed in with Google
@@ -371,7 +372,11 @@ function renderGate(x) {
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
-function startPolling() { if (polling) return; polling = true; setInterval(() => { if (!document.hidden && me) loadDepartments(); }, 30000); }
+const jitter = (ms) => Math.round(Math.random() * ms);
+// poll only while registration is open, every 45-60 s per person (not all at once)
+function startPolling() { if (polling) return; polling = true; const tick = () => { if (!document.hidden && me && state === 'open') loadDepartments(); setTimeout(tick, 45000 + jitter(15000)); }; setTimeout(tick, 45000 + jitter(15000)); }
+// students: check the admin role a few seconds later, spread out, so the first screen never waits for it
+function checkAdminLater() { if (!me || !me.adminDeferred) return; setTimeout(async () => { try { const r = await api('/camps/me?admin=1'); if (r.ok) { const j = await r.json(); if (j.isAdmin) { me.isAdmin = true; renderNav(); renderAcct(); } } } catch (e) {} }, 3000 + jitter(9000)); }
 async function register() {
   const d = deps.find((x) => x.code === picked); if (!d) return;
   if (!authReady) return toast('เข้าสู่ระบบไม่ได้ในตอนนี้ ลองรีเฟรชหน้า', true);

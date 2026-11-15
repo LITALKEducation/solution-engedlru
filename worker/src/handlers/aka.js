@@ -74,9 +74,11 @@ async function audit(env, w, action, entityId, metadata = {}) {
 // public: is naming open? (for the home page)
 async function status(req, env) { const i = await info(env); return json(req, env, { state: i.state, schedule: i.schedule, now: i.now }); }
 
-async function me(req, env) {
+// Students skip the Auth0 role lookup (100 arriving together would hit its rate limit); the page asks again with ?admin=1 later.
+async function me(req, env, url) {
   const w = await who(req, env); if (w.response) return w.response;
-  const [admin, inf] = await Promise.all([isAdmin(env, w.user), info(env)]);
+  const defer = !!w.studentId && url.searchParams.get("admin") !== "1";
+  const [admin, inf] = await Promise.all([defer ? false : isAdmin(env, w.user), info(env)]);
   let reason = null, student = null;
   if (!w.studentId) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
@@ -84,7 +86,7 @@ async function me(req, env) {
     const r = await env.DB.prepare(STUDENT_SQL).bind(w.studentId).first();
     if (!r) reason = "not_in_roster"; else student = shape(r);
   }
-  return json(req, env, { ok: true, email: w.email, studentId: w.studentId, isAdmin: admin, state: inf.state, schedule: inf.schedule, now: inf.now, reason, student });
+  return json(req, env, { ok: true, email: w.email, studentId: w.studentId, isAdmin: admin, adminDeferred: defer, state: inf.state, schedule: inf.schedule, now: inf.now, reason, student });
 }
 async function save(req, env) {
   const w = await who(req, env); if (w.response) return w.response;
@@ -176,7 +178,7 @@ export async function aka(req, env, url) {
   try {
     const p = url.pathname, m = req.method;
     if (m === "GET" && p === "/camps/aka/status") return await status(req, env);
-    if (m === "GET" && p === "/camps/aka/me") return await me(req, env);
+    if (m === "GET" && p === "/camps/aka/me") return await me(req, env, url);
     if (m === "POST" && p === "/camps/aka/save") return await save(req, env);
     if (m === "GET" && p === "/camps/aka/admin/overview") return await adminOverview(req, env);
     if (m === "POST" && p === "/camps/aka/admin/state") return await adminState(req, env);

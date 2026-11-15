@@ -35,18 +35,26 @@ async function init() {
     if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } finally { history.replaceState({}, document.title, REDIRECT); } }
     if (!(await auth.isAuthenticated())) { $('login').classList.remove('hidden'); $('account').textContent = 'ยังไม่ได้เข้าสู่ระบบ'; return; }
     await loadMe();
-    $('account').innerHTML = '<span class="em">' + esc(me.email) + '</span>' + (isAdmin ? '<span class="badge">แอดมิน</span>' : '') + '<button id="logoutBtn" class="link" type="button">ออก</button>';
-    $('logoutBtn').onclick = signOut;
-    document.querySelectorAll('.adm').forEach((b) => b.classList.toggle('hidden', !isAdmin));
+    showAccount();
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-    renderMe();
+    renderMe(); checkAdminLater();
   } catch (e) {
     $('login').classList.remove('hidden');
     if (AUTH_GONE.includes(e.error)) { $('account').textContent = 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่'; return; }
     $('login').querySelector('p').textContent = e.message || 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง'; $('account').textContent = 'เกิดข้อผิดพลาด';
   }
 }
-async function loadMe() { me = await data('GET', '/camps/aka/me'); isAdmin = !!me.isAdmin; applyInfo(me); }
+async function loadMe() { const was = isAdmin; me = await data('GET', '/camps/aka/me'); isAdmin = !!me.isAdmin || (!!me.adminDeferred && was); applyInfo(me); }
+// the admin role is checked a few seconds later, spread out, so the first screen never waits for it
+function checkAdminLater() {
+  if (!me || !me.adminDeferred) return;
+  setTimeout(async () => { try { const j = await data('GET', '/camps/aka/me?admin=1'); if (j.isAdmin) { isAdmin = true; showAccount(); } } catch (e) { /* stays a normal student */ } }, 3000 + Math.round(Math.random() * 9000));
+}
+function showAccount() {
+  $('account').innerHTML = '<span class="em">' + esc(me.email) + '</span>' + (isAdmin ? '<span class="badge">แอดมิน</span>' : '') + '<button id="logoutBtn" class="link" type="button">ออก</button>';
+  $('logoutBtn').onclick = signOut;
+  document.querySelectorAll('.adm').forEach((b) => b.classList.toggle('hidden', !isAdmin));
+}
 function signOut() { try { sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: REDIRECT } }); }
 $('loginBtn').onclick = () => { const ap = { connection: 'google-oauth2' }; try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ } auth.loginWithRedirect({ authorizationParams: ap }); };
 
@@ -75,7 +83,7 @@ function renderCountdown() {
   box.classList.remove('hidden'); box.classList.toggle('closing', label.startsWith('ปิด'));
   const html = '<span class="cdl">' + label + '</span><span class="cdn">' + cells.map(([v, u]) => '<b>' + v + '<small>' + u + '</small></b>').join('') + '</span>';
   if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
-  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700); }   // time is up: pick up the new state
+  if (left === 0 && cdFired !== target) { cdFired = target; setTimeout(refreshAfterCountdown, 700 + Math.round(Math.random() * 2500)); }   // time is up: pick up the new state
 }
 async function refreshAfterCountdown() { try { await loadMe(); const tab = document.querySelector('#tabs button.on'); if (tab && tab.dataset.tab === 'settings') loadSettings(); else renderMe(); } catch (e) { /* the next tick tries again */ } }
 setInterval(() => { if (schedule && schedule.enabled) renderCountdown(); }, 1000);

@@ -228,9 +228,12 @@ async function departments(request, env) {
 }
 
 // ---------- student ----------
-async function me(request, env) {
+// Students don't need an Auth0 role lookup to see their own page, so with 100 of them arriving together it is skipped
+// (isAdmin=false, adminDeferred=true); the page asks again with ?admin=1 a few seconds later and only an admin sees a change.
+async function me(request, env, url) {
   const w = await who(request, env); if (w.response) return w.response;
-  const [admin, reg] = await Promise.all([adminStatus(env, w.user, false), registrationState(env)]);
+  const defer = !!w.parsed && url.searchParams.get("admin") !== "1";
+  const [admin, reg] = await Promise.all([defer ? false : adminStatus(env, w.user, false), registrationState(env)]);
   let reason = null, student = null, selection = null;
   if (!w.parsed) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
@@ -241,7 +244,7 @@ async function me(request, env) {
     if (student) selection = await env.DB.prepare("SELECT department_code,selected_at FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
   }
   return json(request, env, {
-    email: w.email, googleName: w.user.name || "", isAdmin: admin, registration: reg,
+    email: w.email, googleName: w.user.name || "", isAdmin: admin, adminDeferred: defer, registration: reg,
     studentId: w.parsed?.studentId || null, student, selection, reason
   });
 }
@@ -563,7 +566,7 @@ export async function camps(request, env, url) {
     if (m === "GET" && p === "/camps/status") return await status(request, env);
     if (m === "GET" && p === "/camps/departments") return await departments(request, env);
     { const pm = /^\/camps\/department-photo\/([a-z0-9_-]{1,40})$/.exec(p); if (m === "GET" && pm) return await departmentPhoto(request, env, pm[1]); }
-    if (m === "GET" && p === "/camps/me") return await me(request, env);
+    if (m === "GET" && p === "/camps/me") return await me(request, env, url);
     if (m === "POST" && p === "/camps/select") return await select(request, env);
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
