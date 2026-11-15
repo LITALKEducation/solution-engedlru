@@ -28,7 +28,7 @@ const STATE_TEXT = {
   open: ['เปิดลงทะเบียน', 'แตะฝ่ายที่สนใจ ดูที่ว่างของแต่ละชั้นปี แล้วกดลงทะเบียน'],
   closed: ['ปิดลงทะเบียนแล้ว', 'ปิดลงทะเบียนแล้ว ยังดูรายละเอียดของแต่ละฝ่ายได้']
 };
-const ADMIN_PAGES = [['overview', 'ภาพรวม', '/hr/overview'], ['quota', 'โควตา', '/hr/quota'], ['live', 'สด', '/hr/live'], ['students', 'นักศึกษา', '/hr/students'], ['settings', 'ตั้งค่า', '/hr/settings']];
+const ADMIN_PAGES = [['overview', 'ภาพรวม', '/admin/hr/overview'], ['quota', 'โควตา', '/admin/hr/quota'], ['live', 'สด', '/admin/hr/live'], ['students', 'นักศึกษา', '/admin/hr/students'], ['settings', 'ตั้งค่า', '/admin/hr/settings']];
 
 let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null;
 let schedule = null, geo = { enabled: false }, srvOff = 0;   // automatic open/close schedule, location rule, server-clock offset (ms)
@@ -108,7 +108,7 @@ async function initAuth() {
       let back = (callbackResult && callbackResult.appState && callbackResult.appState.returnTo) || '';
       if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
       try { sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ }
-      if (typeof back === 'string' && /^\/hr\/[\w\-/]*$/.test(back) && back !== location.pathname) { location.replace(new URL(back, location.origin).href); return 'redirect'; }
+      if (typeof back === 'string' && /^\/(hr|admin)\/[\w\-/]*$/.test(back) && back !== location.pathname) { location.replace(new URL(back, location.origin).href); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();

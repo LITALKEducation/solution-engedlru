@@ -5,12 +5,11 @@ Cloudflare Pages project, root directory `camps`, no build command.
 | Path | What |
 | --- | --- |
 | `/` | Camps home: choose **งบประมาณ** (finance) or **ฝ่ายบุคคล** (coming soon). Plain web page. |
-| `/admin/` | **Admin hub** — one page that links to every system's admin pages (HR overview / quota / students / settings, lotto, QR check, AKA, budget). Plain links, no sign-in of its own; each system still signs in with its own Auth0 application and checks the admin role. |
+| `/admin/` | **Admin hub.** All admin work lives under `/admin/`, with its own menu and top bar (no links into the student / officer pages). `/admin/hr/{overview,quota,live,students,settings}` are the HR admin pages (old `/hr/overview` … redirect here). `/admin/lotto/`, `/admin/qrcheck/`, `/admin/aka/` are the same apps in admin mode (only the admin tabs). Those three pages are generated from `camps/<system>/index.html` by `npm run stamp`. Sign-in still uses each system's own Auth0 application and callback (`/hr/`, `/lotto/`, …); after the callback the page returns to the `/admin/…` page where sign-in started. The budget app keeps its own admin inside `/budget/`. |
 | `/lotto/` | **Lottery scanning system.** Admins and assigned officers scan a student's QR to verify the draw number and mark them as registered (check in, then open the gift); roster / draw-number management for admins. See `lotto/README.md`. |
 | `/aka/` | **ระบบ AKA** — each student sets a nickname and a camp name (AKA) until an admin closes naming; admins edit and export by department (year 4 → 1). Separate system with its own Auth0 application. See `aka/README.md`. |
 | `/qrcheck/` | **ระบบเช็ค QR.** Looks the student up in the HR registration data (name, year, department) and records the result of admin-defined checks (ตรวจครั้งที่ 1, ตรวจสอบป้ายกับ AKA, …). Separate system with its own Auth0 application. See `qrcheck/README.md`. |
-| `/hr/` | ฝ่ายบุคคล · ภาพรวมฝ่าย: the 5 departments (duties, head with photo/contact, slots per year and gender). Plain web page (not a web app). |
-| `/hr/select` | ฝ่ายบุคคล · เลือกเลย: a single dropdown of the departments with a register button (shows the duties, head and your slot for the chosen one). |
+| `/hr/` | ฝ่ายบุคคล · ภาพรวมฝ่าย: the 5 departments | `/hr/overview` … | moved to `/admin/hr/…` (redirects). |(shows the duties, head and your slot for the chosen one). |
 | `/hr/choose` | ฝ่ายบุคคล · เลือกฝ่าย: shows only the head of each department; tap one to preview, pick it and register (Google sign-in). |
 | `/hr/overview` `/hr/quota` `/hr/students` `/hr/settings` | ฝ่ายบุคคล · ผู้ดูแล: one page per admin function, each a menu item visible only to admins (`/hr/admin` redirects to `/hr/overview`). |
 | `/budget/` | Finance web app (Auth0 login, installable PWA, phone install required). See `budget/README.md`. |

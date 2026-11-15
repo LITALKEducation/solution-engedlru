@@ -9,21 +9,26 @@ async function api(path,opt={}){let t=await token(),r=await fetch(API+path,{...o
 async function data(path,opt){const r=await api(path,opt),d=await r.json().catch(()=>({error:'เกิดข้อผิดพลาด กรุณาลองใหม่'}));if(!r.ok)throw Object.assign(new Error(d.error||'เกิดข้อผิดพลาด'),{status:r.status,data:d});return d}
 const post=(path,body)=>data(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 function fmt(s){return s?new Date(s.replace(' ','T')+'Z').toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'—'}
+const ADMIN_MODE=!!window.ADMIN_MODE;   // true on /admin/lotto/ : only the list and scanner tabs
+function adminBack(){try{const r=sessionStorage.getItem('adminReturn');sessionStorage.removeItem('adminReturn');if(r&&/^\/admin\/[\w\-/]*$/.test(r)&&r!==location.pathname){location.replace(r);return true}}catch(e){}return false}
 async function init(){
  try{
   auth=await auth0.createAuth0Client({domain:DOMAIN,clientId:CLIENT,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:REDIRECT}});
-  if(location.search.includes('code=')||location.search.includes('error=')){try{await auth.handleRedirectCallback()}finally{history.replaceState({},document.title,REDIRECT)}}
+  if(location.search.includes('code=')||location.search.includes('error=')){try{await auth.handleRedirectCallback()}finally{history.replaceState({},document.title,REDIRECT)}if(adminBack())return}
   if(!await auth.isAuthenticated()){$('login').classList.remove('hidden');$('account').textContent='ยังไม่ได้เข้าสู่ระบบ';return}
   const u=await auth.getUser();$('account').innerHTML=esc(u.email||'เข้าสู่ระบบแล้ว')+' · <button id="logoutBtn" class="linkbtn" type="button">ออก</button>';$('logoutBtn').onclick=signOut;
   const access=await data('/camps/lotto/scanner/me'); isAdmin=!!access.isAdmin;
   $('login').classList.add('hidden');$('app').classList.remove('hidden');
-  if(!isAdmin){document.querySelector('[data-tab="students"]').classList.add('hidden');document.querySelector('[data-tab="scanners"]').classList.add('hidden');$('stats').classList.add('hidden');}
-  else{await refresh();await refreshStats();}
+  const hideTab=t=>document.querySelector('[data-tab="'+t+'"]').classList.add('hidden');
+  if(ADMIN_MODE){
+   if(!isAdmin){$('app').classList.add('hidden');$('login').classList.remove('hidden');$('login').querySelector('p').textContent='บัญชีนี้ยังไม่มีสิทธิ์แอดมิน ลองเปลี่ยนบัญชี หรือแจ้งแอดมิน';return}
+   hideTab('scan');hideTab('verify');await refresh();await refreshStats();document.querySelector('[data-tab="students"]').click();
+  }else{hideTab('students');hideTab('scanners');$('stats').classList.add('hidden');isAdmin=false}
  }catch(e){if(['login_required','missing_refresh_token','invalid_grant','consent_required','interaction_required'].includes(e.error)){$('login').classList.remove('hidden');$('account').textContent='เซสชันหมดอายุ';return}if(e.status===403){$('login').classList.remove('hidden');$('login').querySelector('p').textContent='บัญชีนี้ยังไม่มีสิทธิ์ใช้งาน ลองเปลี่ยนบัญชี หรือแจ้งแอดมิน';$('account').innerHTML='ไม่มีสิทธิ์ · <button id="logoutBtn" class="linkbtn" type="button">เปลี่ยนบัญชี</button>';$('logoutBtn').onclick=signOut}else{$('login').classList.remove('hidden');$('login').querySelector('p').textContent=e.message||'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง';$('account').textContent='เกิดข้อผิดพลาด'}}
 }
 // sign out (Auth0 clears the session shared with /hr/ and /budget/) and come back through the Google account chooser
 function signOut(){try{sessionStorage.setItem('chooseGoogle','1')}catch(e){}auth.logout({logoutParams:{returnTo:REDIRECT}})}
-$('loginBtn').onclick=()=>{{const ap={connection:'google-oauth2'};try{if(sessionStorage.getItem('chooseGoogle')){ap.prompt='select_account';sessionStorage.removeItem('chooseGoogle')}}catch(e){}auth.loginWithRedirect({authorizationParams:ap})}};
+$('loginBtn').onclick=()=>{{if(ADMIN_MODE){try{sessionStorage.setItem('adminReturn',location.pathname)}catch(e){}}const ap={connection:'google-oauth2'};try{if(sessionStorage.getItem('chooseGoogle')){ap.prompt='select_account';sessionStorage.removeItem('chooseGoogle')}}catch(e){}auth.loginWithRedirect({authorizationParams:ap})}};
 async function refreshStats(){try{const d=await data('/camps/lotto/admin/overview');$('stats').innerHTML=[['รายชื่อทั้งหมด',d.total],['เช็คชื่อแล้ว',d.checked],['ยังไม่เช็คชื่อ',d.remaining],['เปิดของขวัญแล้ว',d.gifts||0]].map(([l,n])=>'<div class="stat"><span>'+l+'</span><b>'+n+'</b></div>').join('')}catch(e){toast(e.message)}}
 async function refreshScanners(){try{const d=await data('/camps/lotto/admin/scanners');$('scannerList').innerHTML=(d.scanners||[]).length?'<table><thead><tr><th>อีเมลเจ้าหน้าที่</th><th>เพิ่มเมื่อ</th><th>จัดการ</th></tr></thead><tbody>'+d.scanners.map(x=>'<tr><td data-label="อีเมลเจ้าหน้าที่">'+esc(x.email)+'</td><td data-label="เพิ่มเมื่อ">'+esc(fmt(x.created_at))+'</td><td class="act-cell"><button class="secondary" data-remove-scanner="'+esc(x.email)+'">เอาออก</button></td></tr>').join('')+'</tbody></table>':'<p class="empty">ยังไม่มีใครในรายชื่อ</p>';$('scannerList').querySelectorAll('[data-remove-scanner]').forEach(b=>b.onclick=async()=>{if(!confirm('เอา '+b.dataset.removeScanner+' ออก?'))return;try{await data('/camps/lotto/admin/scanners/'+encodeURIComponent(b.dataset.removeScanner),{method:'DELETE'});await refreshScanners();toast('เอาออกแล้ว')}catch(e){toast(e.message)}})}catch(e){toast(e.message)}}
 $('scannerForm').onsubmit=async e=>{e.preventDefault();try{await post('/camps/lotto/admin/scanners',{email:$('scannerEmail').value});$('scannerForm').reset();await refreshScanners();toast('เพิ่มแล้ว')}catch(e){toast(e.message)}};

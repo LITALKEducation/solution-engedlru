@@ -4,9 +4,9 @@
   if (document.getElementById('brandBar')) return;
   var STUDENT = [['/hr/', 'เลือกฝ่าย'], ['/aka/', 'ตั้งชื่อ AKA'], ['/lotto/', 'จับสลาก'], ['/qrcheck/', 'เช็ก QR'], ['/budget/', 'งบประมาณ']];
   // the admin section has its own menu and no links into the student pages
-  var ADMIN_RE = /^\/(admin|hr\/(overview|quota|live|students|settings))\/?$/;
+  var ADMIN_RE = /^\/admin(\/|$)/;
   var isAdmin = ADMIN_RE.test(location.pathname.replace(/\/+$/, '') + '/') || ADMIN_RE.test(location.pathname);
-  var ADMIN = [['/admin/', 'ศูนย์แอดมิน'], ['/hr/overview', 'ฝ่ายบุคคล'], ['/', 'ออกจากแอดมิน']];
+  var ADMIN = [['/admin/', 'ศูนย์แอดมิน'], ['/admin/hr/overview', 'ฝ่ายบุคคล'], ['/admin/lotto/', 'จับสลาก'], ['/admin/qrcheck/', 'เช็ก QR'], ['/admin/aka/', 'AKA'], ['/', 'ออกจากแอดมิน']];
   var LINKS = isAdmin ? ADMIN : STUDENT;
   var css = '#brandBar{position:sticky;top:0;z-index:40;background:#fff;border-bottom:1px solid #efe6e5;font-family:"Noto Sans Thai",system-ui,sans-serif}'
     + '#brandBar .bb{max-width:1200px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 0px) 20px 0;min-height:64px;display:flex;align-items:center;gap:14px}'
@@ -18,13 +18,13 @@
     + '#brandBar .bn a[aria-current]{color:#b71c1c;background:#fde8e8}'
     + '#brandBar .bm{display:none;margin-left:auto;min-height:44px;padding:0 16px;border:1px solid #efe6e5;border-radius:10px;background:#fff;font:inherit;font-weight:600;font-size:15px;color:#171212;cursor:pointer}'
     + '#brandBar .badm{background:#fde8e8;color:#b71c1c;border-radius:999px;padding:3px 12px;font-weight:700;font-size:13px;flex:none}'
-    + '@media(max-width:719px){#brandBar .bm{display:inline-flex;align-items:center}#brandBar .bn{display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:1px solid #efe6e5;flex-direction:column;align-items:stretch;padding:8px 20px 14px;box-shadow:0 12px 24px #17121214}#brandBar .bn.open{display:flex}#brandBar .bn a{padding:0 12px;font-size:16px}}'
+    + '@media(max-width:' + (isAdmin ? 999 : 719) + 'px){#brandBar .bm{display:inline-flex;align-items:center}#brandBar .bn{display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:1px solid #efe6e5;flex-direction:column;align-items:stretch;padding:8px 20px 14px;box-shadow:0 12px 24px #17121214}#brandBar .bn.open{display:flex}#brandBar .bn a{padding:0 12px;font-size:16px}}'
     + 'body.has-bar .back{display:none}body.has-bar .hero .herotop{justify-content:flex-end}'
     + 'body.has-bar .home .logo{display:none}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var path = location.pathname.replace(/\/+$/, '') + '/';
   var items = LINKS.map(function (l) {
-    var on = isAdmin ? (l[0] === '/admin/' ? path === '/admin/' : l[0] === '/hr/overview' && path.indexOf('/hr/') === 0) : (path === l[0] || path.indexOf(l[0]) === 0);
+    var on = isAdmin ? (l[0] === '/admin/' ? path === '/admin/' : l[0] === '/admin/hr/overview' ? path.indexOf('/admin/hr/') === 0 : l[0] !== '/' && path.indexOf(l[0]) === 0) : (path === l[0] || path.indexOf(l[0]) === 0);
     return '<a href="' + l[0] + '"' + (on ? ' aria-current="page"' : '') + '>' + l[1] + '</a>';
   }).join('');
   var bar = document.createElement('nav');
