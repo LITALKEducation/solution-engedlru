@@ -29,18 +29,27 @@ const KIND = { manual: 'ตรวจทั่วไป', aka: 'เทียบ�
 const curCheck = () => checks.find((c) => c.id === checkId);
 
 // ---------- sign-in ----------
+const ADMIN_MODE = !!window.ADMIN_MODE;   // true on /admin/<system>/ : only the admin tabs, no student / officer tabs
+function applyMode() {
+  document.querySelectorAll('#tabs button').forEach((b) => { const adm = b.classList.contains('adm'); b.classList.toggle('hidden', ADMIN_MODE ? (!adm || !isAdmin) : adm); });
+  if (!ADMIN_MODE) return true;
+  if (!isAdmin) { $('app').classList.add('hidden'); $('login').classList.remove('hidden'); $('login').querySelector('p').textContent = 'บัญชีนี้ยังไม่มีสิทธิ์แอดมิน ลองเปลี่ยนบัญชี หรือแจ้งแอดมิน'; return false; }
+  return true;
+}
+function openFirstTab() { if (ADMIN_MODE) { const t = document.querySelector('#tabs button:not(.hidden)'); if (t) t.click(); } }
+function adminBack() { try { const r = sessionStorage.getItem('adminReturn'); sessionStorage.removeItem('adminReturn'); if (r && /^\/admin\/[\w\-/]*$/.test(r) && r !== location.pathname) { location.replace(r); return true; } } catch (e) { /* ignore */ } return false; }
 async function init() {
   try {
     auth = await auth0.createAuth0Client({ domain: DOMAIN, clientId: CLIENT, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: REDIRECT } });
-    if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } finally { history.replaceState({}, document.title, REDIRECT); } }
+    if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } finally { history.replaceState({}, document.title, REDIRECT); } if (adminBack()) return; }
     if (!(await auth.isAuthenticated())) { $('login').classList.remove('hidden'); $('account').textContent = 'ยังไม่ได้เข้าสู่ระบบ'; return; }
     const u = await auth.getUser();
     const me = await data('/camps/qrcheck/me'); isAdmin = !!me.isAdmin; myEmail = me.email || u.email || '';
     $('account').innerHTML = esc(u.email || me.email) + (isAdmin ? ' <span class="badge info">แอดมิน</span>' : '') + ' · <button id="logoutBtn" class="link" type="button">ออกจากระบบ</button>';
     $('logoutBtn').onclick = signOut;
-    document.querySelectorAll('.adm').forEach((b) => b.classList.toggle('hidden', !isAdmin));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-    await loadChecks();
+    if (!applyMode()) return;
+    await loadChecks(); openFirstTab();
   } catch (e) {
     $('login').classList.remove('hidden');
     if (AUTH_GONE.includes(e.error)) { $('account').textContent = 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่'; return; }
@@ -49,7 +58,7 @@ async function init() {
   }
 }
 function signOut() { try { sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: REDIRECT } }); }
-$('loginBtn').onclick = () => { const ap = { connection: 'google-oauth2' }; try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ } auth.loginWithRedirect({ authorizationParams: ap }); };
+$('loginBtn').onclick = () => { if (ADMIN_MODE) { try { sessionStorage.setItem('adminReturn', location.pathname); } catch (e) { /* ignore */ } } const ap = { connection: 'google-oauth2' }; try { if (sessionStorage.getItem('chooseGoogle')) { ap.prompt = 'select_account'; sessionStorage.removeItem('chooseGoogle'); } } catch (e) { /* ignore */ } auth.loginWithRedirect({ authorizationParams: ap }); };
 
 // ---------- tabs ----------
 document.querySelectorAll('#tabs button').forEach((b) => b.onclick = async () => {
