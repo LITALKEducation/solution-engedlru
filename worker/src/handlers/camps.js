@@ -326,6 +326,29 @@ async function adminOverview(request, env) {
   return json(request, env, { registration: effectiveState(st, now), manual: st.manual, schedule: st.schedule, geo: st.geo, now, departments: deps, students, selectedTotal: selected?.c || 0 });
 }
 
+// live registration counts for the "สด" admin page (polled every few seconds, so the answer is cached for 2 s)
+let liveCache = { exp: 0, v: null };
+async function adminLive(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  if (liveCache.exp <= Date.now()) {
+    const [deps, st, recent] = await Promise.all([
+      departmentsWithSlots(env), loadSettings(env),
+      env.DB.prepare(`SELECT sel.student_id,s.name,sel.department_code,d.name department_name,sel.year,sel.gender,sel.selected_at
+        FROM camp_selections sel JOIN camp_students s ON s.student_id=sel.student_id JOIN camp_departments d ON d.code=sel.department_code
+        ORDER BY sel.selected_at DESC,sel.rowid DESC LIMIT 10`).all()
+    ]);
+    const now = Date.now();
+    let quota = 0, filled = 0;
+    const departments = deps.map((d) => {
+      let q = 0, f = 0; for (const g of GENDERS) for (const y of YEARS) { q += d.quota[g][y]; f += d.filled[g][y]; }
+      quota += q; filled += f;
+      return { code: d.code, name: d.name, quota: q, filled: f, remaining: Math.max(0, q - f) };
+    });
+    liveCache = { exp: now + 2000, v: { registration: effectiveState(st, now), schedule: st.schedule, geo: st.geo, departments, quota, filled, recent: recent.results || [] } };
+  }
+  return json(request, env, { ...liveCache.v, now: Date.now() });
+}
+
 async function adminSetState(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
@@ -579,6 +602,7 @@ export async function camps(request, env, url) {
     if (m === "POST" && p === "/camps/select") return await select(request, env);
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
+    if (m === "GET" && p === "/camps/admin/live") return await adminLive(request, env);
     if (m === "POST" && p === "/camps/admin/schedule") return await adminSetSchedule(request, env);
     if (m === "POST" && p === "/camps/admin/geo") return await adminSetGeo(request, env);
     if (m === "POST" && p === "/camps/admin/state") return await adminSetState(request, env);

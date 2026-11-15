@@ -316,3 +316,17 @@ body[data-page] .dept .icon{background:var(--panel)!important;color:var(--mute)!
 @media(min-width:760px){body[data-page] .hero{padding-left:48px;padding-right:48px}body[data-page] main{padding:0 48px 40px}}
 @media(min-width:1100px){body[data-page] .hero{padding-left:max(48px,calc(50% - 552px));padding-right:max(48px,calc(50% - 552px));max-width:none}body[data-page] main{max-width:1200px}}
 body[data-page] .st.off{background:var(--panel);color:var(--mute)}
+
+/* live counts */
+.livetop{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.bignum{display:flex;align-items:baseline;gap:10px}.bignum b{font-size:64px;line-height:1;font-weight:700}.bignum span{font-size:20px;color:var(--mute)}
+.livenote{font-size:13px;color:var(--mute)}.livenote.bad{color:#a12020}
+.prog.big{height:14px;margin:14px 0 4px}
+.llist,.lrecent{list-style:none;margin:0;padding:0}
+.lrow{padding:12px 0;border-top:1px solid var(--line)}.lrow:first-child{border-top:0}
+.lh{display:flex;justify-content:space-between;gap:10px;font-size:18px;margin-bottom:6px}.lh span{color:var(--mute)}
+.lrow.full .lh span{color:#a12020;font-weight:600}
+.lrecent li{display:grid;grid-template-columns:84px 1fr auto;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:15px}.lrecent li:first-child{border-top:0}
+.lrecent .rt{color:var(--mute);font-variant-numeric:tabular-nums}.lrecent .rd{color:var(--mute)}.lrecent small{color:var(--mute)}.lrecent .none{display:block;color:var(--mute)}
+@media(min-width:1000px){.bignum b{font-size:96px}.lh{font-size:22px}.lrecent li{font-size:17px}}
+.llist .prog,.prog.big{background:var(--panel)}
