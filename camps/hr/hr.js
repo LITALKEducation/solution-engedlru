@@ -28,7 +28,7 @@ const STATE_TEXT = {
   open: ['เปิดลงทะเบียน', 'แตะฝ่ายที่สนใจ ดูที่ว่างของแต่ละชั้นปี แล้วกดลงทะเบียน'],
   closed: ['ปิดลงทะเบียนแล้ว', 'ปิดลงทะเบียนแล้ว ยังดูรายละเอียดของแต่ละฝ่ายได้']
 };
-const ADMIN_PAGES = [['overview', 'ภาพรวม', '/hr/overview'], ['quota', 'โควตา', '/hr/quota'], ['students', 'นักศึกษา', '/hr/students'], ['settings', 'ตั้งค่า', '/hr/settings']];
+const ADMIN_PAGES = [['overview', 'ภาพรวม', '/hr/overview'], ['quota', 'โควตา', '/hr/quota'], ['live', 'สด', '/hr/live'], ['students', 'นักศึกษา', '/hr/students'], ['settings', 'ตั้งค่า', '/hr/settings']];
 
 let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null;
 let schedule = null, geo = { enabled: false }, srvOff = 0;   // automatic open/close schedule, location rule, server-clock offset (ms)
@@ -430,6 +430,7 @@ function renderAdmin(x) {
 async function loadAdminPage() {
   const body = $('adminBody');
   if (TAB === 'students') return loadStudents();
+  if (TAB === 'live') return startLive();
   let r;
   try { r = await api('/camps/admin/overview'); } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } body.innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadAdminPage()'); return; }
   if (!r.ok) { body.innerHTML = failBox(await errMsg(r), 'loadAdminPage()'); return; }
@@ -838,3 +839,28 @@ async function start() {
   else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: authError || 'เข้าสู่ระบบไม่ได้ในตอนนี้ ลองรีเฟรชหน้า' }); }
 }
 window.addEventListener('DOMContentLoaded', start);
+
+// ---------- live counts: refreshed every 4 s while the page is visible ----------
+let liveT = null, liveFail = 0;
+function startLive() { clearTimeout(liveT); liveFail = 0; $('adminBody').innerHTML = '<div id="liveBox"><div class="skeleton" style="height:160px"></div></div>'; tickLive(); }
+async function tickLive() {
+  if (document.hidden) { liveT = setTimeout(tickLive, 2000); return; }
+  try {
+    const r = await api('/camps/admin/live');
+    if (r.status === 401) { me = null; renderAdmin(); renderUserChip(); return; }
+    if (!r.ok) throw new Error('http');
+    const d = await r.json(); liveFail = 0; state = d.registration; applyInfo(d); renderLive(d);
+  } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } liveFail++; const n = $('liveNote'); if (n) { n.textContent = 'เชื่อมต่อไม่ได้ กำลังลองใหม่…'; n.className = 'livenote bad'; } }
+  liveT = setTimeout(tickLive, liveFail ? Math.min(15000, 4000 * (liveFail + 1)) : 4000);
+}
+function renderLive(d) {
+  const box = $('liveBox'); if (!box) return;
+  const pct = (f, q) => q > 0 ? Math.min(100, Math.round(f * 100 / q)) : 0;
+  const t = (x) => new Date(String(x).replace(' ', 'T') + 'Z').toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const rows = d.departments.map((x) => '<li class="lrow' + (x.quota > 0 && x.filled >= x.quota ? ' full' : '') + '"><div class="lh"><b>' + esc(x.name) + '</b><span>' + x.filled + ' / ' + x.quota + (x.quota > 0 && x.filled >= x.quota ? ' · เต็ม' : ' · เหลือ ' + x.remaining) + '</span></div><div class="prog" role="img" aria-label="' + esc(x.name) + ' ' + pct(x.filled, x.quota) + ' เปอร์เซ็นต์"><i style="width:' + pct(x.filled, x.quota) + '%"></i></div></li>').join('');
+  const recent = d.recent.length ? d.recent.map((x) => '<li><span class="rt">' + esc(t(x.selected_at)) + '</span><span class="rn">' + esc(x.name) + ' <small>ปี ' + x.year + '</small></span><span class="rd">' + esc(x.department_name) + '</span></li>').join('') : '<li class="none">ยังไม่มีใครลงทะเบียน</li>';
+  box.innerHTML = '<div class="livetop"><div><div class="bignum" aria-live="polite"><b>' + d.filled + '</b><span>/ ' + d.quota + ' ที่</span></div><p class="meta">ลงทะเบียนแล้ว · เหลือ ' + Math.max(0, d.quota - d.filled) + ' ที่</p></div><p id="liveNote" class="livenote">อัปเดตล่าสุด ' + new Date(d.now).toLocaleTimeString('th-TH') + ' · รีเฟรชเองทุก 4 วินาที</p></div>'
+    + '<div class="prog big" role="img" aria-label="ลงทะเบียนแล้ว ' + pct(d.filled, d.quota) + ' เปอร์เซ็นต์"><i style="width:' + pct(d.filled, d.quota) + '%"></i></div>'
+    + '<h2 class="sec-title">แต่ละฝ่าย</h2><ul class="llist">' + rows + '</ul>'
+    + '<h2 class="sec-title">ล่าสุด</h2><ul class="lrecent">' + recent + '</ul>';
+}

@@ -191,6 +191,13 @@ r=await call('s1','POST','/camps/admin/geo',{enabled:false});ok(r.s===403,'stude
 ok(Math.abs(distanceMeters(0,0,0,1)-111195)<200&&distanceMeters(10,20,10,20)===0,'haversine sanity');
 r=await call('admin','POST','/camps/admin/geo',{enabled:false,lat:LAT,lng:LNG,radius:100});r=await call('s1','POST','/camps/select',{departmentCode:'teaching'});ok(r.s===200,'location check off: no coordinates needed');
 await call('s1','POST','/camps/unselect');
+console.log('11. live counts');
+r=await call('s1','GET','/camps/admin/live');ok(r.s===403,'live: students are refused');
+r=await call(null,'GET','/camps/admin/live');ok(r.s===401,'live: anonymous 401');
+r=await call('admin','GET','/camps/admin/live');
+const nSel=db.prepare('select count(*) c from camp_selections').get().c;
+ok(r.s===200&&r.d.filled===nSel&&r.d.departments.length===5&&r.d.departments.reduce((a,x)=>a+x.filled,0)===nSel&&r.d.recent.length===Math.min(10,nSel)&&r.d.quota>=r.d.filled&&typeof r.d.now==='number','live: totals '+r.d.filled+'/'+r.d.quota+', '+nSel+' selections, recent '+r.d.recent.length);
+ok(nSel===0||(r.d.recent[0].name&&r.d.recent[0].department_name),'live: recent rows carry name and department');
 console.log('10. audit');
 ok(db.prepare("select count(*) c from budget_audit_logs where entity_type='camp'").get().c>10,'audit rows written');
 console.log(failn?`\n${failn} FAILED, ${pass} passed`:`\nall ${pass} checks passed`);
