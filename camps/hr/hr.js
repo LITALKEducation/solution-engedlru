@@ -819,7 +819,8 @@ async function exportRegPdf() {
       doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียน ' + g.people.length + ' คน (ชาย ' + g.people.filter((p) => p.gender === 'M').length + ' · หญิง ' + g.people.filter((p) => p.gender === 'F').length + ')', 14, 25);
       doc.autoTable({ startY: 30, head: [['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']], body: g.people.length ? g.people.map((p, i) => [i + 1, String(p.student_id), p.name, p.year, GL[p.gender]]) : [[{ content: 'ยังไม่มีผู้ลงทะเบียน', colSpan: 5, styles: { halign: 'center' } }]], styles, headStyles, columnStyles: { 0: { cellWidth: 16 }, 3: { cellWidth: 16 }, 4: { cellWidth: 20 } } });
     });
-    const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, 196, 290, { align: 'right' }); }
+    let logo = null; try { const lr = await fetch('/hr/logo-english-education.png'); if (lr.ok) { const bl = await lr.blob(); logo = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(bl); }); } } catch (e) { /* the PDF is still made without the logo */ }
+    const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); if (logo) doc.addImage(logo, 'PNG', 136, 8, 60, 14.5); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, 196, 290, { align: 'right' }); }
     doc.save('camp-registrations-' + stamp() + '.pdf');
   } catch (e) { toast('สร้างไฟล์ PDF ไม่ได้', true); }
 }
