@@ -812,7 +812,9 @@ async function exportRegPdf() {
     doc.setFont('Sarabun', 'bold'); doc.setFontSize(20); doc.text('รายชื่อผู้ลงทะเบียนแต่ละฝ่าย', 14, 18);
     doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียนทั้งหมด ' + d.total + ' คน · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH'), 14, 25);
     doc.autoTable({ startY: 30, head: [SUM_HEAD], body: regSummary(d.groups), styles, headStyles, columnStyles: { 0: { cellWidth: 52 } } });
-    d.groups.forEach((g) => {
+    const byId = (a, b) => String(a.student_id).localeCompare(String(b.student_id), 'en', { numeric: true });   // PDF: student id, smallest first
+    d.groups.forEach((g0) => {
+      const g = { ...g0, people: g0.people.slice().sort(byId) };
       doc.addPage(); doc.setFont('Sarabun', 'bold'); doc.setFontSize(16); doc.text(g.name, 14, 18);
       doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียน ' + g.people.length + ' คน (ชาย ' + g.people.filter((p) => p.gender === 'M').length + ' · หญิง ' + g.people.filter((p) => p.gender === 'F').length + ')', 14, 25);
       doc.autoTable({ startY: 30, head: [['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']], body: g.people.length ? g.people.map((p, i) => [i + 1, String(p.student_id), p.name, p.year, GL[p.gender]]) : [[{ content: 'ยังไม่มีผู้ลงทะเบียน', colSpan: 5, styles: { halign: 'center' } }]], styles, headStyles, columnStyles: { 0: { cellWidth: 16 }, 3: { cellWidth: 16 }, 4: { cellWidth: 20 } } });
