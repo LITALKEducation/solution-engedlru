@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Camps">
+<rect width="96" height="96" rx="24" fill="#d32f2f"/>
+<path d="M48 22 20 70h56L48 22z" fill="#fff"/>
+<path d="M48 44 36 70h24L48 44z" fill="#d32f2f"/>
+<path d="M48 22V12" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+<path d="M48 12h12l-4 4 4 4H48" fill="#fff"/>
+<path d="M14 74h68" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+</svg>
