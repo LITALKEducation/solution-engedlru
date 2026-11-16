@@ -68,4 +68,46 @@ r = await call('admin', 'POST', '/camps/survey/admin/delete', { studentId: '6740
 r = await call('admin', 'GET', '/camps/survey/admin/list'); ok(r.d.forms.length === 1, 'deleted form is gone');
 r = await call('admin', 'GET', '/camps/survey/nope'); ok(r.s === 404, 'unknown route 404');
 
+
+// ---------- assigned students fill in their own form (public page /hr/survey) ----------
+const { parseStudentEmail } = await import('../src/handlers/survey.js');
+ok(parseStudentEmail('sb6740102220@lru.ac.th') === '6740102220' && parseStudentEmail('x@gmail.com') === null, 'student id comes from the university email');
+r = await call(null, 'GET', '/camps/survey/me'); ok(r.s === 401, 'me: anonymous 401');
+r = await call('gmail', 'GET', '/camps/survey/me'); ok(r.d.reason === 'not_university_email', 'me: gmail is not a university email');
+r = await call('unverified', 'GET', '/camps/survey/me'); ok(r.d.reason === 'email_not_verified', 'me: unverified email');
+r = await call('other', 'GET', '/camps/survey/me'); ok(r.d.reason === 'not_in_roster', 'me: not in the roster');
+r = await call('s1', 'GET', '/camps/survey/me'); ok(r.s === 200 && r.d.assigned === false && r.d.student.name === 'นายสมชาย ใจดี' && !r.d.template, 'me: a student who is not assigned gets no form');
+r = await call('s1', 'POST', '/camps/survey/save', form(16)); ok(r.s === 403 && r.d.code === 'NOT_ASSIGNED', 'save: not assigned -> refused');
+r = await call('gmail', 'POST', '/camps/survey/save', form(16)); ok(r.s === 403 && r.d.code === 'NOT_STUDENT', 'save: non-university account refused');
+r = await call('other', 'POST', '/camps/survey/save', form(16)); ok(r.s === 403 && r.d.code === 'NOT_IN_ROSTER', 'save: student not in the roster refused');
+// admin assigns
+r = await call('s1', 'POST', '/camps/survey/admin/assign', { studentId: '6740102220' }); ok(r.s === 403, 'assign: student refused');
+r = await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '9999999999' }); ok(r.s === 404, 'assign: unknown student');
+r = await call('admin', 'GET', '/camps/survey/admin/student?id=6740102220'); ok(r.d.assigned === false, 'admin lookup: not assigned yet');
+r = await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '6740102220' }); ok(r.s === 200 && r.d.assigned === true, 'admin assigns a student');
+r = await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '6740102220' }); ok(r.s === 200, 'assigning twice is harmless');
+ok(db.prepare('select count(*) c from camp_survey_assignees').get().c === 1, 'one assignment row per student');
+r = await call('admin', 'GET', '/camps/survey/admin/student?id=6740102220'); ok(r.d.assigned === true, 'admin lookup: assigned');
+// the assigned student sees their own ฝ่าย's form with the saved answers
+r = await call('s1', 'GET', '/camps/survey/me');
+ok(r.d.assigned === true && r.d.template.name === 'ฝ่ายการสอน' && r.d.template.items.length === 16 && r.d.texts.title === 'แบบสำรวจโรงเรียน' && r.d.saved === true && r.d.form.schoolName === 'โรงเรียนบ้านทดสอบ', 'me: assigned student gets the form (with what an admin saved)');
+r = await call('s1', 'POST', '/camps/survey/save', form(16, { schoolName: 'โรงเรียนที่นักศึกษากรอก', studentId: '6740102221', checks: Array(16).fill(false) }));
+ok(r.s === 200 && r.d.form.studentId === '6740102220' && r.d.form.schoolName === 'โรงเรียนที่นักศึกษากรอก', 'a student can only save their own form (studentId in the body is ignored)');
+ok(db.prepare("select updated_by u from camp_school_survey where student_id='6740102220'").get().u === 'sb6740102220@lru.ac.th', 'updated_by records the student');
+r = await call('s1', 'POST', '/camps/survey/save', form(15)); ok(r.s === 400, 'student save: wrong number of ticks refused');
+r = await call('s1', 'POST', '/camps/survey/save', form(16, { surveyDate: 'x' })); ok(r.s === 400, 'student save: bad date refused');
+r = await call('s2', 'POST', '/camps/survey/save', form(18)); ok(r.s === 403 && r.d.code === 'NOT_ASSIGNED', 'another student is still refused');
+r = await call('admin', 'GET', '/camps/survey/admin/list'); ok(r.d.assignees.length === 1 && r.d.assignees[0].studentId === '6740102220' && r.d.assignees[0].hasForm === true && r.d.assignees[0].departmentName === 'ฝ่ายการสอน', 'admin list shows the assignees');
+// assigned but no ฝ่าย yet
+await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '6840100001' });
+r = await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '6840100001', assigned: false }); ok(r.s === 200 && r.d.assigned === false, 'admin takes the assignment away');
+r = await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '6840100001' });
+// a student without a ฝ่าย who is assigned: told to pick a ฝ่าย first
+r = await call('y1', 'GET', '/camps/survey/me'); ok(r.d.assigned === true && r.d.code === 'NO_DEPARTMENT' && r.d.template === null, 'assigned student without a ฝ่าย gets NO_DEPARTMENT');
+r = await call('y1', 'POST', '/camps/survey/save', form(16)); ok(r.s === 409 && r.d.code === 'NO_DEPARTMENT', 'student save without a ฝ่าย refused');
+r = await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '6740102220', assigned: false }); ok(r.s === 200, 'admin removes the assignment');
+r = await call('s1', 'POST', '/camps/survey/save', form(16)); ok(r.s === 403 && r.d.code === 'NOT_ASSIGNED', 'after removal the student can no longer save');
+r = await call('s1', 'GET', '/camps/survey/me'); ok(r.d.assigned === false, 'after removal the student sees no form');
+ok(db.prepare("select count(*) c from budget_audit_logs where action in ('SURVEY_ASSIGN','SURVEY_UNASSIGN')").get().c >= 4, 'assignments are audited');
+
 console.log(`survey: ${pass} passed, ${fl} failed`); process.exit(fl ? 1 : 0);
