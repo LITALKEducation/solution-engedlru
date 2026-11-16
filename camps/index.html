@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script src="/assets/inapp-guard.js?v=903ca2b3"></script>
-<meta name="theme-color" content="#3a1b16">
+<meta name="theme-color" content="#ffffff">
 <meta name="robots" content="noindex,nofollow">
 <title>Camps · กิจกรรมค่าย</title>
 <link rel="icon" type="image/png" href="/icons/branch-64.png">
@@ -12,21 +12,38 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=25a208f5">
-<link rel="stylesheet" href="/assets/theme.css?v=2">
+<link rel="stylesheet" href="/assets/theme.css?v=3">
 <style>
-.home{max-width:640px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 40px) 24px 24px;flex:1;width:100%}
-.brand{font-size:clamp(2.5rem,10vw,3.5rem);font-weight:800;line-height:1.05;letter-spacing:-.03em;color:#fff;margin:0 0 .5rem}
-.brand+p{margin:0 0 2.5rem;color:var(--mute);font-size:1rem}
-.grp{margin-top:2rem}
-.grp h2{font-size:.875rem;font-weight:600;color:var(--mute);margin:0 0 .75rem 4px}
-.grp ul{list-style:none;margin:0;padding:6px;border-radius:32px;border:1px solid var(--glass-edge);background:linear-gradient(135deg,var(--glass-hi),var(--glass-lo)),var(--glass-tint);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 30px rgba(0,0,0,.22);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%)}
-.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 20px;min-height:60px;font-size:1.125rem;font-weight:600;color:#fff;text-decoration:none;border-radius:26px}
-.row::after{content:"\2192";flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--cream);color:var(--dark);font-size:1.1rem;transition:transform .2s ease-out}
-.row:hover{background:rgba(255,255,255,.14)}
-.row:hover::after{transform:translateX(3px)}
-.badge{margin-left:.5rem;font-size:.8125rem;padding:2px 12px}
-footer{max-width:640px;margin:0 auto;width:100%;text-align:left;padding:1rem 28px calc(env(safe-area-inset-bottom,0px) + 24px);color:var(--mute)}
+.home{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 28px) 20px 16px;flex:1;width:100%}
+.brand{font-size:clamp(2.5rem,11vw,3.75rem);font-weight:800;line-height:1.02;letter-spacing:-.035em;color:var(--accent);margin:0 0 1.25rem}
+.chips{display:flex;gap:12px;overflow-x:auto;padding:6px 20px 14px;margin:0 -20px;scroll-snap-type:x proximity;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;scroll-snap-align:start;width:92px;height:92px;border-radius:50%;display:grid;place-content:center;gap:0;text-align:center;color:var(--ink);cursor:pointer;font:inherit;padding:0 6px;
+ background:linear-gradient(135deg,var(--glass-hi),var(--glass-lo));border:1px solid var(--glass-edge);box-shadow:var(--shadow);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:transform .2s ease-out}
+.chip i{display:block;font-style:normal;font-size:.6875rem;color:var(--mute);line-height:1.2}
+.chip b{display:block;font-size:1.5rem;line-height:1.1;font-weight:800}
+.chip span{display:block;font-size:.75rem;line-height:1.25;font-weight:600}
+.chip[aria-selected="true"]{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(1.06)}
+.chip[aria-selected="true"] i{color:#fff}
+.stage{position:relative;margin-top:8px;border-radius:36px;min-height:360px;padding:22px 22px 18px;display:flex;flex-direction:column;
+ background:linear-gradient(135deg,var(--glass-hi),var(--glass-lo));border:1px solid var(--glass-edge);box-shadow:var(--shadow);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%)}
+.meta{display:flex;align-items:center;gap:12px}
+.pill{border:1px solid var(--glass-edge);border-radius:999px;padding:4px 14px;font-size:.875rem;font-weight:600;background:#fff;color:var(--accent-d)}
+.count{color:var(--mute);font-size:.875rem}
+.stage h2{color:var(--ink);margin:auto 0 0;font-size:clamp(2.5rem,12vw,3.5rem);font-weight:800;letter-spacing:-.03em;line-height:1.05;padding-bottom:.5rem;border-bottom:1px solid var(--glass-edge)}
+.state{min-height:2rem;margin:.75rem 0 1.25rem;color:var(--mute);font-size:.9375rem}
+.bar{display:flex;align-items:center;gap:8px;padding:8px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-edge)}
+.nav{flex:none;width:48px;height:48px;border-radius:50%;border:1px solid var(--glass-edge);background:#fff;color:var(--accent-d);font-size:1.25rem;cursor:pointer}
+.nav:hover{background:var(--soft)}
+.go{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;font-size:1.0625rem;text-decoration:none}
+.go:hover{background:var(--accent-d)}
+.chip:focus-visible,.nav:focus-visible,.go:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.alt{margin:1.25rem 4px 0;font-size:.875rem;color:var(--mute)}
+.alt a{color:var(--mute);text-decoration:underline}
+footer{max-width:560px;margin:0 auto;width:100%;text-align:left;padding:.5rem 24px calc(env(safe-area-inset-bottom,0px) + 24px);color:var(--mute)}
 footer a{color:var(--mute);text-decoration:underline}
+@media(min-width:900px){.home{max-width:720px}.stage{min-height:400px;padding:28px}}
+@media(prefers-reduced-motion:reduce){.chip{transition:none}}
 </style>
 <script src="/assets/brand-bar.js?v=3a855dc3" defer></script>
 </head>
@@ -35,31 +52,46 @@ footer a{color:var(--mute);text-decoration:underline}
 <div class="shell">
 <main id="main" tabindex="-1" class="home">
 <h1 class="brand">Camps</h1>
-<p>กิจกรรมค่าย</p>
-<section class="grp" aria-labelledby="g1"><h2 id="g1">นักศึกษา</h2>
-<ul>
-<li><a class="row" href="/hr/"><span>เลือกฝ่าย <span class="badge" id="hrBadge">เร็วๆ นี้</span></span></a></li>
-<li><a class="row" href="/aka/"><span>ตั้งชื่อ AKA</span></a></li>
-</ul></section>
-<section class="grp" aria-labelledby="g2"><h2 id="g2">เจ้าหน้าที่</h2>
-<ul>
-<li><a class="row" href="/lotto/"><span>จับสลาก</span></a></li>
-<li><a class="row" href="/qrcheck/"><span>เช็ก QR</span></a></li>
-</ul></section>
-<section class="grp" aria-labelledby="g3"><h2 id="g3">การเงิน</h2>
-<ul>
-<li><a class="row" href="/budget/"><span>งบประมาณ</span></a></li>
-</ul></section>
+<div class="chips" role="tablist" aria-label="เลือกระบบ" id="chips"></div>
+<section class="stage" id="stage" role="tabpanel" aria-live="polite">
+<div class="meta"><span class="pill" id="grp"></span><span class="count" id="cnt"></span></div>
+<h2 id="ttl"></h2>
+<p class="state" id="state"></p>
+<div class="bar"><button class="nav" id="prev" type="button" aria-label="ก่อนหน้า">&larr;</button><a class="go" id="go" href="/">เปิด &rarr;</a><button class="nav" id="next" type="button" aria-label="ถัดไป">&rarr;</button></div>
+</section>
+<noscript><ul><li><a href="/hr/">เลือกฝ่าย</a></li><li><a href="/aka/">ตั้งชื่อ AKA</a></li><li><a href="/lotto/">จับสลาก</a></li><li><a href="/qrcheck/">เช็ก QR</a></li><li><a href="/budget/">งบประมาณ</a></li></ul></noscript>
 </main>
 <footer>© English Education · LRU · <a href="/admin/" style="text-decoration:underline">แอดมิน</a></footer>
 </div>
 <script>
-// Registration status badge for the "เลือกฝ่าย" row. Failure keeps the static text.
-(function(){var API=window.CAMPS_API||"https://engedlru-api.stnetworld.workers.dev";
+(function(){
+var items=[
+ {t:"เลือกฝ่าย",g:"นักศึกษา",h:"/hr/",id:"hr"},
+ {t:"ตั้งชื่อ AKA",g:"นักศึกษา",h:"/aka/"},
+ {t:"จับสลาก",g:"เจ้าหน้าที่",h:"/lotto/"},
+ {t:"เช็ก QR",g:"เจ้าหน้าที่",h:"/qrcheck/"},
+ {t:"งบประมาณ",g:"การเงิน",h:"/budget/"}];
+var cur=0,chips=document.getElementById("chips"),btns=[];
+items.forEach(function(it,i){var b=document.createElement("button");b.type="button";b.className="chip";b.setAttribute("role","tab");b.id="tab"+i;
+ b.innerHTML="<i>"+it.g+"</i><b>"+(i+1)+"</b><span>"+it.t+"</span>";
+ b.addEventListener("click",function(){sel(i,false)});
+ b.addEventListener("keydown",function(e){var d=e.key==="ArrowRight"?1:e.key==="ArrowLeft"?-1:0;if(d){e.preventDefault();sel((cur+d+items.length)%items.length,true)}});
+ chips.appendChild(b);btns.push(b)});
+function sel(i,focus){cur=i;var it=items[i];
+ btns.forEach(function(b,k){b.setAttribute("aria-selected",k===i?"true":"false");b.tabIndex=k===i?0:-1});
+ document.getElementById("stage").setAttribute("aria-labelledby","tab"+i);
+ document.getElementById("grp").textContent=it.g;document.getElementById("cnt").textContent=(i+1)+" / "+items.length;
+ document.getElementById("ttl").textContent=it.t;document.getElementById("go").href=it.h;
+ document.getElementById("state").textContent=it.s||"";
+ chips.scrollLeft=Math.max(0,btns[i].offsetLeft-(chips.clientWidth-btns[i].offsetWidth)/2);if(focus)btns[i].focus()}
+document.getElementById("prev").onclick=function(){sel((cur-1+items.length)%items.length,false)};
+document.getElementById("next").onclick=function(){sel((cur+1)%items.length,false)};
+sel(0,false);
+// Registration status for "เลือกฝ่าย" (pending | open | closed). Failure keeps the page as is.
+var API=window.CAMPS_API||"https://engedlru-api.stnetworld.workers.dev";
 fetch(API+"/camps/status").then(function(r){return r.ok?r.json():null}).then(function(d){if(!d)return;
-var b=document.getElementById("hrBadge");
-if(d.registration==="open"){b.textContent="เปิดลงทะเบียน";b.className="badge open"}
-else if(d.registration==="closed"){b.textContent="ปิดแล้ว";b.className="badge closed"}
-}).catch(function(){})})();
+ items[0].s=d.registration==="open"?"เปิดลงทะเบียน":d.registration==="closed"?"ปิดลงทะเบียนแล้ว":"เร็วๆ นี้";
+ if(cur===0)document.getElementById("state").textContent=items[0].s}).catch(function(){});
+})();
 </script>
 </body></html>
