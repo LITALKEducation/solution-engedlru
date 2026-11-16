@@ -1,0 +1,52 @@
+/* แบบสำรวจโรงเรียน (/admin/hr/survey): the A4 survey form on screen, and as printed. Loaded after theme.css. */
+.tbl-wrap{position:relative}
+.svsearch label{display:block;font-weight:700;margin-bottom:6px}
+.svrow{display:flex;gap:10px;flex-wrap:wrap}
+.svrow input{flex:1 1 220px;min-width:0;font-size:1.0625rem}
+.svwho{display:flex;flex-direction:column;gap:2px;margin:12px 0 4px}
+.svwho b{font-size:1.125rem}.svwho span{color:var(--mute)}
+.sheet{background:#fff!important;border:2px solid var(--accent)!important;border-radius:var(--r);box-shadow:var(--hard)!important;padding:20px;margin:16px 0}
+.sh-head h2{font-size:1.5rem;margin:0 0 2px}.sh-head p{margin:0;color:var(--mute)}
+.sh-dept{margin:14px 0;padding:12px 14px;background:var(--accent);color:#fff;border-radius:var(--r)}
+.sh-dept b{display:block;font-size:1.125rem}.sh-dept span{display:block;opacity:1}
+.sh-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px 18px}
+@media(min-width:700px){.sh-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.shf{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+.shf label{font-weight:700}
+.sh-inst{margin:14px 0 8px;color:var(--mute)}
+.sh-table{width:100%;border-collapse:collapse}
+.sh-table th{text-align:left;padding:8px}
+.sh-table td,.sh-table th{white-space:normal;text-align:left}
+.sh-table td{padding:8px;vertical-align:top;border-bottom:1px solid var(--line)}
+.sh-no label{display:flex;align-items:center;gap:8px;font-weight:700;white-space:nowrap;min-height:44px;cursor:pointer}
+.sh-no input{width:24px;height:24px;flex:none}
+.sh-item,.sh-dept,.sh-head,.sh-inst,.svwho{line-height:1.6;overflow-wrap:anywhere;word-break:normal}
+.sh-nt textarea{width:100%;min-height:44px;resize:none;overflow:hidden;font:inherit;padding:8px 10px}
+textarea{background:#fff;color:var(--ink);border:2px solid #8a7f80;border-radius:var(--r);padding:8px 10px;font:inherit;width:100%}
+.sv-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 20px;position:sticky;bottom:0;background:#fff;padding:10px 0;border-top:1px solid var(--line)}
+@media(max-width:699px){
+ .sh-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ .sh-table,.sh-table tbody,.sh-table tr,.sh-table td{display:block;width:100%}
+ .sh-table tr{padding:8px 0;border-bottom:1px solid var(--line)}
+ .sh-table td{border:0;padding:2px 4px}
+ .sh-nt{padding-left:4px}
+}
+@media print{
+ @page{size:A4;margin:12mm}
+ html,body{background:#fff!important}
+ body::before,#brandBar,.hero,.skip,#hrNav,footer,#toast,.sv-actions,.svsearch,#svPick,#svList,.panel:not(.sheet),.sr{display:none!important}
+ main{padding:0!important;max-width:none!important;margin:0!important}
+ .shell{background:#fff!important}
+ .sheet{border:0!important;box-shadow:none!important;padding:0;margin:0;color:#000}
+ .sh-dept{background:none!important;color:#000!important;border:1px solid #000;border-radius:0}
+ .sh-table,.sh-table tbody{display:table!important}.sh-table tbody{display:table-row-group!important}
+ .sh-table tr{display:table-row!important;page-break-inside:avoid;border:0}
+ .sh-table td,.sh-table th{display:table-cell!important;border:1px solid #000!important;padding:4px 6px;width:auto}
+ .sh-table thead{position:static;width:auto;height:auto;clip:auto;display:table-header-group!important}
+ .sh-table th{background:#eee!important;color:#000!important}
+ .sh-no{width:14mm}.sh-nt{width:34%}
+ .sheet input:not([type=checkbox]),.sheet textarea{border:0!important;border-bottom:1px dotted #000!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:#000;min-height:0;padding:2px 0}
+ .sheet input[type=checkbox]{accent-color:#000}
+ .sh-nt textarea{border-bottom:0!important}
+ *{color:#000!important}
+}
