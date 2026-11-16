@@ -16,7 +16,7 @@ body{color:var(--ink)!important;font-family:'Noto Sans Thai',system-ui,-apple-sy
  padding:calc(env(safe-area-inset-top,0px) + 16px) max(24px,calc((100% - 1040px)/2)) 32px!important}
 .hero::before,.hero::after,.hero .orb,.hero .o1,.hero .o2,.hero .o3,.orb3,.orb,.eyebrow{display:none!important}
 .hero-body{margin-top:24px!important;max-width:680px}
-.hero h1,.cxhd h1{color:#fff!important;font-size:clamp(2rem,8vw,3.25rem)!important;font-weight:800!important;letter-spacing:-.02em;line-height:1.1;margin:0 0 .5rem!important}
+.hero h1,.cxhd h1{color:#fff!important;font-size:clamp(2rem,8vw,3.25rem)!important;font-weight:800!important;letter-spacing:0;line-height:1.35;margin:0 0 .5rem!important}
 .hero p,.cxhd p{color:#fff!important;opacity:1!important;font-size:1.0625rem!important}
 .herotop{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .back{display:inline-flex!important;align-items:center;gap:6px;min-height:44px;padding:0 14px 0 10px!important;border-radius:var(--r)!important;color:var(--accent)!important;background:#fff!important;font-weight:700!important;font-size:.9375rem!important;text-decoration:none;border:0}
@@ -99,7 +99,7 @@ progress,.bar,.barin,.prog,.progress{accent-color:var(--accent)}
 /* ---- shared tile list (home + admin) ---- */
 .cxhd{padding-bottom:36px!important}
 .cxhd .cxkick{margin:0 0 6px;font-weight:700;font-size:1rem;letter-spacing:.02em}
-.cxhd h1{font-size:clamp(3rem,16vw,5.5rem)!important;letter-spacing:-.03em;text-transform:uppercase;margin:0!important}
+.cxhd h1{font-size:clamp(3rem,16vw,5.5rem)!important;letter-spacing:0;text-transform:uppercase;margin:0!important;line-height:1.3!important}
 .cxsect{max-width:1040px;margin:0 auto;padding:28px 24px 0}
 .cxsect h2{display:inline-block;margin:0 0 14px;padding:4px 10px;background:var(--ink);color:#fff;font-size:.875rem;font-weight:700;border-radius:4px}
 .cxtiles{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
@@ -111,6 +111,16 @@ progress,.bar,.barin,.prog,.progress{accent-color:var(--accent)}
 .cxtile .cxnm{flex:1;min-width:0}
 .cxtile::after{content:"\2192";flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:var(--r);background:var(--accent);color:#fff;font-size:1.25rem}
 .cxtile .badge{margin-left:8px;font-size:.8125rem;padding:2px 8px;vertical-align:middle}
+
+/* ---- Thai text: stacked vowels and tone marks need vertical room, so no tight line-heights or negative tracking ---- */
+body,input,select,textarea,button{line-height:1.6}
+h1,h2,h3,h4,.hero h1,.hero p,.cxhd h1{line-height:1.45!important;letter-spacing:0!important}
+.cxhd h1{line-height:1.3!important}
+.badge,.state-chip,.tag,.pill,.st,.chip-soon,.btn,.gbtn,.back,.cxtile,.cxhd h2,.cxsect h2,th,td,label,.sec-title,.sec-title em,#brandBar a,#brandBar button{line-height:1.55!important;letter-spacing:0!important}
+.badge,.state-chip,.tag,.pill,.st,.chip-soon{padding-top:3px!important;padding-bottom:3px!important}
+.cxnm,.nm,.grow,h1,h2,h3{overflow:visible}
+.nt-aka,.nt-nick,.nt-top,.stat b,.banner b,.title,.title b,.title h1,.cdn b,.pname,.dept h3,.card h2,.card h3{line-height:1.5!important}
+.cxhd{padding-top:calc(env(safe-area-inset-top,0px) + 16px)}
 
 /* ---- accessibility ---- */
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--ink)!important;outline-offset:3px!important}
