@@ -123,7 +123,7 @@ async function login() {
     await auth0Client.loginWithRedirect({ authorizationParams: ap, appState: { returnTo: location.pathname } });
   } catch (e) { btns.forEach((b) => b.disabled = false); toast(e.message || 'เข้าสู่ระบบไม่สำเร็จ', true); }
 }
-async function logout() { await auth0Client.logout({ logoutParams: { returnTo: HR_URL } }); }
+async function logout() { try { localStorage.removeItem('svMe'); } catch (e) { /* ignore */ } await auth0Client.logout({ logoutParams: { returnTo: HR_URL } }); }
 async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } await logout(); }
 
 // ---------- menu ----------
@@ -354,7 +354,7 @@ function getPosition() {
 }
 async function loadMe() {
   let r;
-  try { r = await api(PAGE === 'student' ? '/camps/me' : '/camps/me?admin=1'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } renderAcct({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); renderGate({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); return; }
+  try { r = await api(PAGE === 'student' ? '/camps/me' : '/camps/me?admin=1'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } if (PAGE === 'student' && TAB === 'survey' && svOfflineBoot()) return; renderAcct({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); renderGate({ error: 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่' }); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if ((r.status === 429 || r.status >= 500) && (loadMe.tries = (loadMe.tries || 0) + 1) <= 4) { setTimeout(loadMe, 1500 * loadMe.tries + jitter(2000)); return; }   // busy right now: try again by itself
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
@@ -842,11 +842,12 @@ window.addEventListener('unhandledrejection', (ev) => {
 // ---------- start ----------
 async function start() {
   renderNav();
+  if (PAGE === 'student' && TAB === 'survey' && navigator.onLine === false && svOfflineBoot()) return;   // no signal: open the remembered form (hr/survey.js)
   if (PAGE === 'student') renderGate({ loading: true });
   const authed = await initAuth();
   if (authed === 'redirect') return;
   if (authed) await loadMe();
-  else { if (authReady) renderAcct(); renderGate(authReady ? null : { error: authError || 'เข้าสู่ระบบไม่ได้ในตอนนี้ ลองรีเฟรชหน้า' }); }
+  else { if (PAGE === 'student' && TAB === 'survey' && !authReady && svOfflineBoot()) return; if (authReady) renderAcct(); renderGate(authReady ? null : { error: authError || 'เข้าสู่ระบบไม่ได้ในตอนนี้ ลองรีเฟรชหน้า' }); }
 }
 window.addEventListener('DOMContentLoaded', start);
 

@@ -55,8 +55,8 @@ async function svOpen(raw) {
   svCur = d.template ? { student: s, tpl: d.template, form: d.form } : null; svDirty = false;
   if (svCur) svRender();
 }
-function svRender() {
-  const { student: s, tpl: t, form: f } = svCur, v = f || { schoolName: '', surveyDate: '', coordinator: '', phone: '', checks: t.items.map(() => false), notes: t.items.map(() => ''), summary: '', surveyor: s.name };
+function svRender(v0) {
+  const { student: s, tpl: t, form: f } = svCur, v = v0 || f || { schoolName: '', surveyDate: '', coordinator: '', phone: '', checks: t.items.map(() => false), notes: t.items.map(() => ''), summary: '', surveyor: s.name };
   const inp = (id, label, val, extra) => '<div class="shf"><label for="' + id + '">' + label + '</label><input id="' + id + '" value="' + esc(val) + '" ' + (extra || '') + '></div>';
   $('svSheet').innerHTML = '<article class="sheet" id="svPaper" aria-label="แบบสำรวจโรงเรียน ' + esc(t.name) + '">'
     + '<header class="sh-head"><h2>' + esc(svTpl.title) + '</h2><p>' + esc(svTpl.subtitle) + '</p></header>'
@@ -71,14 +71,14 @@ function svRender() {
     + '<div class="shf"><label for="svSum">สรุปผลการสำรวจ / สิ่งที่ต้องดำเนินการเพิ่มเติม</label><textarea id="svSum" rows="4" maxlength="2000">' + esc(v.summary) + '</textarea></div>'
     + inp('svBy', 'ผู้สำรวจ', v.surveyor, 'maxlength="120" autocomplete="off"') + '</article>'
     + '<div class="sv-actions"><button class="btn primary" type="button" id="svSave">บันทึก</button><button class="btn" type="button" id="svPrint">พิมพ์ / บันทึกเป็น PDF</button>'
-    + (f && !SV_PUBLIC ? '<button class="btn danger" type="button" id="svDel">ลบแบบสำรวจ</button>' : '') + '<span id="svCount" class="muted" aria-live="polite"></span></div>';
+    + (f && !SV_PUBLIC ? '<button class="btn danger" type="button" id="svDel">ลบแบบสำรวจ</button>' : '') + '<span id="svCount" class="muted"></span>' + (SV_PUBLIC ? '<span id="svStatus" class="svstatus" role="status" aria-live="polite"></span>' : '') + '</div>';
   const paper = $('svPaper'), grow = (el) => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
   paper.querySelectorAll('textarea').forEach(grow);
-  paper.addEventListener('input', (e) => { svDirty = true; if (e.target.tagName === 'TEXTAREA') grow(e.target); svCount(); });
-  paper.addEventListener('change', () => { svDirty = true; svCount(); });
+  paper.addEventListener('input', (e) => { if (e.target.tagName === 'TEXTAREA') grow(e.target); svEdited(); });
+  paper.addEventListener('change', svEdited);
   $('svSave').onclick = svSave; $('svPrint').onclick = () => { paper.querySelectorAll('textarea').forEach(grow); window.print(); };
   if ($('svDel')) $('svDel').onclick = svDelete;
-  svCount();
+  svCount(); svStatusNow();
 }
 function svCount() { const el = $('svCount'); if (!el || !svCur) return; const n = svCur.tpl.items.filter((_, i) => $('svc' + i).checked).length; el.textContent = 'สำรวจแล้ว ' + n + ' / ' + svCur.tpl.items.length + ' ข้อ' + (svDirty ? ' · ยังไม่ได้บันทึก' : ''); }
 function svRead() {
@@ -89,25 +89,99 @@ function svRead() {
 // ---------- public page /hr/survey: the signed-in student the admin assigned ----------
 const SV_REASON = { not_university_email: 'ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ลองออกจากระบบแล้วเข้าใหม่ด้วยอีเมลนั้น', email_not_verified: 'อีเมลนี้ยังไม่ได้ยืนยันกับ Google', not_in_roster: 'ไม่พบรหัสของคุณในรายชื่อค่าย ลองแจ้งแอดมิน' };
 const svCard = (title, msg, extra) => '<div class="card acct"><h2>' + title + '</h2><div class="warn">' + msg + '</div>' + (extra || '') + '</div>';
+const svLs = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
+const svDraftKey = (id) => 'svDraft:' + id;
 async function loadSurveyMe() {
   const box = $('svBox'); if (!box) return;
   box.innerHTML = '<div class="skeleton" style="height:120px"></div>';
-  let d; try { d = await svAsk('/camps/survey/me'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } box.innerHTML = failBox(e.message, 'loadSurveyMe()'); return; }
+  let d; try { d = await svAsk('/camps/survey/me'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } if (!e.status && svOfflineBoot()) return; box.innerHTML = failBox(e.message, 'loadSurveyMe()'); return; }
   const sw = '<button class="btn sm" type="button" onclick="switchAccount()">ใช้บัญชี Google อื่น</button>';
   if (d.reason) { box.innerHTML = svCard('ใช้งานไม่ได้', esc(SV_REASON[d.reason] || 'บัญชีนี้ใช้งานไม่ได้'), sw); return; }
   const s = d.student;
   if (!d.assigned) { box.innerHTML = svCard('ยังไม่ได้รับมอบหมาย', 'แอดมินยังไม่ได้มอบหมายแบบสำรวจนี้ให้ ' + esc(s.name) + ' (' + esc(s.studentId) + ') ถ้าคุณควรได้รับ ลองแจ้งแอดมิน', sw); return; }
   if (!d.template) { box.innerHTML = svCard('ยังไม่มีฝ่าย', 'คุณยังไม่ได้ลงทะเบียนฝ่าย จึงยังไม่มีแบบสำรวจให้กรอก ลงทะเบียนฝ่ายก่อน หรือแจ้งแอดมิน'); return; }
-  svTpl = d.texts; svCur = { student: s, tpl: d.template, form: d.form }; svDirty = false;
-  box.innerHTML = '<div class="panel"><div class="svwho"><b>' + esc(s.name) + '</b><span>' + esc(s.studentId) + ' · ปี ' + s.year + ' · ' + esc(s.departmentName) + '</span></div>'
-    + '<p class="muted">' + (d.saved ? 'บันทึกล่าสุด ' + esc(svDate(d.form.updatedAt)) : 'ยังไม่ได้บันทึก กรอกแล้วกดบันทึก') + ' · แก้ไขได้ตลอด</p></div><div id="svSheet"></div>';
-  svRender();
+  svLs.set('svMe', { at: Date.now(), d });   // the form text + the last saved answers, so the page still opens with no signal
+  svOffline = false; await svShow(d);
 }
+// show the form for the signed-in (or, offline, the remembered) assigned student, restoring an unsent draft from this device
+async function svShow(d, offline) {
+  const s = d.student; svTpl = d.texts; svCur = { student: s, tpl: d.template, form: d.form }; svDirty = false;
+  let seed = null; const dr = svLs.get(svDraftKey(s.studentId));
+  if (dr && dr.dirty && dr.data && dr.data.checks && dr.data.checks.length === d.template.items.length && dr.data.notes && dr.data.notes.length === d.template.items.length) {
+    const same = (dr.base || null) === ((d.form && d.form.updatedAt) || null);
+    seed = same || offline ? dr.data : ((await confirmDlg('พบฉบับร่างในเครื่องนี้', 'มีข้อมูลที่แก้ไขไว้ในเครื่องนี้แต่ยังไม่ได้ส่ง และบนระบบมีฉบับที่ใหม่กว่า (อาจแก้โดยแอดมิน) ต้องการใช้ฉบับร่างในเครื่องไหม', 'ใช้ฉบับร่างในเครื่อง', 'ใช้ฉบับบนระบบ')) ? dr.data : null);
+    if (!seed) svLs.del(svDraftKey(s.studentId));
+  } else if (dr) svLs.del(svDraftKey(s.studentId));
+  $('svBox').innerHTML = '<div class="panel"><div class="svwho"><b>' + esc(s.name) + '</b><span>' + esc(s.studentId) + ' · ปี ' + s.year + ' · ' + esc(s.departmentName) + '</span></div>'
+    + (offline ? '<div class="warn" role="status">ออฟไลน์ · เปิดจากข้อมูลที่เก็บไว้ในเครื่อง แก้ไขได้ตามปกติ ระบบจะส่งขึ้นเองเมื่อมีสัญญาณ</div>' : '')
+    + '<p class="muted">' + (d.form ? 'บันทึกล่าสุดบนระบบ ' + esc(svDate(d.form.updatedAt)) : 'ยังไม่ได้บันทึก กรอกแล้วระบบจะบันทึกให้เอง') + ' · บันทึกอัตโนมัติ แก้ไขได้ตลอด</p></div><div id="svSheet"></div>';
+  svRender(seed || undefined);
+  if (seed) { svDirty = true; svCount(); svStatus('local', 'พบฉบับร่างในเครื่อง กำลังส่งขึ้นระบบ…'); svTimer = setTimeout(() => svSync(), 800); }
+}
+// opened with no signal: use the last form this device saw (hr.js start() calls this before / instead of signing in)
+function svOfflineBoot() {
+  const c = svLs.get('svMe'); if (!c || !c.d || !c.d.template || !c.d.student || !$('svBox')) return false;
+  svOffline = true; $('svBox').innerHTML = '';
+  const a = $('acct'); if (a) a.innerHTML = '<div class="meta">โหมดออฟไลน์ · ' + esc(c.d.email || c.d.student.name) + '</div>';
+  svShow(c.d, true); return true;
+}
+
+// ---------- auto save: every edit goes to this device at once, and to the server a couple of seconds later (public page) ----------
+const SV_AUTO_MS = 2500;
+let svRev = 0, svTimer = null, svLocalTimer = null, svBusy = false, svOffline = false, svRetry = 0, svLast = { kind: '', text: '' };
+const svClock = () => new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+function svStatus(kind, text) { svLast = { kind, text }; const el = $('svStatus'); if (el) { el.textContent = text; el.dataset.kind = kind; } }
+function svStatusNow() { if (svLast.text) svStatus(svLast.kind, svLast.text); }
+function svSaveLocal() {
+  if (!svCur) return false;
+  return svLs.set(svDraftKey(svCur.student.studentId), { base: svCur.form ? svCur.form.updatedAt : null, at: Date.now(), dirty: svDirty, data: svRead() });
+}
+const svOnline = () => !svOffline && navigator.onLine !== false;
+function svEdited() {
+  svDirty = true; svCount();
+  if (!SV_PUBLIC) return;
+  svRev++;
+  clearTimeout(svLocalTimer); svLocalTimer = setTimeout(() => {
+    const ok = svSaveLocal();
+    svStatus('local', !ok ? 'เก็บในเครื่องไม่ได้ (พื้นที่เต็ม) กดบันทึกเพื่อส่งขึ้นระบบ' : svOnline() ? 'เก็บในเครื่องแล้ว กำลังจะบันทึกขึ้นระบบ…' : 'ออฟไลน์ · เก็บไว้ในเครื่องแล้ว จะส่งเมื่อมีสัญญาณ');
+  }, 300);
+  clearTimeout(svTimer); svTimer = setTimeout(() => svSync(), SV_AUTO_MS);
+}
+async function svSync(manual) {
+  if (!svCur || !SV_PUBLIC) return;
+  clearTimeout(svTimer);
+  if (!svDirty && !manual) return;
+  if (!svOnline()) { svSaveLocal(); svStatus('offline', 'ออฟไลน์ · เก็บไว้ในเครื่องแล้ว จะส่งเมื่อมีสัญญาณ'); if (manual) toast('ออฟไลน์ เก็บไว้ในเครื่องแล้ว จะส่งขึ้นระบบเมื่อมีสัญญาณ'); return; }
+  if (svBusy) { svTimer = setTimeout(() => svSync(manual), 800); return; }
+  svBusy = true; const rev = svRev; svStatus('busy', 'กำลังบันทึก…');
+  try {
+    const d = await svPost('/camps/survey/save', svRead());
+    svCur.form = d.form; svRetry = 0;
+    if (rev === svRev) { svDirty = false; svLs.del(svDraftKey(svCur.student.studentId)); } else { svSaveLocal(); svTimer = setTimeout(() => svSync(), 300); }
+    svLs.set('svMe', { at: Date.now(), d: Object.assign({}, (svLs.get('svMe') || {}).d, { form: d.form }) });
+    svStatus('ok', 'บันทึกแล้ว ' + svClock()); if (manual) toast('บันทึกแบบสำรวจแล้ว');
+  } catch (e) {
+    svSaveLocal();
+    if (sessionGone(e)) svStatus('error', 'เข้าสู่ระบบหมดอายุ ข้อมูลยังเก็บไว้ในเครื่อง เข้าสู่ระบบใหม่เพื่อส่งขึ้นระบบ');
+    else if (e.status && e.status < 500 && e.status !== 429) { svStatus('error', e.message + ' (ข้อมูลยังเก็บไว้ในเครื่อง)'); if (manual) toast(e.message, true); }
+    else { svRetry++; svStatus('offline', 'ส่งขึ้นระบบไม่สำเร็จ เก็บไว้ในเครื่องแล้ว จะลองใหม่เอง'); svTimer = setTimeout(() => svSync(), Math.min(60000, 5000 * svRetry)); }
+  } finally { svBusy = false; }
+}
+if (SV_PUBLIC) {
+  window.addEventListener('online', () => { if (svOffline) { location.reload(); return; } if (svDirty) svSync(); });   // a reload is safe: the draft is on this device
+  window.addEventListener('offline', () => { if (svCur) svStatus('offline', 'ออฟไลน์ · เก็บไว้ในเครื่องแล้ว จะส่งเมื่อมีสัญญาณ'); });
+  window.addEventListener('pagehide', () => { if (svDirty) svSaveLocal(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (svDirty) svSaveLocal(); } else if (svDirty) svSync(); });
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/hr/sw.js', { scope: '/hr/' }).catch(() => { /* works online without it */ }); });
+}
+
 async function svSave() {
-  if (!svCur) return; const b = $('svSave'); b.disabled = true;
+  if (!svCur) return;
+  if (SV_PUBLIC) return svSync(true);
+  const b = $('svSave'); b.disabled = true;
   try {
     const d = await svPost(SV_PUBLIC ? '/camps/survey/save' : '/camps/survey/admin/save', svRead());
-    svCur.form = d.form; svDirty = false; toast('บันทึกแบบสำรวจแล้ว'); svRender(); if (!SV_PUBLIC) svLoadList();
+    svCur.form = d.form; svDirty = false; toast('บันทึกแบบสำรวจแล้ว'); svRender(); svLoadList();
     const pk = $('svPick'); if (pk) pk.querySelectorAll('p.muted').forEach((p) => { p.textContent = 'บันทึกล่าสุด ' + svDate(d.form.updatedAt); });
   } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } toast(e.message, true); b.disabled = false; }
 }
@@ -116,4 +190,4 @@ async function svDelete() {
   try { await svPost('/camps/survey/admin/delete', { studentId: svCur.student.studentId }); toast('ลบแล้ว'); svCur.form = null; svDirty = false; svRender(); svLoadList(); }
   catch (e) { toast(e.message, true); }
 }
-window.addEventListener('beforeunload', (e) => { if (svDirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if (svDirty && !SV_PUBLIC) { e.preventDefault(); e.returnValue = ''; } });
