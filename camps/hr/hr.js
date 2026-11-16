@@ -804,8 +804,12 @@ async function exportRegPdf() {
   try {
     if (!window.jspdf) { await loadJs('/hr/vendor/jspdf.umd.min.js'); await loadJs('/hr/vendor/jspdf.plugin.autotable.min.js'); }
     const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
-    if (!thFonts) thFonts = { n: await b64('/budget/assets/fonts/Sarabun-Regular.ttf'), b: await b64('/budget/assets/fonts/Sarabun-Bold.ttf') };
+    if (!thFonts) thFonts = { n: await b64('/assets/fonts/SarabunTH-Regular.ttf'), b: await b64('/assets/fonts/SarabunTH-Bold.ttf') };
     const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    if (!window.thaiShape) await loadJs('/assets/thai-shape.js');   // jsPDF has no Thai shaping: pick vowel/tone-mark glyph variants ourselves
+    const T = window.thaiShape, rawText = doc.text.bind(doc), rawTable = doc.autoTable.bind(doc);
+    doc.text = (s, ...a) => rawText(Array.isArray(s) ? s.map(T) : T(s), ...a);
+    doc.autoTable = (o) => rawTable({ ...o, didParseCell: (d) => { d.cell.text = d.cell.text.map(T); if (o.didParseCell) o.didParseCell(d); } });
     doc.addFileToVFS('Sarabun-Regular.ttf', thFonts.n); doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
     doc.addFileToVFS('Sarabun-Bold.ttf', thFonts.b); doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold'); doc.setFont('Sarabun', 'normal');
     const styles = { font: 'Sarabun', fontSize: 11, cellPadding: 2 }, headStyles = { font: 'Sarabun', fontStyle: 'bold', fillColor: [211, 47, 47] };
