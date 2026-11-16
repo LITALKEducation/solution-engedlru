@@ -1,0 +1,97 @@
+/* Camps — "frosted glass" theme: warm terracotta gradient, translucent glass surfaces, cream pill buttons.
+   Loaded LAST on every Camps page except /budget/. Page logic and markup are untouched.
+   Text on glass is white over a dark tint so it stays >= 4.5:1. */
+:root{
+ --glass-tint:rgba(36,16,12,.42);--glass-hi:rgba(255,255,255,.16);--glass-lo:rgba(255,255,255,.05);--glass-edge:rgba(255,255,255,.30);
+ --cream:#ffe9a8;--cream-d:#fff6cf;--dark:#2a1410;
+ --brand:#ffe9a8;--brand-d:#fff6cf;--brand-l:transparent;--red:#ffe9a8;--red-d:#fff6cf;--red-l:transparent;
+ --ink:#fff;--mute:#f1dcd3;--muted:#f1dcd3;--line:rgba(255,255,255,.22);--panel:rgba(255,255,255,.10);--page:transparent;--bg:transparent;
+ --ok:#c9f2d3;--ok-l:rgba(201,242,211,.14);--bad:#ffc2ba;--bad-l:rgba(255,194,186,.14);--warn:#ffe9a8;--warn-l:rgba(255,233,168,.14);--info:#fff;--info-l:rgba(255,255,255,.12);
+ --don:#f1dcd3;--r:28px;
+}
+html{background:#3a1b16;color-scheme:dark}
+body{color:#fff!important;font-family:'Noto Sans Thai',system-ui,-apple-system,sans-serif;min-height:100vh;
+ background:
+  radial-gradient(60% 38% at 18% 6%,#b85a40 0,transparent 72%),
+  radial-gradient(48% 36% at 95% 38%,rgba(120,138,158,.75) 0,transparent 72%),
+  radial-gradient(70% 38% at 25% 98%,rgba(160,112,30,.85) 0,transparent 72%),
+  linear-gradient(170deg,#6b2f24 0%,#3a1b16 60%,#4a2418 100%)!important;
+ background-attachment:fixed!important}
+.shell{background:transparent!important}
+
+/* ---- header ---- */
+.hero{background:transparent!important;color:#fff!important;border-radius:0!important;overflow:visible!important;border:0;
+ padding:calc(env(safe-area-inset-top,0px) + 16px) max(24px,calc((100% - 1040px)/2)) 8px!important}
+.hero::before,.hero::after,.hero .orb,.hero .o1,.hero .o2,.hero .o3,.orb3,.orb,.eyebrow{display:none!important}
+.hero-body{margin-top:18px!important;max-width:640px}
+.hero h1{color:#fff!important;font-size:clamp(2rem,7vw,3rem)!important;font-weight:800!important;letter-spacing:-.03em;line-height:1.1;margin:0 0 .5rem!important}
+.hero p{color:var(--mute)!important;opacity:1!important;font-size:1rem!important}
+.herotop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.back{display:inline-flex!important;align-items:center;gap:6px;min-height:44px;padding:0 18px 0 12px!important;border-radius:999px!important;color:#fff!important;font-weight:600!important;font-size:.9375rem!important;text-decoration:none;
+ background:var(--glass-tint)!important;border:1px solid var(--glass-edge);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.back:hover{background:rgba(255,255,255,.2)!important}
+.account,#account,.userchip{color:var(--mute)!important;background:none!important;border:0!important;padding:0!important;font-size:.875rem!important;font-weight:400!important}
+.chip-soon,.state-chip,.badge,.tag,.pill{background:var(--glass-tint)!important;color:#fff!important;border:1px solid var(--glass-edge)!important;border-radius:999px!important;font-weight:600!important;box-shadow:none!important}
+.state-chip.open,.badge.open{background:var(--cream)!important;color:var(--dark)!important;border-color:var(--cream)!important}
+.state-chip.closed,.badge.closed{background:var(--glass-tint)!important;color:#fff!important}
+
+/* ---- brand bar (shared script): frosted cream pill ---- */
+#brandBar{background:rgba(255,255,255,.92)!important;border:0!important;margin:calc(env(safe-area-inset-top,0px) + 10px) 12px 0;border-radius:999px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 28px rgba(0,0,0,.25)}
+#brandBar .bb{min-height:56px;padding-right:12px!important;padding-left:16px!important}
+#brandBar .bn{border-radius:24px;border:0!important;margin-top:8px}
+#brandBar .bm{flex:none;margin-right:0;border-radius:999px!important;background:var(--dark)!important;color:#fff!important;border:0!important;min-height:40px!important;padding:0 18px!important}
+#brandBar .badm{background:var(--dark)!important;color:var(--cream)!important}
+#brandBar a[aria-current]{background:#f4e3d9!important;color:var(--dark)!important}
+
+/* ---- content ---- */
+main{margin-top:0!important;padding-top:20px!important;max-width:1040px}
+body[data-page] main{max-width:1040px!important}
+.card,.panel,.dept,.box,.headcard,.sum,.selbox,.stat,.modal-card,.scanpop-card,.table-wrap,.tbl-wrap,.notice,.banner{
+ background:linear-gradient(135deg,var(--glass-hi),var(--glass-lo)),var(--glass-tint)!important;color:#fff!important;
+ border:1px solid var(--glass-edge)!important;border-radius:var(--r)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 30px rgba(0,0,0,.22)!important;
+ backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%)}
+.hint{background:none!important;color:var(--mute)!important;border:0!important}
+a.card:hover,.dept:hover{background:linear-gradient(135deg,rgba(255,255,255,.24),rgba(255,255,255,.08)),var(--glass-tint)!important;transform:none!important}
+.card h1,.card h2,.card h3,.panel h2,.sec-title,.section-head h2{color:#fff}
+.card p,.dept p,.muted,.muted-t,small{color:var(--mute)!important}
+.sec-title em{background:none!important;border:1px solid var(--glass-edge);border-radius:999px;color:#fff!important}
+.fade{animation:none!important}
+.icon,.t1 .icon,.t2 .icon,.t3 .icon,.t4 .icon,.t5 .icon,.soon .icon{background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid var(--glass-edge);border-radius:50%!important}
+.steps li{background:var(--glass-tint)!important;border:1px solid var(--glass-edge);border-radius:var(--r)!important;color:#fff!important}
+.steps li::before{background:var(--cream)!important;color:var(--dark)!important}
+a{color:inherit}main p a,.link,.linkbtn{color:var(--cream)!important;text-decoration:underline}
+
+/* ---- buttons: cream pill = primary, glass pill = everything else ---- */
+.btn,.gbtn,.chipbtn,.giftbtn,.filebtn{border-radius:999px!important;box-shadow:none!important;min-height:48px;font-weight:700}
+.btn,.chipbtn,.giftbtn,.filebtn{background:var(--glass-tint)!important;color:#fff!important;border:1px solid var(--glass-edge)!important}
+.btn:hover:not(:disabled){background:rgba(255,255,255,.2)!important}
+.btn.primary,.primary{background:var(--cream)!important;color:var(--dark)!important;border:0!important}
+.btn.primary:hover:not(:disabled),.btn.primary:active:not(:disabled){background:var(--cream-d)!important}
+.btn.danger,.danger{background:var(--bad-l)!important;color:var(--bad)!important;border:1px solid var(--bad)!important}
+.btn.sm{min-height:40px}
+.btn:disabled,button:disabled{opacity:.55}
+.gbtn{background:rgba(255,255,255,.94)!important;color:#2a1410!important;border:0!important}
+
+/* ---- tabs / segmented ---- */
+.tabs,.seg,.hrnav{background:var(--glass-tint)!important;border:1px solid var(--glass-edge)!important;border-radius:999px!important;padding:4px;box-shadow:none!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.tabs button,.tabs a,.seg button,.hrnav a{background:none!important;color:#fff!important;border:0!important;border-radius:999px!important;box-shadow:none!important;min-height:44px}
+.tabs .on,.tabs .active,.tabs [aria-selected="true"],.seg .on,.hrnav .on,.hrnav [aria-current]{background:var(--cream)!important;color:var(--dark)!important;font-weight:700}
+
+/* ---- forms (solid light fields so typed text is always legible) ---- */
+input,select,textarea{background:rgba(255,255,255,.94)!important;color:var(--dark)!important;border:1.5px solid transparent!important;border-radius:16px!important;min-height:48px;box-shadow:none!important}
+input::placeholder,textarea::placeholder{color:#6b5650}
+input[type=checkbox],input[type=radio]{min-height:0;accent-color:#b85a40}
+label{color:#fff}
+table{border-collapse:collapse;color:#fff}
+th{background:transparent!important;color:var(--mute)!important;border-bottom:1px solid var(--glass-edge)!important;font-weight:600}
+td{border-bottom:1px solid var(--line)!important;color:#fff}
+progress,.bar,.barin,.prog,.progress{accent-color:var(--cream)}
+.top{background:var(--glass-tint)!important;border:0!important;border-bottom:1px solid var(--glass-edge)!important;box-shadow:none!important;color:#fff;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.top .title,.top .title b,.top .title h1{color:#fff!important}
+
+/* ---- accessibility ---- */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--cream)!important;outline-offset:3px!important}
+.skip{background:var(--cream)!important;color:var(--dark)!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@supports not (backdrop-filter:blur(1px)){.card,.panel,.dept,.box,.table-wrap,.back,.tabs{background:rgba(58,27,22,.85)!important}}
