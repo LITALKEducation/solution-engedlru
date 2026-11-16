@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "include": [
+    "/",
+    "/aka",
+    "/aka/",
+    "/hr",
+    "/hr/",
+    "/hr/choose",
+    "/hr/choose/",
+    "/hr/select",
+    "/hr/select/",
+    "/hr/survey",
+    "/hr/survey/",
+    "/lotto",
+    "/lotto/",
+    "/qrcheck",
+    "/qrcheck/"
+  ],
+  "exclude": []
+}
