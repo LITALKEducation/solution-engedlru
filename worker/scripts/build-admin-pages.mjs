@@ -12,6 +12,7 @@ const strip = (s) => s.replace(/\?v=[^"]*"/g, '"');
 
 export function generate(sys) {
   let html = fs.readFileSync(path.join(camps, sys, 'index.html'), 'utf8');
+  html = html.replace(/<!-- og:start -->[\s\S]*?<!-- og:end -->\n?/, '');   // admin pages have no public link preview
   html = html.replace(/(src|href)="\.\//g, `$1="/${sys}/`);
   html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<script>window.ADMIN_MODE=true;</script>');
   html = html.replace(/<title>([^<]*)<\/title>/, (m, t) => `<title>แอดมิน · ${t}</title>`);
