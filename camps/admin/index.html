@@ -10,41 +10,30 @@
 <link rel="icon" type="image/png" href="/icons/branch-64.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=25a208f5">
-<style>
-.ad{max-width:640px;margin:0 auto;padding:72px 24px 40px}
-.ad .back{display:inline-flex}
-.ad h1{font-family:var(--serif);font-size:clamp(2rem,8vw,2.75rem);font-weight:700;margin:20px 0 24px;color:var(--ink)}
-.ad h2{font-size:.875rem;color:var(--mute);font-weight:600;margin:28px 0 8px}
-.ad ul{list-style:none;margin:0;padding:4px 0;border-radius:var(--r);background:#fff;box-shadow:0 1px 2px rgba(20,16,16,.05)}
-.ad li+li{border-top:1px solid var(--line)}
-.ad li a{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;padding:10px 20px;font-weight:600}
-.ad li a:hover{background:#fdf8f8}
-.ad li a::after{content:"\2192";flex:none;color:var(--accent);font-size:1.25rem}
-.ad li a span{flex:1}
-</style>
-<link rel="stylesheet" href="/assets/theme.css?v=4">
+<style>footer{display:none}</style>
+<link rel="stylesheet" href="/assets/theme.css?v=5">
 <script src="/assets/brand-bar.js?v=3a855dc3" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
-<main id="main" tabindex="-1" class="ad" style="margin:0 auto;max-width:640px;padding-top:calc(env(safe-area-inset-top,0px) + 20px)">
-<a class="back" href="/">‹ กิจกรรมค่าย</a>
-<h1>แอดมิน</h1>
-<h2>ฝ่ายบุคคล</h2>
-<ul>
-<li><a href="/admin/hr/overview"><span>ภาพรวม</span></a></li>
-<li><a href="/admin/hr/live"><span>สด</span></a></li>
-<li><a href="/admin/hr/quota"><span>โควตา</span></a></li>
-<li><a href="/admin/hr/students"><span>นักศึกษา</span></a></li>
-<li><a href="/admin/hr/settings"><span>ตั้งค่า</span></a></li>
-</ul>
-<h2>ระบบอื่น</h2>
-<ul>
-<li><a href="/admin/lotto/"><span>จับสลาก</span></a></li>
-<li><a href="/admin/qrcheck/"><span>เช็ก QR</span></a></li>
-<li><a href="/admin/aka/"><span>AKA</span></a></li>
-<li><a href="/budget/"><span>งบประมาณ</span></a></li>
-</ul>
+<header class="hd"><p class="kick"><a class="back" href="/">&larr; กิจกรรมค่าย</a></p><h1>แอดมิน</h1></header>
+<main id="main" tabindex="-1">
+<section class="sect" aria-labelledby="g1"><h2 id="g1">ฝ่ายบุคคล</h2>
+<ul class="tiles">
+<li><a class="tile" href="/admin/hr/overview"><span class="no" aria-hidden="true">01</span><span class="nm">ภาพรวม</span></a></li>
+<li><a class="tile" href="/admin/hr/live"><span class="no" aria-hidden="true">02</span><span class="nm">สด</span></a></li>
+<li><a class="tile" href="/admin/hr/quota"><span class="no" aria-hidden="true">03</span><span class="nm">โควตา</span></a></li>
+<li><a class="tile" href="/admin/hr/students"><span class="no" aria-hidden="true">04</span><span class="nm">นักศึกษา</span></a></li>
+<li><a class="tile" href="/admin/hr/settings"><span class="no" aria-hidden="true">05</span><span class="nm">ตั้งค่า</span></a></li>
+</ul></section>
+<section class="sect" aria-labelledby="g2"><h2 id="g2">ระบบอื่น</h2>
+<ul class="tiles">
+<li><a class="tile" href="/admin/lotto/"><span class="no" aria-hidden="true">06</span><span class="nm">จับสลาก</span></a></li>
+<li><a class="tile" href="/admin/qrcheck/"><span class="no" aria-hidden="true">07</span><span class="nm">เช็ก QR</span></a></li>
+<li><a class="tile" href="/admin/aka/"><span class="no" aria-hidden="true">08</span><span class="nm">AKA</span></a></li>
+<li><a class="tile" href="/budget/"><span class="no" aria-hidden="true">09</span><span class="nm">งบประมาณ</span></a></li>
+</ul></section>
 </main>
+<div style="height:48px"></div>
 </body>
 </html>
