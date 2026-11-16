@@ -31,7 +31,12 @@ textarea{background:#fff;color:var(--ink);border:2px solid #8a7f80;border-radius
  .sh-table td{border:0;padding:2px 4px}
  .sh-nt{padding-left:4px}
 }
+#acct,.hrnav:empty{margin-top:0}
+.hrnav:empty{display:none}
+.svassign{display:flex;align-items:center;gap:10px;margin:10px 0 4px;font-weight:600;min-height:44px;cursor:pointer}
+.svassign input{width:24px;height:24px;flex:none}
 @media print{
+ .acct,#gate,.sec-title{display:none!important}
  @page{size:A4;margin:12mm}
  html,body{background:#fff!important}
  body::before,#brandBar,.hero,.skip,#hrNav,footer,#toast,.sv-actions,.svsearch,#svPick,#svList,.panel:not(.sheet),.sr{display:none!important}

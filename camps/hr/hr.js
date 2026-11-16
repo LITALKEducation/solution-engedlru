@@ -129,6 +129,7 @@ async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1
 // ---------- menu ----------
 function renderNav() {
   const el = $('hrNav'); if (!el) return;
+  if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
   else el.innerHTML = '<a href="/hr/" class="' + (!CHOOSE && !SELECT ? 'on' : '') + '">ภาพรวมฝ่าย</a><a href="/hr/choose" class="' + (CHOOSE ? 'on' : '') + '">เลือกฝ่าย</a><a href="/hr/select" class="' + (SELECT ? 'on' : '') + '">เลือกเลย</a>';
@@ -358,6 +359,7 @@ async function loadMe() {
   if ((r.status === 429 || r.status >= 500) && (loadMe.tries = (loadMe.tries || 0) + 1) <= 4) { setTimeout(loadMe, 1500 * loadMe.tries + jitter(2000)); return; }   // busy right now: try again by itself
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
   loadMe.tries = 0; const wasAdmin = !!(me && me.isAdmin); me = await r.json(); if (me.adminDeferred && wasAdmin) me.isAdmin = true; state = me.registration || state; renderState(); renderAcct(); renderNav();
+  if (PAGE === 'student' && TAB === 'survey') { ungate(); loadSurveyMe(); return; }   // hr/survey.js
   if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); checkAdminLater(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
 }
@@ -368,7 +370,7 @@ function renderGate(x) {
   let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
   if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
   if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
-  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อดูฝ่ายและลงทะเบียน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
