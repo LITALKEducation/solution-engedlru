@@ -12,65 +12,39 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=25a208f5">
-<style>
-body{background:#fff}
-.home{max-width:1200px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 22px) 20px 8px;flex:1;width:100%}
-.logo{display:flex;align-items:center;gap:12px}
-.logo img{width:44px;height:44px;border-radius:12px}
-.logo b{display:block;font-size:20px;line-height:1.2}.logo small{color:var(--mute);font-size:14px}
-.home h1{font-size:15px;font-weight:400;color:var(--mute);margin:20px 0 4px}
-.groups{display:grid;grid-template-columns:minmax(0,1fr);gap:0 28px}
-@media(min-width:700px){.groups{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(min-width:1000px){.groups{grid-template-columns:repeat(3,minmax(0,1fr))}.home{padding-top:48px}.logo img{width:52px;height:52px}.home h1{font-size:17px}}
-.grp{margin-top:26px}
-.grp h2{font-size:14px;font-weight:700;color:var(--mute);margin:0 0 4px 2px}
-.grp .gd{font-size:14px;color:var(--mute);margin:0 0 8px 2px}
-.grp ul{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.grp li+li{border-top:1px solid var(--line)}
-.row{display:flex;align-items:center;gap:14px;padding:14px 16px;min-height:64px}
-.row:hover{background:var(--panel)}
-.row::after{content:"›";color:var(--mute);font-size:22px;flex:none}
-.ico{flex:none;width:40px;height:40px;border-radius:12px;background:var(--panel);color:var(--brand-d);display:grid;place-items:center}
-.ico svg{width:22px;height:22px}
-.tx{flex:1;min-width:0}.tx b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px}.tx small{display:block;color:var(--mute);font-size:14px;margin-top:2px}
-.badge{background:var(--panel);color:var(--mute);font-weight:600;font-size:13px;padding:2px 10px}
-.badge.open{background:#e7f6ec;color:#166534}.badge.closed{background:#fbeaea;color:#a12020}
-footer{max-width:1200px;margin:0 auto;width:100%}
-</style>
+<link rel="stylesheet" href="/assets/theme.css?v=5">
+<style>footer{max-width:1040px;margin:0 auto;width:100%;text-align:left;padding:32px 24px calc(env(safe-area-inset-bottom,0px) + 32px);color:var(--mute)}footer a{color:var(--mute);text-decoration:underline}</style>
 <script src="/assets/brand-bar.js?v=3a855dc3" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
 <div class="shell">
-<main id="main" tabindex="-1" class="home" style="margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 22px)">
-<h1>เลือกระบบที่ต้องการใช้งาน</h1>
-<div class="groups">
-<section class="grp" aria-labelledby="g1"><h2 id="g1">สำหรับนักศึกษา</h2>
-<ul>
-<li><a class="row" href="/hr/"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14c2.8.2 4.5 2.1 4.5 5"/></svg></span><span class="tx"><b>เลือกฝ่าย <span class="badge" id="hrBadge">เร็วๆ นี้</span></b><small id="hrText">ดูฝ่ายต่างๆ ในค่าย เปิดให้ลงทะเบียนเมื่อถึงเวลา</small></span></a></li>
-<li><a class="row" href="/aka/"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6"/><path d="M14 2v6h6"/><path d="m16 19 2 2 4-4"/></svg></span><span class="tx"><b>ตั้งชื่อ AKA</b><small>ตั้งชื่อเล่นและชื่อที่เรียกกันในค่าย</small></span></a></li>
+<header class="hd"><p class="kick">กิจกรรมค่าย</p><h1>Camps</h1></header>
+<main id="main" tabindex="-1">
+<section class="sect" aria-labelledby="g1"><h2 id="g1">นักศึกษา</h2>
+<ul class="tiles">
+<li><a class="tile" href="/hr/"><span class="no" aria-hidden="true">01</span><span class="nm">เลือกฝ่าย <span class="badge" id="hrBadge">เร็วๆ นี้</span></span></a></li>
+<li><a class="tile" href="/aka/"><span class="no" aria-hidden="true">02</span><span class="nm">ตั้งชื่อ AKA</span></a></li>
 </ul></section>
-<section class="grp" aria-labelledby="g2"><h2 id="g2">วันงาน (สำหรับเจ้าหน้าที่)</h2>
-<ul>
-<li><a class="row" href="/lotto/"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg></span><span class="tx"><b>จับสลาก</b><small>สแกน QR เช็กชื่อ และดูเลขสลาก</small></span></a></li>
-<li><a class="row" href="/qrcheck/"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></span><span class="tx"><b>เช็ก QR</b><small>ตรวจและบันทึกผล เช่น ตรวจครั้งที่ 1 หรือป้าย AKA</small></span></a></li>
+<section class="sect" aria-labelledby="g2"><h2 id="g2">เจ้าหน้าที่</h2>
+<ul class="tiles">
+<li><a class="tile" href="/lotto/"><span class="no" aria-hidden="true">03</span><span class="nm">จับสลาก</span></a></li>
+<li><a class="tile" href="/qrcheck/"><span class="no" aria-hidden="true">04</span><span class="nm">เช็ก QR</span></a></li>
 </ul></section>
-<section class="grp" aria-labelledby="g3"><h2 id="g3">การเงิน</h2>
-<ul>
-<li><a class="row" href="/budget/"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 7l12-4v4"/><circle cx="16.5" cy="13.5" r="1.2"/></svg></span><span class="tx"><b>งบประมาณ</b><small>บันทึกรายรับ-รายจ่ายและเงินบริจาค</small></span></a></li>
+<section class="sect" aria-labelledby="g3"><h2 id="g3">การเงิน</h2>
+<ul class="tiles">
+<li><a class="tile" href="/budget/"><span class="no" aria-hidden="true">05</span><span class="nm">งบประมาณ</span></a></li>
 </ul></section>
-</div>
 </main>
 <footer>© English Education · LRU · <a href="/admin/" style="text-decoration:underline">แอดมิน</a></footer>
 </div>
 <script>
-// Registration status for the "เลือกฝ่าย" row (pending | open | closed) and the seats left. Failure keeps the static text.
+// Registration status badge for "เลือกฝ่าย". Failure keeps the static text.
 (function(){var API=window.CAMPS_API||"https://engedlru-api.stnetworld.workers.dev";
 fetch(API+"/camps/status").then(function(r){return r.ok?r.json():null}).then(function(d){if(!d)return;
-var b=document.getElementById("hrBadge"),t=document.getElementById("hrText");
-if(d.registration==="open"){b.textContent="เปิดลงทะเบียน";b.className="badge open";t.textContent="เลือกฝ่ายที่สนใจแล้วกดลงทะเบียน"}
-else if(d.registration==="closed"){b.textContent="ปิดลงทะเบียนแล้ว";b.className="badge closed";t.textContent="ดูรายละเอียดฝ่ายต่างๆ"}
-var k=d.seats;if(k&&k.quota>0&&d.registration!=="pending"){t.textContent+=" · ที่ว่างเหลือ "+k.remaining+" จาก "+k.quota+" ที่"}
+var b=document.getElementById("hrBadge");
+if(d.registration==="open"){b.textContent="เปิดลงทะเบียน";b.className="badge open"}
+else if(d.registration==="closed"){b.textContent="ปิดแล้ว";b.className="badge closed"}
 }).catch(function(){})})();
 </script>
 </body></html>
