@@ -2,6 +2,7 @@
 // admins manage the roster (student id → name + year + gender) and per-department / per-year / per-gender quotas.
 import { json, corsHeaders } from "../lib/cors.js";
 import { putFile } from "../lib/files.js";
+import { akaState, readNames, upsertAka, tidy as tidyAka } from "./aka.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
 const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
@@ -75,8 +76,11 @@ const HEADER_KEYS = {
   prefix: /^(คำนำหน้า|คำนำหน้าชื่อ|คำนำหน้านาม|title|prefix)$/i,
   year: /^(ชั้นปี|ชั้นปีที่|ชั้น|ปี|ปีที่|ปีการศึกษา|year|level)$/i,
   gender: /^(เพศ|gender|sex)$/i,
-  dept: /^(ฝ่าย|department|dept)$/i
+  dept: /^(ฝ่าย|department|dept)$/i,
+  nid: /^(เลขบัตรประชาชน|เลขประจำตัวประชาชน|รหัสบัตรประชาชน|บัตรประชาชน|เลขบัตร|nationalid|national_id|citizenid|idcard)$/i
 };
+// 13 digits, spaces / dashes allowed ("" when absent, null when present but invalid)
+const normalizeNationalId = (v) => { const s = String(v ?? "").replace(/[\s-]/g, ""); if (!s) return ""; return /^\d{13}$/.test(s) ? s : null; };
 
 // "teaching" | "ฝ่ายการสอน" | "การสอน" -> department code (null when unknown)
 function resolveDept(depList, v) {
@@ -247,15 +251,36 @@ async function me(request, env, url) {
   if (!w.parsed) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
   else {
-    student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
+    student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
     if (!student) reason = "not_in_roster";
     else if (!student.gender) reason = "no_gender";
-    if (student) selection = await env.DB.prepare("SELECT department_code,selected_at FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
+    if (student) selection = await env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(student.student_id).first();
   }
   return json(request, env, {
     email: w.email, googleName: w.user.name || "", isAdmin: admin, adminDeferred: defer, registration: reg,
     studentId: w.parsed?.studentId || null, student, selection, reason
   });
+}
+
+// a student edits their own card: full name, nickname, AKA, national ID (never student id, year, gender or department)
+async function updateProfile(request, env) {
+  const w = await who(request, env); if (w.response) return w.response;
+  if (!w.parsed || !w.verified) return fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403);
+  const cur = await env.DB.prepare("SELECT s.student_id,s.name,s.national_id,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
+  if (!cur) return fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403);
+  const b = await request.json().catch(() => null);
+  const name = clean(b?.name, 200); if (!name) return fail(request, env, "กรุณาระบุชื่อ-นามสกุล");
+  const nid = normalizeNationalId(b?.nationalId); if (nid === null) return fail(request, env, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
+  const blank = !tidyAka(b?.nickname) && !tidyAka(b?.aka) && !cur.nickname && !cur.aka;   // never named yet and left empty: only name / national ID change
+  const names = blank ? { nickname: "", aka: "" } : readNames(b); if (names.error) return fail(request, env, names.error);
+  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid || null, cur.student_id)];
+  if (names.nickname !== (cur.nickname || "") || names.aka !== (cur.aka || "")) {
+    if ((await akaState(env)) !== "open") return fail(request, env, "ปิดรับการตั้งชื่อเล่น/AKA แล้ว แก้ได้เฉพาะชื่อและเลขบัตร", 403, { code: "AKA_CLOSED" });
+    stmts.push(upsertAka(env, cur.student_id, names.nickname, names.aka, w.email));
+  }
+  await env.DB.batch(stmts);
+  await audit(env, w, "CAMP_PROFILE_SELF", cur.student_id, { nameChanged: name !== cur.name, nationalIdSet: !!nid });
+  return json(request, env, { ok: true });
 }
 
 async function eligibleStudent(request, env) {
@@ -444,14 +469,15 @@ async function adminStudents(request, env, url) {
   if (YEARS.includes(year)) { where.push("s.year=?"); p.push(year); }
   if (GENDERS.includes(gender)) { where.push("s.gender=?"); p.push(gender); }
   const rows = await env.DB.prepare(
-    `SELECT s.student_id,s.name,s.year,s.gender,sel.department_code,d.name department_name
+    `SELECT s.student_id,s.name,s.year,s.gender,s.national_id,sel.department_code,d.name department_name
      FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code
      WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 2000`).bind(...p).all();
   return json(request, env, { students: rows.results || [] });
 }
 
-function upsertStudentStmt(env, id, name, year, gender) {
-  return env.DB.prepare("INSERT INTO camp_students (student_id,name,year,gender) VALUES (?,?,?,?) ON CONFLICT(student_id) DO UPDATE SET name=excluded.name,year=excluded.year,gender=excluded.gender,updated_at=datetime('now')").bind(id, name, year, gender);
+function upsertStudentStmt(env, id, name, year, gender, nid) {
+  // nid "" / undefined keeps the stored national ID
+  return env.DB.prepare("INSERT INTO camp_students (student_id,name,year,gender,national_id) VALUES (?,?,?,?,?) ON CONFLICT(student_id) DO UPDATE SET name=excluded.name,year=excluded.year,gender=excluded.gender,national_id=COALESCE(excluded.national_id,camp_students.national_id),updated_at=datetime('now')").bind(id, name, year, gender, nid || null);
 }
 const syncSelectionStmt = (env, id, year, gender) => env.DB.prepare("UPDATE camp_selections SET year=?,gender=? WHERE student_id=?").bind(year, gender, id);
 
@@ -464,9 +490,11 @@ async function adminUpsertStudent(request, env) {
   if (!name) return fail(request, env, "กรุณาระบุชื่อ");
   if (!YEARS.includes(year)) return fail(request, env, "ชั้นปีต้องเป็น 1–4");
   if (!gender) return fail(request, env, "กรุณาเลือกเพศ (ชาย/หญิง)");
+  const nid = normalizeNationalId(b?.nationalId);
+  if (nid === null) return fail(request, env, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
   const old = await env.DB.prepare("SELECT year FROM camp_students WHERE student_id=?").bind(id).first();
-  await env.DB.batch([upsertStudentStmt(env, id, name, year, gender), syncSelectionStmt(env, id, year, gender)]);
-  await audit(env, a, "CAMP_STUDENT", id, { name, year, gender, created: !old });
+  await env.DB.batch([upsertStudentStmt(env, id, name, year, gender, nid), syncSelectionStmt(env, id, year, gender)]);
+  await audit(env, a, "CAMP_STUDENT", id, { name, year, gender, created: !old, nationalIdSet: !!nid });
   return json(request, env, { ok: true, created: !old });
 }
 
@@ -483,7 +511,7 @@ async function adminBulkStudents(request, env) {
   const keyed = {};
   head.forEach((c, i) => { for (const k of Object.keys(HEADER_KEYS)) if (HEADER_KEYS[k].test(c.replace(/\s+/g, "")) && keyed[k] === undefined) keyed[k] = i; });
   let data = rows, hasHeader = false;
-  if (Object.keys(keyed).length >= 2 && !normalizeStudentId(head[keyed.id ?? 0])) { hasHeader = true; data = rows.slice(1); col = { id: keyed.id ?? -1, name: keyed.name ?? -1, last: keyed.last ?? -1, prefix: keyed.prefix ?? -1, year: keyed.year ?? -1, gender: keyed.gender ?? -1, dept: keyed.dept ?? -1 }; if (col.id < 0 || col.name < 0 || col.year < 0) return fail(request, env, "หัวตารางต้องมีคอลัมน์ รหัส, ชื่อ และชั้นปี (เพศไม่บังคับถ้าชื่อมีคำนำหน้า นาย/นางสาว)"); }
+  if (Object.keys(keyed).length >= 2 && !normalizeStudentId(head[keyed.id ?? 0])) { hasHeader = true; data = rows.slice(1); col = { id: keyed.id ?? -1, name: keyed.name ?? -1, last: keyed.last ?? -1, prefix: keyed.prefix ?? -1, year: keyed.year ?? -1, gender: keyed.gender ?? -1, dept: keyed.dept ?? -1, nid: keyed.nid ?? -1 }; if (col.id < 0 || col.name < 0 || col.year < 0) return fail(request, env, "หัวตารางต้องมีคอลัมน์ รหัส, ชื่อ และชั้นปี (เพศไม่บังคับถ้าชื่อมีคำนำหน้า นาย/นางสาว)"); }
   const depList = (await env.DB.prepare("SELECT code,name FROM camp_departments").all()).results || [];
   const good = [], errors = [];
   for (const r of data) {
@@ -501,7 +529,9 @@ async function adminBulkStudents(request, env) {
     const rawD = col.dept >= 0 ? c[col.dept] : "";
     const dept = rawD ? resolveDept(depList, rawD) : null;
     if (rawD && !dept) { errors.push({ line: r.line, text, error: `ไม่พบฝ่าย "${rawD}"` }); continue; }
-    good.push({ id, name, year, gender, dept });
+    const nid = col.nid >= 0 ? normalizeNationalId(c[col.nid]) : "";
+    if (nid === null) { errors.push({ line: r.line, text, error: "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก" }); continue; }
+    good.push({ id, name, year, gender, dept, nid });
   }
   const dedup = new Map(); for (const g of good) dedup.set(g.id, g);
   const list = [...dedup.values()];
@@ -514,7 +544,7 @@ async function adminBulkStudents(request, env) {
   const stmts = [];
   let assigned = 0;
   for (const g of list) {
-    stmts.push(upsertStudentStmt(env, g.id, g.name, g.year, g.gender));
+    stmts.push(upsertStudentStmt(env, g.id, g.name, g.year, g.gender, g.nid));
     if (g.dept) { stmts.push(upsertSelectionStmt(env, g.id, g.dept, g.year, g.gender)); assigned++; } else stmts.push(syncSelectionStmt(env, g.id, g.year, g.gender));
   }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
@@ -599,6 +629,7 @@ export async function camps(request, env, url) {
     if (m === "GET" && p === "/camps/departments") return await departments(request, env);
     { const pm = /^\/camps\/department-photo\/([a-z0-9_-]{1,40})$/.exec(p); if (m === "GET" && pm) return await departmentPhoto(request, env, pm[1]); }
     if (m === "GET" && p === "/camps/me") return await me(request, env, url);
+    if (m === "POST" && p === "/camps/me/profile") return await updateProfile(request, env);
     if (m === "POST" && p === "/camps/select") return await select(request, env);
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);

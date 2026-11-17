@@ -7,8 +7,8 @@ export const OG_LIMITS = { title: 70, description: 200, image: 2 * 1024 * 1024 }
 // key -> { path (canonical), files (camps/ files that carry the tags), title, description }. Images: camps/assets/og/<key>.png (1200x630)
 export const OG_PAGES = {
   home: { path: "/", files: ["index.html"], label: "หน้าแรก", title: "Camps · กิจกรรมค่าย | English Education LRU", description: "ระบบกิจกรรมค่ายของคณะครุศาสตร์ สาขาวิชาภาษาอังกฤษ เลือกฝ่าย ตั้งชื่อ AKA และอื่น ๆ ในที่เดียว" },
-  hr: { path: "/hr/", files: ["hr/index.html", "hr/choose.html", "hr/select.html"], label: "เลือกฝ่าย", title: "เลือกฝ่ายในค่าย · Camps", description: "ดูหน้าที่ของแต่ละฝ่ายและลงทะเบียนเลือกฝ่ายด้วยอีเมลมหาวิทยาลัย (@lru.ac.th)" },
-  aka: { path: "/aka/", files: ["aka/index.html"], label: "ตั้งชื่อ AKA", title: "ตั้งชื่อ AKA · Camps", description: "ตั้งชื่อเล่นและชื่อที่เรียกกันในค่ายของคุณ แก้ไขได้จนกว่าแอดมินจะปิดรับ" },
+  hr: { path: "/hr/", files: ["hr/index.html", "hr/departments.html", "hr/choose.html", "hr/select.html"], label: "เลือกฝ่าย", title: "เลือกฝ่ายในค่าย · Camps", description: "ดูหน้าที่ของแต่ละฝ่ายและลงทะเบียนเลือกฝ่ายด้วยอีเมลมหาวิทยาลัย (@lru.ac.th)" },
+  aka: { path: "/hr/aka", files: ["aka/index.html", "hr/aka.html"], label: "ตั้งชื่อ AKA", title: "ตั้งชื่อ AKA · Camps", description: "ตั้งชื่อเล่นและชื่อที่เรียกกันในค่ายของคุณ แก้ไขได้จนกว่าแอดมินจะปิดรับ" },
   lotto: { path: "/lotto/", files: ["lotto/index.html"], label: "จับสลาก", title: "จับสลาก · Camps", description: "สแกน QR เช็กชื่อ และดูเลขสลากในวันงาน (สำหรับเจ้าหน้าที่)" },
   qrcheck: { path: "/qrcheck/", files: ["qrcheck/index.html"], label: "เช็ก QR", title: "เช็ก QR · Camps", description: "ตรวจและบันทึกผลในวันงาน เช่น ตรวจครั้งที่ 1 หรือป้าย AKA (สำหรับเจ้าหน้าที่)" },
   survey: { path: "/hr/survey", files: ["hr/survey.html"], label: "แบบสำรวจโรงเรียน", title: "แบบสำรวจโรงเรียน · Camps", description: "กรอกแบบสำรวจโรงเรียนของฝ่ายคุณ บันทึกอัตโนมัติและใช้งานออฟไลน์ได้ (สำหรับผู้ที่ได้รับมอบหมาย)" }

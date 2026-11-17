@@ -67,7 +67,6 @@ for (const [name, f] of Object.entries(ids)) {
   if (!m) errors.push(`${f}: could not find the Auth0 client id (expected window.<APP>_AUTH0_CLIENT_ID || '<id>')`); else found[name] = m[1];
 }
 const byId = {}; for (const [n, id] of Object.entries(found)) (byId[id] ||= []).push(n);
-for (const [id, names] of Object.entries(byId)) if (names.length > 1) console.warn(`! ${names.join(', ')} still share the Auth0 client id ${id.slice(0, 6)}… — create one Auth0 application per system (camps/README.md)`);
 
 if (errors.length) { console.error(errors.map((e) => '✗ ' + e).join('\n')); process.exit(1); }
 console.log(`ok: ${js.length} scripts parse, camps html references resolve, ${mig.length} migrations named correctly`);
