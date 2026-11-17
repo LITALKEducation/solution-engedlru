@@ -12,6 +12,7 @@
   function mock(src, c) { return window.ShirtMock.mock(data.sample, src, c || 'white'); }
   function render() {
     var d = data, list = d.designs.slice();
+    $('gSamplePic').innerHTML = window.ShirtMock.sampleOnly(d.sample, 'white');
     if (d.resultsPublic) list.sort(function (a, b) { return (b.votes || 0) - (a.votes || 0); });
     $('gCount').textContent = d.galleryPublic ? '(' + list.length + ' แบบ)' : '';
     var st = { before: 'ยังไม่ถึงเวลา', open: 'เปิดอยู่', after: 'ปิดแล้ว', unset: 'ยังไม่กำหนดวัน' };

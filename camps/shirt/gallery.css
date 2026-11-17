@@ -17,3 +17,8 @@
 .gboxin h3{margin:0}.gboxin .shbig img,.gboxin .shbig svg,.gboxin .shbig .shmockimg{max-width:100%;display:block;margin:0 auto;border-radius:12px}
 .gdots{display:flex;gap:10px;justify-content:center}.gdot{width:32px;height:32px;border-radius:50%;border:2px solid #cfcfd6;padding:0;cursor:pointer}.gdot.on{outline:3px solid #111;outline-offset:2px}
 .gtabs{display:flex;gap:8px;justify-content:center}.gtabs button{border:0;border-radius:99px;padding:0 16px;min-height:36px;background:#f3f2f4;font-weight:600;cursor:pointer}.gtabs .on{background:#111;color:#fff}
+
+.gsample{display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:#fff;border:2px solid var(--accent,#c62828);border-radius:var(--r,6px);box-shadow:var(--hard,4px 4px 0 #c62828);padding:14px}
+.gsample p{margin:0 0 6px}.gmute{color:var(--mute,#4f4445);font-size:.9rem}
+.shsamplepic{width:min(260px,100%);flex:none;border-radius:12px;overflow:hidden;background:#f3f2f4}.shsamplepic .shmock{aspect-ratio:1/1}
+.sharea{position:absolute;border:2px dashed #c62828;border-radius:4px;box-sizing:border-box;pointer-events:none}

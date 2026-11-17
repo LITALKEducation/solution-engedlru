@@ -449,3 +449,8 @@ body[data-page] .uc{border-radius:18px}
 .shmockimg .shdesign{position:absolute;aspect-ratio:auto!important;object-fit:contain!important;width:auto;height:auto}
 .shimg .shmockimg{aspect-ratio:auto}
 .shsl{display:block;margin:6px 0}.shsl span{font-size:13px}.shsl input{width:100%;min-height:0!important;padding:0!important;border:0!important}
+
+/* the sample shirt in a box of its own */
+.shsamplebody{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.shsamplebody p{margin:0 0 6px}
+.shsamplepic{width:min(260px,100%);flex:none;border-radius:16px;overflow:hidden;background:var(--panel,#f3f2f4)}.shsamplepic .shmock{aspect-ratio:1/1}
+.sharea{position:absolute;border:2px dashed #c62828;border-radius:4px;box-sizing:border-box;pointer-events:none}

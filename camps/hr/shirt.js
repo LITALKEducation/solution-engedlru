@@ -69,7 +69,7 @@ function renderShirt() {
   const time = '<div class="card shtime"><div class="shrow"><b>รับผลงาน</b>' + shChip(x.submit) + '<span>' + esc(shRange(sc.submitFrom, sc.submitTo)) + '</span></div><div class="shrow"><b>โหวต</b>' + shChip(x.vote) + '<span>' + esc(shRange(sc.voteFrom, sc.voteTo)) + '</span></div></div>';
   if (x.reason) { box.innerHTML = time + '<div class="card acct"><div class="warn">' + esc(x.error || 'ใช้งานไม่ได้') + '</div><button class="btn primary sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div>'; return; }
   shSample = x.sample || shSample;
-  box.innerHTML = time + '<div id="shSubmit"></div><div id="shVote"></div>';
+  box.innerHTML = time + '<div class="card shsec shsample"><h2>เสื้อตัวอย่าง</h2><div class="shsamplebody"><div class="shsamplepic">' + window.ShirtMock.sampleOnly(shSample, 'white') + '</div><div><p>ลายของทุกคนจะถูกวางบนเสื้อตัวนี้</p><p class="muted">กรอบเส้นประคือตำแหน่งที่ลายถูกพิมพ์ เลือกรูปที่ออกแบบให้อยู่ในกรอบนี้</p></div></div></div><div id="shSubmit"></div><div id="shVote"></div>';
   renderShirtSubmit(); renderShirtVote();
 }
 function renderShirtSubmit() {
