@@ -15,14 +15,14 @@ const png = (n = 40) => { const u = new Uint8Array(n); u.set([0x89, 0x50, 0x4e, 
 const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
 
 // the page list
-ok(Object.keys(OG_PAGES).join() === 'home,hr,aka,lotto,qrcheck,survey', 'six public pages');
+ok(Object.keys(OG_PAGES).join() === 'home,hr,aka,lotto,qrcheck,shirt,survey', 'seven public pages');
 ok(Object.values(OG_PAGES).every((p) => p.title && p.description && [...p.title].length <= 70 && [...p.description].length <= 200 && p.files.length), 'defaults fit the limits');
-ok(ogKeyForPath('/') === 'home' && ogKeyForPath('/hr') === 'hr' && ogKeyForPath('/hr/') === 'hr' && ogKeyForPath('/hr/choose') === 'hr' && ogKeyForPath('/hr/select.html') === 'hr' && ogKeyForPath('/hr/survey') === 'survey' && ogKeyForPath('/aka/') === 'aka' && ogKeyForPath('/lotto') === 'lotto' && ogKeyForPath('/qrcheck/index.html') === 'qrcheck', 'paths map to page keys');
+ok(ogKeyForPath('/') === 'home' && ogKeyForPath('/hr') === 'hr' && ogKeyForPath('/hr/') === 'hr' && ogKeyForPath('/hr/choose') === 'hr' && ogKeyForPath('/hr/select.html') === 'hr' && ogKeyForPath('/hr/survey') === 'survey' && ogKeyForPath('/shirt') === 'shirt' && ogKeyForPath('/hr/shirt') === 'shirt' && ogKeyForPath('/aka/') === 'aka' && ogKeyForPath('/lotto') === 'lotto' && ogKeyForPath('/qrcheck/index.html') === 'qrcheck', 'paths map to page keys');
 ok(ogKeyForPath('/admin/hr/overview') === null && ogKeyForPath('/budget/') === null && ogKeyForPath('/hr/overview') === null, 'admin, budget and other pages have no preview');
 
 // public list: defaults until an admin changes something
 let r = await call(null, 'GET', '/camps/og/pages');
-ok(r.s === 200 && Object.keys(r.d.pages).length === 6 && r.d.pages.hr.title === OG_PAGES.hr.title && r.d.pages.hr.image === ogDefaultImage('hr') && r.d.pages.hr.customImage === false, 'public list returns the defaults');
+ok(r.s === 200 && Object.keys(r.d.pages).length === 7 && r.d.pages.hr.title === OG_PAGES.hr.title && r.d.pages.hr.image === ogDefaultImage('hr') && r.d.pages.hr.customImage === false, 'public list returns the defaults');
 ok(/max-age=30/.test(r.h.get('cache-control') || ''), 'public list is cacheable for 30 seconds');
 ok(r.d.pages.home.url === OG_SITE + '/', 'canonical url');
 
@@ -32,7 +32,7 @@ r = await call('s1', 'GET', '/camps/og/admin/pages'); ok(r.s === 403, 'admin lis
 r = await call('s1', 'POST', '/camps/og/admin/save', { page: 'hr', title: 'x' }); ok(r.s === 403, 'save: student refused');
 r = await call('s1', 'POST', '/camps/og/admin/image?page=hr', null, { bytes: png(), type: 'image/png' }); ok(r.s === 403, 'image: student refused');
 r = await call('s1', 'POST', '/camps/og/admin/reset', { page: 'hr' }); ok(r.s === 403, 'reset: student refused');
-r = await call('admin', 'GET', '/camps/og/admin/pages'); ok(r.s === 200 && r.d.pages.length === 6 && r.d.limits.title === 70 && r.d.pages[1].defaults.title === OG_PAGES.hr.title && r.d.pages[1].custom.title === '', 'admin list: pages with defaults and (empty) overrides');
+r = await call('admin', 'GET', '/camps/og/admin/pages'); ok(r.s === 200 && r.d.pages.length === 7 && r.d.limits.title === 70 && r.d.pages[1].defaults.title === OG_PAGES.hr.title && r.d.pages[1].custom.title === '', 'admin list: pages with defaults and (empty) overrides');
 
 // text
 r = await call('admin', 'POST', '/camps/og/admin/save', { page: 'nope', title: 'x' }); ok(r.s === 404, 'save: unknown page');

@@ -21,7 +21,9 @@
     "/lotto",
     "/lotto/",
     "/qrcheck",
-    "/qrcheck/"
+    "/qrcheck/",
+    "/shirt",
+    "/shirt/"
   ],
   "exclude": []
 }
