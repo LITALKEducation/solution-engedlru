@@ -354,7 +354,7 @@ body[data-page] .uc{border-radius:18px}
 
 /* my card (/hr/) */
 .idcard{gap:16px}
-.pfhead{display:flex;align-items:center;gap:16px}
+.pfhead{display:flex;align-items:flex-start;gap:16px}.pfwho{flex:1;min-width:0}.pfen{color:var(--mute);font-size:15px;margin-top:2px;overflow-wrap:anywhere}.pfedit{flex:none}
 .pfhead h2{font-size:20px;line-height:1.3}
 .pfimg{flex:none;width:88px;height:88px;border-radius:50%;object-fit:cover;background:var(--panel);border:3px solid var(--brand-l)}
 .pfimg.sm{width:52px;height:52px;border-width:2px}
@@ -374,10 +374,16 @@ body[data-page] .uc{border-radius:18px}
 .qrbig{display:grid;place-items:center;padding:8px 0}
 .qrbig canvas{border-radius:12px;max-width:100%;height:auto;image-rendering:pixelated}
 .pfhint{font-size:13px}.pfact{margin-top:12px;display:flex;justify-content:center}
-@media(max-width:420px){.qrbox{flex-direction:column;text-align:center}.qrnote{align-items:center}.pfgrid{grid-template-columns:1fr}}
+@media(max-width:420px){.qrbox{flex-direction:column;text-align:center}.qrnote{align-items:center}}
+@media(max-width:340px){.pfgrid{grid-template-columns:1fr}}
 
 /* /hr/aka */
 .akaok{background:#dcfce7;color:#15803d}
 .nametag{border-radius:24px;overflow:hidden;text-align:center;box-shadow:0 10px 26px #d32f2f26;background:#fff;border:2px solid var(--brand)}
 .nt-top{background:var(--brand);color:#fff;font-weight:800;letter-spacing:.14em;font-size:13px;padding:8px 0;text-transform:uppercase}
 .nt-body{padding:18px 14px 20px}.nt-aka{font-size:30px;font-weight:800;color:var(--brand-d);overflow-wrap:anywhere}.nt-aka.ph{color:var(--mute);opacity:.5}.nt-nick{margin-top:4px;color:var(--mute)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chip{display:inline-block;background:var(--panel);border-radius:999px;padding:3px 12px;font-size:13px;font-weight:600}.chip.dep{background:var(--brand-l);color:var(--brand-d)}.chip.dep.none{background:var(--panel);color:var(--mute);font-weight:500}
+.pfh{margin:6px 0 -4px;font-size:14px;color:var(--mute);font-weight:700;letter-spacing:.02em}
+.pfsec{margin:6px 0 0;font-size:13px;font-weight:700;color:var(--brand-d)}
+@media(max-width:420px){.pfhead{flex-wrap:wrap}.pfedit{margin-left:auto}}
