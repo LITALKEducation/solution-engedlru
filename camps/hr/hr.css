@@ -390,3 +390,41 @@ body[data-page] .uc{border-radius:18px}
 
 .req{color:#b91c1c;font-style:normal;font-weight:800}
 #pfForm input:invalid:not(:placeholder-shown),#pfForm input[type=date]:invalid{border-color:#b91c1c!important}
+
+/* students list: every detail on the row */
+.stHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.stHead h3{margin:0}
+.srow{align-items:flex-start}
+.srow .sen{display:block;color:var(--mute);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sdet{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px;margin:8px 0 0}
+.sdet div{min-width:0}.sdet dt{font-size:12px;color:var(--mute)}.sdet dd{margin:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}.sdet dd i{font-weight:400;color:var(--mute);font-style:normal}
+.expcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 12px;margin:10px 0}
+.expfmt{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 4px;padding-top:10px;border-top:1px solid var(--line)}
+.chk{display:flex;align-items:center;gap:8px;font-weight:500}
+
+.subtabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.subtabs button{border:0;border-radius:999px;padding:0 20px;min-height:42px;font-weight:600;cursor:pointer}.subn{display:inline-block;min-width:1.6em;padding:0 6px;border-radius:99px;background:#0000001a;font-size:12px;text-align:center}
+
+.stBtns{display:flex;gap:8px;flex-wrap:wrap}
+.srow details.m{min-width:0}
+.srow details.m>summary{list-style:none;cursor:pointer;position:relative;padding-right:28px;border-radius:12px}
+.srow details.m>summary::-webkit-details-marker{display:none}
+.srow details.m>summary::after{content:"";position:absolute;right:6px;top:10px;width:9px;height:9px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .15s}
+.srow details.m[open]>summary::after{transform:rotate(-135deg);top:14px}
+.srow details.m>summary:focus-visible{outline:2px solid var(--dark,#1f1f21);outline-offset:2px}
+.srow details.m>summary b{display:block}
+
+/* เสื้อค่าย (/hr/shirt, /admin/hr/shirt) */
+.shtime{display:grid;gap:10px}.shrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.shrow b{min-width:5.5em}.shrow span:last-child{color:var(--mute);font-size:14px}
+.shsec{margin-top:16px;gap:12px}.shsec h2{margin:0}
+.shmine{display:flex;gap:14px;align-items:flex-start}.shmine>div{min-width:0}
+.shimg{display:block;width:100%;padding:0;border:0;background:var(--panel,#f3f2f4);border-radius:16px;overflow:hidden;cursor:zoom-in;line-height:0}
+.shimg img{width:100%;height:100%;object-fit:cover;aspect-ratio:1/1;display:block}
+.shthumb{width:120px;flex:none}
+.shprev{min-height:0}.shprev img{max-width:100%;max-height:340px;border-radius:14px;display:block}
+.shgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-top:12px}
+.shcard{margin:0;background:var(--panel,#f3f2f4);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.shcard figcaption{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}.shcard figcaption p{margin:0;font-size:13px}
+.shcard.voted{outline:3px solid #15803d}.shcard.off{opacity:.6}
+.shact{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}.shact .btn{width:100%}
+.shvotes b{font-size:20px}.shrank{display:inline-block;background:var(--ink,#161616);color:#fff;border-radius:99px;padding:0 8px;font-size:12px}
+.shbig img{max-width:100%;max-height:70vh;display:block;margin:0 auto;border-radius:12px}
+.shwin{margin:12px 0}.shwin h4{margin:0 0 6px;display:flex;align-items:center;gap:8px}

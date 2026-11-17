@@ -11,6 +11,7 @@ const NAV = [
   ['/admin/hr/quota', 'โควตา', '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
   ['/admin/hr/students', 'นักศึกษา', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M17 11a3 3 0 1 0 0-6M21.5 20c0-2.6-1.6-4.6-4-5.5"/>'],
   ['/admin/hr/survey', 'แบบสำรวจโรงเรียน', '<path d="M8 4h8l4 4v12H4V4zM8 12h8M8 16h5"/>'],
+  ['/admin/hr/shirt', 'เสื้อค่าย', '<path d="M8 3l-5 3 2 5 3-1v10h8V10l3 1 2-5-5-3a4 4 0 0 1-8 0z"/>'],
   ['/admin/hr/og', 'ตัวอย่างลิงก์', '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'],
   ['/admin/hr/settings', 'ตั้งค่า', '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'],
   ['', 'ระบบอื่น'],

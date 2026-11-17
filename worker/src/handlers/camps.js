@@ -5,11 +5,11 @@ import { putFile } from "../lib/files.js";
 import { akaState, readNames, upsertAka, tidy as tidyAka } from "./aka.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
-const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
+export const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
 // Thai-safe text: NFC, no zero-width marks, NBSP -> space, collapsed spaces; Thai digits (๐-๙) -> 0-9 for ids / years
 const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[\u200b-\u200d\u2060\ufeff]/g, "").replace(/[\u00a0\u2007\u202f\u3000]/g, " ").replace(/[ \t]+/g, " ").trim();
 const asciiDigits = (s) => String(s ?? "").replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50));
-const clean = (s, max = 200) => tidy(s).slice(0, max);
+export const clean = (s, max = 200) => tidy(s).slice(0, max);
 const YEARS = [1, 2, 3, 4];
 const GENDERS = ["M", "F"]; // M = ชาย, F = หญิง
 const STATES = ["pending", "open", "closed"];
@@ -135,7 +135,7 @@ async function audit(env, w, action, entityId, metadata = {}) {
 }
 
 // Resolve the signed-in Google user.
-async function who(request, env) {
+export async function who(request, env) {
   const a = await getAuth0UserFromRequest(request, env);
   if (!a.user) {
     return { response: a.unavailable
@@ -156,7 +156,7 @@ async function adminStatus(env, user, strict) {
     return false;
   }
 }
-async function requireAdmin(request, env) {
+export async function requireAdmin(request, env) {
   const w = await who(request, env);
   if (w.response) return w;
   let ok;
@@ -481,12 +481,13 @@ async function adminStudents(request, env, url) {
   const q = clean(url.searchParams.get("q"), 80).toLowerCase();
   const year = Number(url.searchParams.get("year")), gender = url.searchParams.get("gender");
   const where = ["1=1"], p = [];
-  if (q) { where.push("(lower(s.name) LIKE ? OR s.student_id LIKE ?)"); p.push(`%${q}%`, `%${q}%`); }
+  if (q) { where.push("(lower(s.name) LIKE ? OR s.student_id LIKE ? OR lower(s.name_en) LIKE ? OR lower(a.nickname) LIKE ? OR lower(a.aka) LIKE ? OR s.phone LIKE ? OR s.guardian_phone LIKE ?)"); p.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
   if (YEARS.includes(year)) { where.push("s.year=?"); p.push(year); }
   if (GENDERS.includes(gender)) { where.push("s.gender=?"); p.push(gender); }
+  // everything stored about a student (admins only): names, nickname / AKA, birth date, phones, national ID, department
   const rows = await env.DB.prepare(
-    `SELECT s.student_id,s.name,s.year,s.gender,s.national_id,sel.department_code,d.name department_name
-     FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code
+    `SELECT s.student_id,s.name,s.name_en,s.year,s.gender,s.national_id,s.birth_date,s.phone,s.guardian_phone,a.nickname,a.aka,sel.department_code,d.name department_name
+     FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code LEFT JOIN camp_aka a ON a.student_id=s.student_id
      WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 2000`).bind(...p).all();
   return json(request, env, { students: rows.results || [] });
 }

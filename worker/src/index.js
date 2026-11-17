@@ -22,6 +22,7 @@ import {
 } from "./handlers/admin/tokensAdmin.js";
 import { getStats } from "./handlers/admin/stats.js";
 import { auth } from "./handlers/auth.js";
+import { shirt } from "./handlers/shirt.js";
 import { getOgImage, listOgImages, upsertOgImage } from "./handlers/og.js";
 import { listPublicAds, serveAd, listAdminAds, uploadOg, uploadAd, updateAd, deleteAd } from "./handlers/media.js";
 
@@ -95,6 +96,7 @@ export default {
       }
 
       if (pathname.startsWith("/auth/")) return await auth(request, env, url);
+      if (pathname.startsWith("/camps/shirt/")) return await shirt(request, env, url);
       if (pathname.startsWith("/camps/lotto/")) return await lotto(request, env, url);
       if (pathname.startsWith("/camps/qrcheck/")) return await qrcheck(request, env, url);
       if (pathname.startsWith("/camps/aka/")) return await aka(request, env, url);
