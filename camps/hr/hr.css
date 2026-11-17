@@ -442,3 +442,10 @@ body[data-page] .uc{border-radius:18px}
 .shlivecard{background:var(--panel,#f3f2f4);border-radius:18px;padding:12px;text-align:center}.shlivecard .shmock{border-radius:12px}
 .shliveT{margin:8px 0 2px;font-weight:700}.shnoimg{aspect-ratio:1/1;display:grid;place-items:center;color:var(--mute);border:2px dashed #cfcfd6;border-radius:12px;font-size:14px;padding:12px}
 .shwin .muted{margin:0 0 6px;font-size:13px}
+
+/* the admin's sample shirt picture with the design placed in its print area */
+.shmockimg{position:relative;width:100%;line-height:0;background:var(--panel,#f3f2f4);overflow:hidden}
+.shmockimg .shbase{display:block;width:100%;height:auto;aspect-ratio:auto!important;object-fit:contain!important}
+.shmockimg .shdesign{position:absolute;aspect-ratio:auto!important;object-fit:contain!important;width:auto;height:auto}
+.shimg .shmockimg{aspect-ratio:auto}
+.shsl{display:block;margin:6px 0}.shsl span{font-size:13px}.shsl input{width:100%;min-height:0!important;padding:0!important;border:0!important}

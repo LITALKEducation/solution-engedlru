@@ -482,7 +482,7 @@ function renderGate(x) {
   let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
   if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
   if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
-  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : SHIRT ? 'ดูแบบและโหวตเสื้อค่าย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : SHIRT ? 'ส่งผลงานและโหวตเสื้อค่าย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
