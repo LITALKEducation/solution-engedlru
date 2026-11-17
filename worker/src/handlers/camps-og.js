@@ -40,7 +40,7 @@ async function publicPages(req, env, url) {
   const rows = await allRows(env), pages = {};
   for (const key of Object.keys(OG_PAGES)) { const m = merge(key, rows[key], url); pages[key] = { path: m.path, paths: ogPaths(key), url: m.url, title: m.title, description: m.description, image: m.image, customImage: m.customImage }; }
   const r = json(req, env, { pages });
-  r.headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+  r.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
   return r;
 }
 async function publicImage(req, env, url) {

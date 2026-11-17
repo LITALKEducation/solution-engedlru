@@ -23,7 +23,7 @@ ok(ogKeyForPath('/admin/hr/overview') === null && ogKeyForPath('/budget/') === n
 // public list: defaults until an admin changes something
 let r = await call(null, 'GET', '/camps/og/pages');
 ok(r.s === 200 && Object.keys(r.d.pages).length === 6 && r.d.pages.hr.title === OG_PAGES.hr.title && r.d.pages.hr.image === ogDefaultImage('hr') && r.d.pages.hr.customImage === false, 'public list returns the defaults');
-ok(/max-age=60/.test(r.h.get('cache-control') || ''), 'public list is cacheable for a minute');
+ok(/max-age=30/.test(r.h.get('cache-control') || ''), 'public list is cacheable for 30 seconds');
 ok(r.d.pages.home.url === OG_SITE + '/', 'canonical url');
 
 // admin only

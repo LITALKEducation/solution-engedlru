@@ -13,23 +13,19 @@ const root = $('dash');
 let auth = null, timer = null, fails = 0, data = null, calMonth = null, filter = '';
 
 // ---------- chrome ----------
-const setMenu = (on) => { document.body.classList.toggle('menu', on); $('burger').setAttribute('aria-expanded', String(on)); };
-$('burger').onclick = () => setMenu(!document.body.classList.contains('menu'));
-$('scrim').onclick = () => setMenu(false);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
-$('q').addEventListener('input', (e) => { filter = e.target.value.trim().toLowerCase(); if (data) renderTable(); });
+const qBox = $('q'); if (qBox) qBox.addEventListener('input', (e) => { filter = e.target.value.trim().toLowerCase(); if (data) renderTable(); });
 
 // ---------- auth ----------
-const signin = (msg) => { stop(); root.innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมินเพื่อดูแดชบอร์ด') + '</p><button class="btn" id="dLogin" type="button">เข้าสู่ระบบด้วย Google</button></div>'; $('dLogin').onclick = login; $('logoutBtn').classList.add('hidden'); $('who').classList.add('hidden'); };
+const signin = (msg) => { stop(); root.innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมินเพื่อดูแดชบอร์ด') + '</p><button class="btn" id="dLogin" type="button">เข้าสู่ระบบด้วย Google</button></div>'; $('dLogin').onclick = login; $('shellLogout').classList.add('hidden'); $('who').classList.add('hidden'); };
 async function login() { try { await auth.loginWithRedirect({ authorizationParams: { connection: 'google-oauth2' }, appState: { returnTo: '/admin/' } }); } catch (e) { signin(e.message); } }
 const signOut = (other) => { try { if (other) sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: location.origin + '/admin/' } }); };
-$('logoutBtn').onclick = () => signOut(false);
+$('shellLogout').onclick = () => signOut(false);
 async function get(path) {
   const go = async (fresh) => { const t = await auth.getTokenSilently(fresh ? { cacheMode: 'off' } : undefined); return fetch(API + path, { headers: { Authorization: 'Bearer ' + t } }); };
   let r = await go(false); if (r.status === 401) r = await go(true); return r;
 }
 async function showWho() {
-  try { const u = await auth.getUser(); const el = $('who'); if (!u) return; el.classList.remove('hidden'); el.title = u.email || ''; el.innerHTML = u.picture ? '<img src="' + esc(u.picture) + '" alt="" referrerpolicy="no-referrer">' : esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()); $('logoutBtn').classList.remove('hidden'); } catch (e) { /* optional */ }
+  try { const u = await auth.getUser(); const el = $('who'); if (!u) return; el.classList.remove('hidden'); el.title = u.email || ''; el.innerHTML = u.picture ? '<img src="' + esc(u.picture) + '" alt="" referrerpolicy="no-referrer">' : esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()); $('shellLogout').classList.remove('hidden'); } catch (e) { /* optional */ }
 }
 
 // ---------- drawing ----------
