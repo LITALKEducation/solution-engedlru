@@ -428,3 +428,11 @@ body[data-page] .uc{border-radius:18px}
 .shvotes b{font-size:20px}.shrank{display:inline-block;background:var(--ink,#161616);color:#fff;border-radius:99px;padding:0 8px;font-size:12px}
 .shbig img{max-width:100%;max-height:70vh;display:block;margin:0 auto;border-radius:12px}
 .shwin{margin:12px 0}.shwin h4{margin:0 0 6px;display:flex;align-items:center;gap:8px}
+
+.shmock{display:block;width:100%;height:auto;background:var(--panel,#f3f2f4)}
+.shimg .shmock{aspect-ratio:1/1}
+.shthumb{width:130px}
+.shpair{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}.shpair figure{margin:0;text-align:center}.shpair img{max-width:100%;max-height:220px;border-radius:12px;background:#fff}.shpair figcaption{font-size:12px;color:var(--mute);margin-top:4px}
+.shtabs{display:flex;gap:8px;margin:8px 0}.shtabs button{border:0;border-radius:999px;padding:0 18px;min-height:38px;font-weight:600;cursor:pointer}
+.shbig .shmock{max-width:420px;margin:0 auto;border-radius:14px}
+.shdots{display:flex;gap:10px;justify-content:center;margin:12px 0}.shdot{width:34px;height:34px;border-radius:50%;border:2px solid #cfcfd6;cursor:pointer;padding:0}.shdot.on{outline:3px solid var(--dark,#1f1f21);outline-offset:2px}
