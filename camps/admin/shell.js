@@ -13,6 +13,7 @@ const NAV = [
   ['/admin/hr/survey', 'แบบสำรวจโรงเรียน', '<path d="M8 4h8l4 4v12H4V4zM8 12h8M8 16h5"/>'],
   ['/admin/hr/shirt', 'เสื้อค่าย', '<path d="M8 3l-5 3 2 5 3-1v10h8V10l3 1 2-5-5-3a4 4 0 0 1-8 0z"/>'],
   ['/admin/hr/og', 'ตัวอย่างลิงก์', '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'],
+  ['/admin/hr/maintenance', 'ปิดปรับปรุงระบบ', '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'],
   ['/admin/hr/settings', 'ตั้งค่า', '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'],
   ['', 'ระบบอื่น'],
   ['/admin/lotto/', 'จับสลาก', '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8v12M3 12h18M12 8c-2-4-6-3-5 0M12 8c2-4 6-3 5 0"/>'],
@@ -51,4 +52,5 @@ function build() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
+{ const m = document.createElement('script'); m.src = '/assets/maintenance.js?v=0'; document.head.appendChild(m); }   // slim banner while maintenance mode is on
 })();
