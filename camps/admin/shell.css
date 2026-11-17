@@ -1,11 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 /* Admin shell (/admin/*): sidebar + top bar + soft grey canvas + rounded white cards. Loaded LAST so it also restyles the older pages
    (hr.css / lotto / qrcheck / aka) without touching their markup. */
-:root{--bg:#e9e8ea;--card:#fff;--ink:#161616;--mute:#77737a;--muted:#77737a;--line:#e4e2e6;--dark:#1f1f21;--grey:#8a888d;--soft:#f3f2f4;--up:#1f9d55;--down:#c0392b;--r:22px;
+:root{--bg:#fff;--card:#fff;--ink:#161616;--mute:#77737a;--muted:#77737a;--line:#e8e8e8;--dark:#1f1f21;--grey:#8a888d;--soft:#f5f5f5;--up:#1f9d55;--down:#c0392b;--r:8px;
  --accent:#1f1f21;--accent-d:#000;--on-accent:#fff;--soft-ink:#1f1f21;--brand:#1f1f21;--brand-d:#000;--brand-l:#ecebed;--red:#1f1f21;--red-d:#000;--red-l:#ecebed;
- --panel:#f3f2f4;--page:#e9e8ea;--hard:none}
+ --panel:#fafafa;--page:#fff;--hard:none}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;background:var(--bg)!important}
-body.admin-shell,body{margin:0;background:var(--bg)!important;color:var(--ink);font:15px/1.6 'Noto Sans Thai',system-ui,-apple-system,sans-serif;display:block}
+body.admin-shell,body{margin:0;background:var(--bg)!important;color:var(--ink);font:15px/1.6 'Inter','Noto Sans Thai',system-ui,-apple-system,sans-serif;display:block}
 .hidden{display:none!important}
 button{font:inherit;cursor:pointer}
 .skip{position:absolute;left:-999px;top:0}.skip:focus{left:8px;top:8px;background:#fff;color:var(--ink);padding:8px 12px;border-radius:8px;z-index:99}
@@ -96,3 +97,30 @@ body.admin-shell .adtop :is(.linkbtn,.link,button.link,#account button){color:va
  body.admin-shell th{color:#000!important}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- minimalist pass: white canvas, hairlines, no pills / gradients / shadows ---- */
+.side{border-right:1px solid var(--line)}
+.side nav a,.sidefoot a,.sidefoot button{border-radius:8px!important}
+.side nav a.on{background:var(--soft)!important;color:var(--ink)!important;font-weight:600}
+.grp{font-weight:500;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+.search,.burger{background:#fff;border:1px solid var(--line);border-radius:8px}
+.search:focus-within{box-shadow:none;border-color:var(--ink)}
+.who{background:var(--soft);color:var(--ink);border:1px solid var(--line);font-weight:500}
+body.admin-shell .adtop .uc,body.admin-shell .adtop .userchip,body.admin-shell .adtop .account,body.admin-shell .adtop #account{background:none!important;border-radius:8px!important}
+body.admin-shell :is(.card,.panel,.dept,.box,.headcard,.sum,.selbox,.stat,.table-wrap,.tbl-wrap,.notice,.banner){border:1px solid var(--line)!important;border-radius:var(--r)!important;box-shadow:none!important}
+body.admin-shell :is(.modal-card,.scanpop-card){border:1px solid var(--line)!important;box-shadow:none!important}
+body.admin-shell .stat.dark{background:#fff!important;color:var(--ink)!important}
+body.admin-shell .steps li{border:1px solid var(--line)!important;background:#fff!important;border-radius:var(--r)!important}
+body.admin-shell .icon,body.admin-shell :is(.t1,.t2,.t3,.t4,.t5) .icon{border-radius:8px!important}
+body.admin-shell :is(.btn,.chipbtn,.giftbtn,.filebtn,button.secondary,.secondary,.btn.primary,.primary,button.primary){border-radius:8px!important;border-width:1px!important;font-weight:500!important}
+body.admin-shell :is(.btn.primary,.primary,button.primary){background:var(--ink)!important;border-color:var(--ink)!important}
+body.admin-shell :is(.btn:not(.primary),.chipbtn,.giftbtn,.filebtn,.secondary){border-color:#d4d4d4!important}
+body.admin-shell :is(.tabs button,.tabs a,.seg button){background:none!important;color:var(--mute)!important;border-radius:8px!important;font-weight:500}
+body.admin-shell :is(.tabs .on,.tabs .active,.tabs [aria-selected="true"],.tabs [aria-current="true"],.seg .on,.seg [aria-pressed="true"]){background:var(--soft)!important;color:var(--ink)!important;font-weight:600}
+body.admin-shell :is(.state-chip.open,.badge.open,.st.on,.tag.ok){background:#f0f7f2!important;color:#166534!important}
+body.admin-shell :is(.state-chip.closed,.badge.closed){background:#fdf2f1!important;color:#b42318!important}
+body.admin-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea){border:1px solid #d4d4d4!important;border-radius:8px!important}
+body.admin-shell th{border-bottom:1px solid var(--line)!important;font-weight:500}
+@media(max-width:860px){.side{box-shadow:none;border-right:1px solid var(--line)}}
+.search input,.search input:focus{border:0!important;box-shadow:none!important;outline:0!important}
+body.admin-shell .search input,body.admin-shell .search input:focus{border:0!important;box-shadow:none!important;outline:0!important}
