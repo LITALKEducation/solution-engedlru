@@ -31,7 +31,7 @@ const STATE_TEXT = {
   open: ['เปิดลงทะเบียน', 'แตะฝ่ายที่สนใจ ดูที่ว่างของแต่ละชั้นปี แล้วกดลงทะเบียน'],
   closed: ['ปิดลงทะเบียนแล้ว', 'ปิดลงทะเบียนแล้ว ยังดูรายละเอียดของแต่ละฝ่ายได้']
 };
-const ADMIN_PAGES = [['overview', 'ภาพรวม', '/admin/hr/overview'], ['quota', 'โควตา', '/admin/hr/quota'], ['live', 'สด', '/admin/hr/live'], ['students', 'นักศึกษา', '/admin/hr/students'], ['survey', 'แบบสำรวจ', '/admin/hr/survey'], ['shirt', 'เสื้อค่าย', '/admin/hr/shirt'], ['og', 'ตัวอย่างลิงก์', '/admin/hr/og'], ['settings', 'ตั้งค่า', '/admin/hr/settings']];
+const ADMIN_PAGES = [['overview', 'ภาพรวม', '/admin/hr/overview'], ['quota', 'โควตา', '/admin/hr/quota'], ['live', 'สด', '/admin/hr/live'], ['students', 'นักศึกษา', '/admin/hr/students'], ['survey', 'แบบสำรวจ', '/admin/hr/survey'], ['shirt', 'เสื้อค่าย', '/admin/hr/shirt'], ['og', 'ตัวอย่างลิงก์', '/admin/hr/og'], ['maintenance', 'ปิดปรับปรุง', '/admin/hr/maintenance'], ['settings', 'ตั้งค่า', '/admin/hr/settings']];
 
 let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null;
 let schedule = null, geo = { enabled: false }, srvOff = 0;   // automatic open/close schedule, location rule, server-clock offset (ms)
@@ -547,6 +547,7 @@ async function loadAdminPage() {
   if (TAB === 'survey') return loadSurvey();   // hr/survey.js
   if (TAB === 'og') return loadOg();   // hr/og.js
   if (TAB === 'shirt') return loadShirtAdmin();   // hr/shirt.js
+  if (TAB === 'maintenance') return loadMaintenanceAdmin();   // hr/maintenance.js
   if (TAB === 'live') return startLive();
   let r;
   try { r = await api('/camps/admin/overview'); } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } body.innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadAdminPage()'); return; }
