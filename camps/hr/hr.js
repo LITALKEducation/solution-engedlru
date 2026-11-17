@@ -134,7 +134,7 @@ function renderNav() {
   if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
-  else el.innerHTML = [['profile', '/hr/', 'บัตรของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
+  else el.innerHTML = [['profile', '/hr/', 'ข้อมูลของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
 }
 function renderState() {
@@ -143,7 +143,7 @@ function renderState() {
   const t = $('heroText'); if (t && !t.dataset.static) t.textContent = text;
 }
 
-// ---------- my card (/hr/): Auth0 photo, names from D1, ids, QR of the student id ----------
+// ---------- my details (/hr/): Auth0 photo, names from D1, ids, QR of the student id ----------
 function drawQR(canvas, text, size) {
   if (typeof qrcode !== 'function') return false;
   const q = qrcode(0, 'M'); q.addData(text); q.make();
@@ -160,15 +160,26 @@ function expandQr() {
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
   drawQR($('qrBig'), st.student_id, Math.min(360, Math.max(220, window.innerWidth - 80)));
 }
+const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+// 2005-03-09 -> "9 มีนาคม 2548"
+const fmtBirth = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? (+m[3]) + ' ' + TH_MONTHS[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; };
+const fmtPhone = (v) => { const s = String(v || '').replace(/\D/g, ''); return s.length === 10 ? s.slice(0, 3) + '-' + s.slice(3, 6) + '-' + s.slice(6) : s.length === 9 ? s.slice(0, 2) + '-' + s.slice(2, 5) + '-' + s.slice(5) : s; };
 function editProfile() {
   const st = me && me.student; if (!st) return;
-  const d = openDlg('<h3>แก้ไขข้อมูลของฉัน</h3><form id="pfForm" class="form" autocomplete="off"><label>ชื่อ-นามสกุล<input id="pfName" required maxlength="200"></label><label>ชื่อเล่น<input id="pfNick" maxlength="30"></label><label>ชื่อ AKA<input id="pfAka" maxlength="40"></label><label>รหัสบัตรประชาชน 13 หลัก<input id="pfNid" inputmode="numeric" maxlength="17" placeholder="ไม่บังคับ"></label><label>รหัสนักศึกษา<input value="" id="pfSid" disabled></label><p class="muted">รหัสนักศึกษา ชั้นปี เพศ และฝ่าย แก้ไม่ได้ที่นี่ (ฝ่ายเลือกได้ที่เมนู "เลือกฝ่าย") · ติดต่อแอดมินหากต้องแก้</p><div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
-  $('pfName').value = st.name || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfSid').value = st.student_id;
+  const f = (id, label, attrs) => '<label>' + label + '<input id="' + id + '" ' + attrs + '></label>';
+  const d = openDlg('<h3>แก้ไขข้อมูลของฉัน</h3><form id="pfForm" class="form" autocomplete="off">'
+    + '<p class="pfsec">ชื่อ</p>' + f('pfName', 'ชื่อ-นามสกุล (ไทย)', 'required maxlength="200"') + f('pfNameEn', 'ชื่อ-สกุล (อังกฤษ)', 'maxlength="200" placeholder="Somchai Jaidee" autocapitalize="words"') + f('pfNick', 'ชื่อเล่น', 'maxlength="30"') + f('pfAka', 'ชื่อ AKA', 'maxlength="40"')
+    + '<p class="pfsec">ข้อมูลส่วนตัว</p>' + f('pfBirth', 'วันเกิด', 'type="date" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" placeholder="ไม่บังคับ"')
+    + '<p class="pfsec">ติดต่อ</p>' + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" placeholder="08x-xxx-xxxx"')
+    + f('pfSid', 'รหัสนักศึกษา', 'id2="x" disabled')
+    + '<p class="muted">รหัสนักศึกษา ชั้นปี เพศ และฝ่าย แก้ไม่ได้ที่นี่ (ฝ่ายเลือกได้ที่เมนู "เลือกฝ่าย") · ติดต่อแอดมินหากต้องแก้</p><div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
+  $('pfName').value = st.name || ''; $('pfNameEn').value = st.name_en || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfBirth').value = st.birth_date || '';
+  $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfPhone').value = st.phone || ''; $('pfGPhone').value = st.guardian_phone || ''; $('pfSid').value = st.student_id;
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
   $('pfForm').addEventListener('submit', async (e) => {
     e.preventDefault(); const btn = e.submitter; if (btn) btn.disabled = true;
     try {
-      const r = await post('/camps/me/profile', { name: $('pfName').value, nickname: $('pfNick').value, aka: $('pfAka').value, nationalId: $('pfNid').value });
+      const r = await post('/camps/me/profile', { name: $('pfName').value, nameEn: $('pfNameEn').value, nickname: $('pfNick').value, aka: $('pfAka').value, birthDate: $('pfBirth').value, nationalId: $('pfNid').value, phone: $('pfPhone').value, guardianPhone: $('pfGPhone').value });
       if (!r.ok) { toast(await errMsg(r), true); return; }
       d.remove(); toast('บันทึกแล้ว'); await loadMe();
     } catch (x) { toast(sessionGone(x) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); }
@@ -185,13 +196,15 @@ function renderProfile() {
     return;
   }
   const init = esc((st.name || '?').replace(/^(นางสาว|นาย|นาง)\s*/, '').trim()[0] || '?');
-  const nid = fmtNid(st.national_id);
+  const dep = me.selection && me.selection.department_name;
   const row = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + (v ? esc(v) : '<i class="none">ยังไม่มีข้อมูล</i>') + '</b></div>';
   box.innerHTML = '<div class="card idcard">'
     + '<div class="pfhead">' + (authPicture ? '<img class="pfimg" src="' + esc(authPicture) + '" alt="รูปโปรไฟล์ของ ' + esc(st.name) + '" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pfimg ph\',textContent:\'' + init + '\'}))">' : '<span class="pfimg ph" aria-hidden="true">' + init + '</span>')
-    + '<div><h2>' + esc(st.name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</h2><div class="meta">ชั้นปี ' + st.year + ' · ' + GL[st.gender] + '</div></div></div>'
-    + '<button class="btn primary" type="button" onclick="editProfile()">✎ แก้ไขข้อมูล</button>'
-    + '<div class="pfgrid">' + row('ฝ่าย', me.selection && me.selection.department_name, 'wide') + row('ชื่อเล่น', st.nickname) + row('ชื่อ AKA', st.aka) + row('รหัสนักศึกษา', st.student_id) + row('รหัสบัตรประชาชน 13 หลัก', nid, 'wide nid') + '</div>'
+    + '<div class="pfwho"><h2>' + esc(st.name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</h2>' + (st.name_en ? '<div class="pfen">' + esc(st.name_en) + '</div>' : '')
+    + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span><span class="chip dep' + (dep ? '' : ' none') + '">' + (dep ? esc(dep) : 'ยังไม่ได้เลือกฝ่าย') + '</span></div></div>'
+    + '<button class="btn primary sm pfedit" type="button" onclick="editProfile()">✎ แก้ไข</button></div>'
+    + '<h3 class="pfh">ข้อมูลส่วนตัว</h3><div class="pfgrid">' + row('ชื่อเล่น', st.nickname) + row('ชื่อ AKA', st.aka) + row('วันเกิด', fmtBirth(st.birth_date), 'wide') + row('เบอร์โทรศัพท์', fmtPhone(st.phone)) + row('เบอร์ผู้ปกครอง', fmtPhone(st.guardian_phone)) + '</div>'
+    + '<h3 class="pfh">ข้อมูลประจำตัว</h3><div class="pfgrid">' + row('รหัสนักศึกษา', st.student_id) + row('ฝ่าย', dep) + row('รหัสบัตรประชาชน 13 หลัก', fmtNid(st.national_id), 'wide nid') + '</div>'
     + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><b>QR รหัสนักศึกษา</b><span>' + esc(st.student_id) + '</span><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
     + '<p class="muted pfhint">ชื่อเล่น / AKA ตั้งได้ที่เมนู <a href="/hr/aka">ตั้งชื่อ AKA</a> · ฝ่ายเปลี่ยนได้ที่เมนู <a href="/hr/choose">เลือกฝ่าย</a></p>'
     + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
