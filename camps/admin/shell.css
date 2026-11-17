@@ -74,9 +74,9 @@ body.admin-shell :is(.state-chip.open,.badge.open,.st.on,.tag.ok){background:#dc
 body.admin-shell :is(.state-chip.closed,.badge.closed){background:#fee2e2!important;color:#b91c1c!important}
 body.admin-shell th{background:none!important;color:var(--mute)!important;font-weight:500;border-bottom:1.5px solid var(--line)!important;text-align:left}
 body.admin-shell td{border-bottom:1px solid var(--soft)!important}
-body.admin-shell :is(input,select,textarea){background:#fff!important;color:var(--ink)!important;border:1.5px solid var(--line)!important;border-radius:14px!important;min-height:44px;box-shadow:none!important}
+body.admin-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea){background:#fff!important;color:var(--ink)!important;border:1.5px solid var(--line)!important;border-radius:14px!important;min-height:44px;box-shadow:none!important}
 body.admin-shell .search input{border:0!important;border-radius:0!important;min-height:0!important}
-body.admin-shell :is(input,select,textarea):focus{border-color:var(--dark)!important}
+body.admin-shell :is(input:not([type=checkbox]):not([type=radio]),select,textarea):focus{border-color:var(--dark)!important}
 body.admin-shell :is(.bar,.prog,.progress) i{background:var(--dark)!important}
 body.admin-shell .stat.dark .bar i{background:#fff!important}
 body.admin-shell main p a,body.admin-shell .link,body.admin-shell .linkbtn{color:var(--ink)!important}
@@ -88,5 +88,11 @@ body.admin-shell .adtop :is(.linkbtn,.link,button.link,#account button){color:va
  body.menu .side{transform:none}
  body.menu .scrim{display:block;position:fixed;inset:0;background:#0006;z-index:20}
  .burger{display:grid}.main{padding:16px 14px 20px}.adtop h1{font-size:22px!important}.search{width:auto;flex:1;order:5;min-width:100%}
+}
+@media print{
+ .side,.adtop,.scrim,.adfoot,.hero-note{display:none!important}
+ .app{display:block!important}.main{padding:0!important;display:block!important;min-height:0!important}.page{display:block}
+ html,body,body.admin-shell{background:#fff!important}
+ body.admin-shell th{color:#000!important}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
