@@ -14,6 +14,7 @@ const ART = {
   aka: { big: 'ตั้งชื่อ AKA', tag: 'นักศึกษา', n: '02' },
   lotto: { big: 'จับสลาก', tag: 'เจ้าหน้าที่', n: '03' },
   qrcheck: { big: 'เช็ก QR', tag: 'เจ้าหน้าที่', n: '04' },
+  shirt: { big: 'แบบเสื้อค่าย', tag: 'นักศึกษา', n: '' },
   survey: { big: 'แบบสำรวจโรงเรียน', tag: 'ผู้ที่ได้รับมอบหมาย', n: '05' }
 };
 const font = (w, f) => `@font-face{font-family:T;font-weight:${w};src:url(${pathToFileURL(path.join(camps, 'assets', 'fonts', f)).href})}`;
