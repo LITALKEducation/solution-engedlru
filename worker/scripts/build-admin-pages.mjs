@@ -13,6 +13,9 @@ const strip = (s) => s.replace(/\?v=[^"]*"/g, '"');
 export function generate(sys) {
   let html = fs.readFileSync(path.join(camps, sys, 'index.html'), 'utf8');
   html = html.replace(/<!-- og:start -->[\s\S]*?<!-- og:end -->\n?/, '');   // admin pages have no public link preview
+  html = html.replace(/<script src="\/assets\/brand-bar\.js[^>]*><\/script>\n?/, '');   // the admin shell has its own menu
+  html = html.replace(/(<link rel="stylesheet" href="\/assets\/theme\.css[^>]*>)/, '$1\n<link rel="stylesheet" href="/admin/shell.css?v=0">');
+  html = html.replace('</head>', '<script src="/admin/shell.js?v=0" defer></script>\n</head>');
   html = html.replace(/(src|href)="\.\//g, `$1="/${sys}/`);
   html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<script>window.ADMIN_MODE=true;</script>');
   html = html.replace(/<title>([^<]*)<\/title>/, (m, t) => `<title>แอดมิน · ${t}</title>`);
