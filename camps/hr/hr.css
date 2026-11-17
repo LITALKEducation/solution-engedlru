@@ -375,3 +375,9 @@ body[data-page] .uc{border-radius:18px}
 .qrbig canvas{border-radius:12px;max-width:100%;height:auto;image-rendering:pixelated}
 .pfhint{font-size:13px}.pfact{margin-top:12px;display:flex;justify-content:center}
 @media(max-width:420px){.qrbox{flex-direction:column;text-align:center}.qrnote{align-items:center}.pfgrid{grid-template-columns:1fr}}
+
+/* /hr/aka */
+.akaok{background:#dcfce7;color:#15803d}
+.nametag{border-radius:24px;overflow:hidden;text-align:center;box-shadow:0 10px 26px #d32f2f26;background:#fff;border:2px solid var(--brand)}
+.nt-top{background:var(--brand);color:#fff;font-weight:800;letter-spacing:.14em;font-size:13px;padding:8px 0;text-transform:uppercase}
+.nt-body{padding:18px 14px 20px}.nt-aka{font-size:30px;font-weight:800;color:var(--brand-d);overflow-wrap:anywhere}.nt-aka.ph{color:var(--mute);opacity:.5}.nt-nick{margin-top:4px;color:var(--mute)}

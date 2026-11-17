@@ -13,6 +13,7 @@ const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k
 const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
 const TAB = document.body.dataset.tab || 'overview';
 const PROFILE = PAGE === 'student' && TAB === 'profile';    // /hr/: my card (photo, names, ids, QR)
+const AKA = PAGE === 'student' && TAB === 'aka';            // /hr/aka: nickname + AKA
 const SELECT = PAGE === 'student' && TAB === 'select';      // /hr/select: quick pick from a dropdown
 const CHOOSE = PAGE === 'student' && TAB === 'choose';      // /hr/choose: pick a department (heads only)     // which admin page this is
 const ICON = {
@@ -133,7 +134,7 @@ function renderNav() {
   if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
-  else el.innerHTML = [['profile', '/hr/', 'บัตรของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
+  else el.innerHTML = [['profile', '/hr/', 'บัตรของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
 }
 function renderState() {
@@ -192,9 +193,44 @@ function renderProfile() {
     + '<button class="btn primary" type="button" onclick="editProfile()">✎ แก้ไขข้อมูล</button>'
     + '<div class="pfgrid">' + row('ฝ่าย', me.selection && me.selection.department_name, 'wide') + row('ชื่อเล่น', st.nickname) + row('ชื่อ AKA', st.aka) + row('รหัสนักศึกษา', st.student_id) + row('รหัสบัตรประชาชน 13 หลัก', nid, 'wide nid') + '</div>'
     + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><b>QR รหัสนักศึกษา</b><span>' + esc(st.student_id) + '</span><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
-    + '<p class="muted pfhint">ฝ่ายเปลี่ยนได้ที่เมนู <a href="/hr/choose">เลือกฝ่าย</a></p>'
+    + '<p class="muted pfhint">ชื่อเล่น / AKA ตั้งได้ที่เมนู <a href="/hr/aka">ตั้งชื่อ AKA</a> · ฝ่ายเปลี่ยนได้ที่เมนู <a href="/hr/choose">เลือกฝ่าย</a></p>'
     + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
   drawQR($('qrSmall'), st.student_id, 168);
+}
+
+// ---------- /hr/aka: nickname + camp name (moved here from /aka/) ----------
+let akaInfo = null;
+const AKA_CHIP = { open: ['เปิดรับการตั้งชื่อ', 'open'], pending: ['ยังไม่เปิด', ''], closed: ['ปิดรับแล้ว', 'closed'] };
+async function loadAka() {
+  const box = $('akaBox'); if (!box) return;
+  try { const r = await api('/camps/aka/me'); if (!r.ok) throw new Error(await errMsg(r)); akaInfo = await r.json(); }
+  catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } box.innerHTML = failBox(e.message || 'เชื่อมต่อไม่ได้', 'loadAka()'); return; }
+  renderAka();
+}
+function renderAka() {
+  const box = $('akaBox'), x = akaInfo; if (!box || !x) return;
+  const chip = AKA_CHIP[x.state] || AKA_CHIP.closed, c = $('stateChip'); if (c) { c.textContent = chip[0]; c.className = 'state-chip ' + chip[1]; }
+  if (x.reason || !x.student) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(({ not_university_email: 'ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th)', email_not_verified: 'อีเมลนี้ยังไม่ได้ยืนยันกับ Google', not_in_roster: 'ไม่พบรหัสของคุณในรายชื่อ แจ้งแอดมินให้เพิ่ม' })[x.reason] || 'ไม่พบข้อมูลนักศึกษา') + '</div><button class="btn primary sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div>'; return; }
+  const s = x.student, open = x.state === 'open';
+  const banner = open ? '<div class="warn akaok"><b>ตั้งชื่อได้แล้ว</b> แก้ไขได้จนกว่าจะปิดรับ</div>' : x.state === 'pending' ? '<div class="warn"><b>ยังไม่เปิดรับ</b> รอถึงเวลา แล้วกลับมาตั้งชื่อได้เลย</div>' : '<div class="warn"><b>ปิดรับแล้ว</b> ถ้าอยากแก้ชื่อ ให้แจ้งแอดมิน</div>';
+  box.innerHTML = banner + '<form id="akaForm" class="card acct" novalidate><div class="meta">' + esc(s.name) + ' · ' + esc(s.studentId) + (s.departmentName ? ' · ' + esc(s.departmentName) : '') + '</div>'
+    + '<div class="form"><label>ชื่อเล่น<input id="akaNick" maxlength="30" autocomplete="off" placeholder="เช่น ชาย"' + (open ? '' : ' disabled') + '></label><label>ชื่อ AKA<input id="akaName" maxlength="40" autocomplete="off" placeholder="เช่น หมีขาว"' + (open ? '' : ' disabled') + '></label></div>'
+    + '<div class="nametag" aria-live="polite"><div class="nt-top">Hello · เรียกฉันว่า</div><div class="nt-body" id="akaPrev"></div></div>'
+    + (open ? '<button id="akaSave" class="btn primary" type="submit">บันทึกชื่อ</button>' : '') + '<p class="muted" id="akaSaved">' + (s.updatedAt ? 'บันทึกล่าสุด ' + esc(new Date(String(s.updatedAt).replace(' ', 'T') + 'Z').toLocaleString('th-TH')) : 'ยังไม่ได้ตั้งชื่อ') + '</p></form>';
+  $('akaNick').value = s.nickname || ''; $('akaName').value = s.aka || '';
+  const prev = () => { const a = $('akaName').value.trim(), n = $('akaNick').value.trim(); $('akaPrev').innerHTML = '<div class="nt-aka' + (a ? '' : ' ph') + '">' + esc(a || 'AKA ของคุณ') + '</div><div class="nt-nick">' + (n ? 'ชื่อเล่น ' + esc(n) : 'ชื่อเล่นของคุณ') + '</div>'; };
+  prev(); $('akaNick').oninput = $('akaName').oninput = prev;
+  $('akaForm').onsubmit = async (e) => {
+    e.preventDefault(); const nickname = $('akaNick').value.trim(), aka = $('akaName').value.trim();
+    if (!nickname) { $('akaNick').focus(); return toast('กรอกชื่อเล่น', true); }
+    if (!aka) { $('akaName').focus(); return toast('กรอกชื่อ AKA', true); }
+    $('akaSave').disabled = true;
+    try {
+      const r = await post('/camps/aka/save', { nickname, aka });
+      if (!r.ok) { const m = await errMsg(r); toast(m, true); await loadAka(); return; }
+      const d = await r.json(); akaInfo.student = d.student; renderAka(); toast('บันทึกชื่อแล้ว');
+    } catch (er) { toast(sessionGone(er) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); const b = $('akaSave'); if (b) b.disabled = false; }
+  };
 }
 
 // ---------- account card (student page) ----------
@@ -217,7 +253,7 @@ function renderUserChip(x) {
 function renderAcct(x) {
   renderUserChip(x);
   const box = $('acct');
-  if (!box) { if (PROFILE) { const pb = $('profile'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()')) + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
+  if (!box) { if (PROFILE || AKA) { const pb = $(PROFILE ? 'profile' : 'akaBox'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()')) + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
   if (!me) {
     box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
@@ -417,6 +453,7 @@ async function loadMe() {
   try { const u = await auth0Client.getUser(); authPicture = (u && /^https:\/\//.test(u.picture || '')) ? u.picture : ''; } catch (e) { authPicture = ''; }
   loadMe.tries = 0; const wasAdmin = !!(me && me.isAdmin); me = await r.json(); if (me.adminDeferred && wasAdmin) me.isAdmin = true; state = me.registration || state; renderState(); renderAcct(); renderNav();
   if (PROFILE) { ungate(); renderProfile(); checkAdminLater(); return; }
+  if (AKA) { ungate(); loadAka(); checkAdminLater(); return; }
   if (PAGE === 'student' && TAB === 'survey') { ungate(); loadSurveyMe(); return; }   // hr/survey.js
   if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); checkAdminLater(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
@@ -428,7 +465,7 @@ function renderGate(x) {
   let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
   if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
   if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
-  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
