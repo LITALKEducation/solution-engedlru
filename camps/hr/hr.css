@@ -400,3 +400,5 @@ body[data-page] .uc{border-radius:18px}
 .expcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 12px;margin:10px 0}
 .expfmt{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 4px;padding-top:10px;border-top:1px solid var(--line)}
 .chk{display:flex;align-items:center;gap:8px;font-weight:500}
+
+.subtabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.subtabs button{border:0;border-radius:999px;padding:0 20px;min-height:42px;font-weight:600;cursor:pointer}.subn{display:inline-block;min-width:1.6em;padding:0 6px;border-radius:99px;background:#0000001a;font-size:12px;text-align:center}

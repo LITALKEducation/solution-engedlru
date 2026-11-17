@@ -778,6 +778,11 @@ function suggestYear(id) {
   return y >= 1 && y <= 4 ? String(y) : '';
 }
 const GENDER_OPTS = '<option value="">เลือก</option><option value="M">ชาย</option><option value="F">หญิง</option>';
+function showStPane(k) {
+  document.querySelectorAll('#adminBody > .panel[data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== k));
+  document.querySelectorAll('#adminBody .subtabs button').forEach((b) => { const on = b.dataset.pane === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+  try { sessionStorage.setItem('stPane', k); } catch (e) { /* ignore */ }
+}
 async function loadStudents() {
   const body = $('adminBody');
   body.innerHTML = '<div class="panel"><h3>เพิ่ม / แก้ไขนักศึกษา</h3><form id="stForm" class="form cols5"><label>รหัสนักศึกษา<input id="stId" required inputmode="numeric" placeholder="6740102220"></label><label>ชื่อ-นามสกุล<input id="stName" required maxlength="200" placeholder="ชื่อ นามสกุล"></label><label>ชั้นปี<select id="stYr" required><option value="">เลือก</option>' + YEARS.map((y) => '<option value="' + y + '">' + y + '</option>').join('') + '</select></label><label>เพศ<select id="stG" required>' + GENDER_OPTS + '</select></label><label>เลขบัตรประชาชน<input id="stNid" inputmode="numeric" maxlength="17" autocomplete="off" placeholder="13 หลัก (ไม่บังคับ)"></label><button class="btn primary" type="submit">บันทึก</button></form><div class="muted" style="margin-top:6px">พิมพ์รหัสแล้วระบบเดาชั้นปีให้จากเลขสองหลักแรก และเดาเพศจากคำนำหน้าชื่อ (นาย / นางสาว) แก้ได้</div></div>'
@@ -785,6 +790,16 @@ async function loadStudents() {
     + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ Excel / CSV</label><input id="csvFile" type="file" accept=".xlsx,.xls,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง (Excel)</button><span id="csvName" class="muted"></span></div>'
     + '<textarea id="bulk" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย&#10;6840100001,สมหญิง รักเรียน,2,หญิง"></textarea><div style="margin-top:10px"><button class="btn primary sm" id="bulkBtn">นำเข้า</button></div><div id="bulkRes" class="result"></div></div>'
     + '<div class="panel"><div class="stHead"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><button class="btn primary sm" type="button" onclick="exportDialog()">ส่งออก (Excel / PDF)…</button></div><div class="form fl"><input id="stQ" type="search" aria-label="ค้นหาชื่อหรือรหัส" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF" aria-label="กรองตามชั้นปี"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG" aria-label="กรองตามเพศ"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
+  // the page is split into three inner tabs: list (+ export), add / edit, import
+  const panes = [...body.children].filter((e) => e.classList.contains('panel'));
+  ['add', 'import', 'list'].forEach((k, i) => { if (panes[i]) { panes[i].dataset.pane = k; panes[i].setAttribute('role', 'tabpanel'); panes[i].id = 'stPane-' + k; } });
+  const bar = document.createElement('div'); bar.className = 'seg subtabs'; bar.setAttribute('role', 'tablist'); bar.setAttribute('aria-label', 'เมนูนักศึกษา');
+  bar.innerHTML = [['list', 'รายชื่อ <span id="stTabN" class="subn"></span>'], ['add', 'เพิ่ม / แก้ไข'], ['import', 'นำเข้า Excel / CSV']].map(([k, l]) => '<button type="button" role="tab" data-pane="' + k + '" aria-controls="stPane-' + k + '">' + l + '</button>').join('');
+  body.insertBefore(bar, body.firstChild);
+  bar.addEventListener('click', (e) => { const b = e.target.closest('button[data-pane]'); if (b) showStPane(b.dataset.pane); });
+  bar.addEventListener('keydown', (e) => { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; const bs = [...bar.querySelectorAll('button')], i = bs.indexOf(document.activeElement); if (i < 0) return; const n = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length]; n.focus(); showStPane(n.dataset.pane); });
+  let pane0 = 'list'; try { pane0 = sessionStorage.getItem('stPane') || 'list'; } catch (e) { /* ignore */ }
+  showStPane(['list', 'add', 'import'].includes(pane0) ? pane0 : 'list');
   $('stId').addEventListener('input', () => { const y = suggestYear($('stId').value); if (y && !$('stYr').dataset.touched) $('stYr').value = y; });
   $('stName').addEventListener('input', () => { const g = /^(นาย|เด็กชาย)/.test($('stName').value.trim()) ? 'M' : /^(นางสาว|นาง|เด็กหญิง)/.test($('stName').value.trim()) ? 'F' : ''; if (g && !$('stG').dataset.touched) $('stG').value = g; });
   $('stYr').addEventListener('change', () => { $('stYr').dataset.touched = '1'; });
@@ -804,7 +819,7 @@ async function loadStudentList() {
   try { r = await api('/camps/admin/students?' + q); } catch (e) { list.innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadStudentList()'); return; }
   if (!r.ok) { list.innerHTML = failBox(await errMsg(r), 'loadStudentList()'); return; }
   students = (await r.json()).students || [];
-  $('stCount').textContent = '(' + students.length + ' คน)';
+  $('stCount').textContent = '(' + students.length + ' คน)'; const tn = $('stTabN'); if (tn) tn.textContent = students.length;
   const dv = (k, v) => '<div><dt>' + k + '</dt><dd>' + (v ? esc(v) : '<i>—</i>') + '</dd></div>';
   list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b>' + (s.name_en ? '<span class="sen">' + esc(s.name_en) + '</span>' : '') + '<small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small>'
     + '<dl class="sdet">' + dv('ชื่อเล่น', s.nickname) + dv('AKA', s.aka) + dv('วันเกิด', fmtBirth(s.birth_date)) + dv('เบอร์โทรศัพท์', fmtPhone(s.phone)) + dv('เบอร์ผู้ปกครอง', fmtPhone(s.guardian_phone)) + dv('รหัสบัตรประชาชน', fmtNid(s.national_id)) + '</dl></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + '<button class="btn sm" onclick="assignDialog(' + i + ')">' + (s.department_code ? 'ย้ายฝ่าย' : 'กำหนดฝ่าย') + '</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
@@ -815,7 +830,7 @@ async function saveStudent(e) {
   if (!r.ok) return toast(await errMsg(r), true);
   toast('บันทึกนักศึกษาแล้ว'); $('stForm').reset(); delete $('stYr').dataset.touched; delete $('stG').dataset.touched; loadStudentList();
 }
-function editStudent(i) { const s = students[i]; $('stId').value = s.student_id; $('stName').value = s.name; $('stYr').value = String(s.year); $('stG').value = s.gender; $('stNid').value = s.national_id || ''; $('stYr').dataset.touched = '1'; $('stG').dataset.touched = '1'; $('stForm').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('stName').focus(); }
+function editStudent(i) { showStPane('add'); const s = students[i]; $('stId').value = s.student_id; $('stName').value = s.name; $('stYr').value = String(s.year); $('stG').value = s.gender; $('stNid').value = s.national_id || ''; $('stYr').dataset.touched = '1'; $('stG').dataset.touched = '1'; $('stForm').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('stName').focus(); }
 async function delStudent(i) {
   const s = students[i]; if (!(await confirmDlg('ลบนักศึกษา?', s.name + ' (' + s.student_id + ') จะถูกลบออกจากรายชื่อและการลงทะเบียน', 'ลบ'))) return;
   const r = await post('/camps/admin/students/delete', { studentId: s.student_id });
