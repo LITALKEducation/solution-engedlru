@@ -772,6 +772,7 @@ async function setState(k) {
 
 // students: add / edit, CSV import, list
 let stQuery = '', stYear = '', stGender = '', stTimer, students = [];
+const stOpen = new Set();   // student ids whose details are expanded (kept across searches / refreshes)
 function suggestYear(id) {
   const m = /^(\d{2})/.exec(String(id).replace(/^[a-z]{2}/i, '')); if (!m) return '';
   const d = new Date(), be = d.getFullYear() + 543, ac = be - (d.getMonth() < 5 ? 1 : 0), y = ac - (2500 + Number(m[1])) + 1;
@@ -789,7 +790,7 @@ async function loadStudents() {
     + '<div class="panel"><h3>นำเข้าจากไฟล์ Excel / CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ รองรับไฟล์ Excel (.xlsx) โดยอ่านจากชีตแรก</p>'
     + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ Excel / CSV</label><input id="csvFile" type="file" accept=".xlsx,.xls,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง (Excel)</button><span id="csvName" class="muted"></span></div>'
     + '<textarea id="bulk" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย&#10;6840100001,สมหญิง รักเรียน,2,หญิง"></textarea><div style="margin-top:10px"><button class="btn primary sm" id="bulkBtn">นำเข้า</button></div><div id="bulkRes" class="result"></div></div>'
-    + '<div class="panel"><div class="stHead"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><button class="btn primary sm" type="button" onclick="exportDialog()">ส่งออก (Excel / PDF)…</button></div><div class="form fl"><input id="stQ" type="search" aria-label="ค้นหาชื่อหรือรหัส" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF" aria-label="กรองตามชั้นปี"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG" aria-label="กรองตามเพศ"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
+    + '<div class="panel"><div class="stHead"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><div class="stBtns"><button class="btn sm" type="button" onclick="stToggleAll(true)">ขยายทั้งหมด</button><button class="btn sm" type="button" onclick="stToggleAll(false)">ย่อทั้งหมด</button><button class="btn primary sm" type="button" onclick="exportDialog()">ส่งออก (Excel / PDF)…</button></div></div><div class="form fl"><input id="stQ" type="search" aria-label="ค้นหาชื่อหรือรหัส" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF" aria-label="กรองตามชั้นปี"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG" aria-label="กรองตามเพศ"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
   // the page is split into three inner tabs: list (+ export), add / edit, import
   const panes = [...body.children].filter((e) => e.classList.contains('panel'));
   ['add', 'import', 'list'].forEach((k, i) => { if (panes[i]) { panes[i].dataset.pane = k; panes[i].setAttribute('role', 'tabpanel'); panes[i].id = 'stPane-' + k; } });
@@ -812,6 +813,11 @@ async function loadStudents() {
   $('stFG').addEventListener('change', (e) => { stGender = e.target.value; loadStudentList(); });
   loadStudentList();
 }
+function stToggleAll(open) {
+  const list = $('stList'); if (!list) return;
+  list.querySelectorAll('details[data-id]').forEach((d) => { d.open = open; });
+  if (!open) stOpen.clear(); else list.querySelectorAll('details[data-id]').forEach((d) => stOpen.add(d.dataset.id));
+}
 async function loadStudentList() {
   const list = $('stList'); if (!list) return;
   const q = new URLSearchParams(); if (stQuery) q.set('q', stQuery); if (stYear) q.set('year', stYear); if (stGender) q.set('gender', stGender);
@@ -821,8 +827,9 @@ async function loadStudentList() {
   students = (await r.json()).students || [];
   $('stCount').textContent = '(' + students.length + ' คน)'; const tn = $('stTabN'); if (tn) tn.textContent = students.length;
   const dv = (k, v) => '<div><dt>' + k + '</dt><dd>' + (v ? esc(v) : '<i>—</i>') + '</dd></div>';
-  list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b>' + (s.name_en ? '<span class="sen">' + esc(s.name_en) + '</span>' : '') + '<small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small>'
-    + '<dl class="sdet">' + dv('ชื่อเล่น', s.nickname) + dv('AKA', s.aka) + dv('วันเกิด', fmtBirth(s.birth_date)) + dv('เบอร์โทรศัพท์', fmtPhone(s.phone)) + dv('เบอร์ผู้ปกครอง', fmtPhone(s.guardian_phone)) + dv('รหัสบัตรประชาชน', fmtNid(s.national_id)) + '</dl></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + '<button class="btn sm" onclick="assignDialog(' + i + ')">' + (s.department_code ? 'ย้ายฝ่าย' : 'กำหนดฝ่าย') + '</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
+  list.innerHTML = students.map((s, i) => '<div class="srow"><details class="m"' + (stOpen.has(s.student_id) ? ' open' : '') + ' data-id="' + esc(s.student_id) + '"><summary><b>' + esc(s.name) + '</b>' + (s.name_en ? '<span class="sen">' + esc(s.name_en) + '</span>' : '') + '<small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small></summary>'
+    + '<dl class="sdet">' + dv('ชื่อเล่น', s.nickname) + dv('AKA', s.aka) + dv('วันเกิด', fmtBirth(s.birth_date)) + dv('เบอร์โทรศัพท์', fmtPhone(s.phone)) + dv('เบอร์ผู้ปกครอง', fmtPhone(s.guardian_phone)) + dv('รหัสบัตรประชาชน', fmtNid(s.national_id)) + '</dl></details><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + '<button class="btn sm" onclick="assignDialog(' + i + ')">' + (s.department_code ? 'ย้ายฝ่าย' : 'กำหนดฝ่าย') + '</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
+  list.querySelectorAll('details[data-id]').forEach((d) => { d.ontoggle = () => { d.open ? stOpen.add(d.dataset.id) : stOpen.delete(d.dataset.id); }; });   // 'toggle' does not bubble
 }
 async function saveStudent(e) {
   e.preventDefault();

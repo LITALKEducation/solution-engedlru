@@ -402,3 +402,12 @@ body[data-page] .uc{border-radius:18px}
 .chk{display:flex;align-items:center;gap:8px;font-weight:500}
 
 .subtabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.subtabs button{border:0;border-radius:999px;padding:0 20px;min-height:42px;font-weight:600;cursor:pointer}.subn{display:inline-block;min-width:1.6em;padding:0 6px;border-radius:99px;background:#0000001a;font-size:12px;text-align:center}
+
+.stBtns{display:flex;gap:8px;flex-wrap:wrap}
+.srow details.m{min-width:0}
+.srow details.m>summary{list-style:none;cursor:pointer;position:relative;padding-right:28px;border-radius:12px}
+.srow details.m>summary::-webkit-details-marker{display:none}
+.srow details.m>summary::after{content:"";position:absolute;right:6px;top:10px;width:9px;height:9px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .15s}
+.srow details.m[open]>summary::after{transform:rotate(-135deg);top:14px}
+.srow details.m>summary:focus-visible{outline:2px solid var(--dark,#1f1f21);outline-offset:2px}
+.srow details.m>summary b{display:block}
