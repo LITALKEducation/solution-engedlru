@@ -1,9 +1,9 @@
 // Login run by the Worker, so Auth0 needs only ONE callback URL (<worker>/auth/callback) and ONE logout URL (<worker>/auth/logged-out)
 // for every Camps system. Authorization code + PKCE; tokens never travel in a URL: the browser comes back with a one-time `?code=`
 // and swaps it for the tokens with POST /auth/exchange. Refreshing also goes through the Worker (no CORS / Allowed Web Origins needed).
-//   GET  /auth/login?returnTo=<page url>[&prompt=select_account]   -> redirect to Auth0 /authorize
+//   GET  /auth/login?returnTo=<page url>&bind=<random, kept by the page>[&prompt=select_account][&connection=]   -> redirect to Auth0 /authorize
 //   GET  /auth/callback                                            -> Auth0 lands here, redirects to returnTo?code=<one-time>
-//   POST /auth/exchange {code}                                     -> { access_token, refresh_token, expires_in, user }
+//   POST /auth/exchange {code, bind}                                    -> { access_token, refresh_token, expires_in, user }
 //   POST /auth/refresh {refresh_token}                             -> same shape (refresh token rotated by Auth0)
 //   GET  /auth/logout?returnTo=<page url>                          -> ends the Auth0 session, then /auth/logged-out -> returnTo
 import { json } from "../lib/cors.js";
@@ -57,10 +57,14 @@ const shape = (d) => ({ access_token: d.access_token, refresh_token: d.refresh_t
 async function login(request, env, url) {
   const back = safeReturn(env, url.searchParams.get("returnTo"));
   if (!back) return page("ลิงก์กลับไม่ถูกต้อง", env);
-  const verifier = rand(48), state = rand(24);
+  // the page that started the login proves it is the one finishing it (login CSRF): `bind` is kept in that tab's sessionStorage
+  const bind = String(url.searchParams.get("bind") || "");
+  if (!/^[\w-]{16,100}$/.test(bind)) return page("คำขอเข้าสู่ระบบไม่ถูกต้อง ลองใหม่จากหน้าเว็บ", env);
+  const connection = /^[\w-]{1,60}$/.test(url.searchParams.get("connection") || "") ? url.searchParams.get("connection") : "google-oauth2";
+  const verifier = rand(48);
   const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
-  const sid = await put(env, "state", { verifier, back, state }, 10 * 60_000);
-  const q = new URLSearchParams({ response_type: "code", client_id: clientId(env), redirect_uri: url.origin + "/auth/callback", scope: "openid profile email offline_access", state: sid, code_challenge: challenge, code_challenge_method: "S256", connection: "google-oauth2" });
+  const sid = await put(env, "state", { verifier, back, bind }, 10 * 60_000);
+  const q = new URLSearchParams({ response_type: "code", client_id: clientId(env), redirect_uri: url.origin + "/auth/callback", scope: "openid profile email offline_access", state: sid, code_challenge: challenge, code_challenge_method: "S256", connection });
   if (url.searchParams.get("prompt") === "select_account") q.set("prompt", "select_account");
   return redirect(`https://${domain(env)}/authorize?${q}`);
 }
@@ -72,14 +76,15 @@ async function callback(request, env, url) {
   if (err) return back({ error: err.slice(0, 80), error_description: (url.searchParams.get("error_description") || "").slice(0, 300) });
   const r = await token(env, { grant_type: "authorization_code", code: url.searchParams.get("code") || "", code_verifier: st.verifier, redirect_uri: url.origin + "/auth/callback" });
   if (!r.data.access_token) return back({ error: r.data.error || "login_failed", error_description: r.data.error_description || "เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง" });
-  const code = await put(env, "code", shape(r.data), 2 * 60_000);
+  const code = await put(env, "code", { ...shape(r.data), bind: st.bind }, 2 * 60_000);
   return back({ code });
 }
 async function exchange(request, env) {
   const b = await request.json().catch(() => null);
   const t = await take(env, "code", b?.code);
-  if (!t) return json(request, env, { error: "invalid_grant", error_description: "รหัสหมดอายุหรือถูกใช้ไปแล้ว" }, 400);
-  return json(request, env, t);
+  if (!t || typeof b?.bind !== "string" || b.bind !== t.bind) return json(request, env, { error: "invalid_grant", error_description: "รหัสหมดอายุ ใช้ไปแล้ว หรือไม่ได้เริ่มเข้าสู่ระบบจากเครื่องนี้" }, 400);
+  const { bind, ...out } = t;
+  return json(request, env, out);
 }
 async function refresh(request, env) {
   const b = await request.json().catch(() => null), rt = typeof b?.refresh_token === "string" ? b.refresh_token.slice(0, 500) : "";
