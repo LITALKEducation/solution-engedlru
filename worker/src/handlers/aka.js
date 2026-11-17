@@ -4,7 +4,7 @@ import { json } from "../lib/cors.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
 const fail = (req, env, error, status = 400, extra = {}) => json(req, env, { error, ...extra }, status);
-const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[​-‍⁠﻿]/g, "").replace(/[   　]/g, " ").replace(/[ \t]+/g, " ").trim();
+export const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[​-‍⁠﻿]/g, "").replace(/[   　]/g, " ").replace(/[ \t]+/g, " ").trim();
 const ADMIN_ROLES = ["camp_admin", "budget_admin"];
 export const NICK_MAX = 30, AKA_MAX = 40;
 
@@ -47,7 +47,7 @@ export function effectiveState(st, now = Date.now()) {
   if (s.closeAt != null && now >= s.closeAt) return "closed";
   return "open";
 }
-async function state(env) { return effectiveState(await loadSettings(env)); }
+export async function akaState(env) { return effectiveState(await loadSettings(env)); }
 async function info(env) { const st = await loadSettings(env), now = Date.now(); return { state: effectiveState(st, now), manual: st.manual, schedule: st.schedule, now }; }
 const setSetting = (env, key, value) => env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? ""));
 const STUDENT_SQL = `SELECT s.student_id,s.name,s.year,s.gender,sel.department_code,d.name department_name,
@@ -55,7 +55,7 @@ const STUDENT_SQL = `SELECT s.student_id,s.name,s.year,s.gender,sel.department_c
   FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code
   LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?`;
 const shape = (r) => ({ studentId: r.student_id, name: r.name, year: r.year, gender: r.gender, departmentCode: r.department_code || null, departmentName: r.department_name || null, nickname: r.nickname || "", aka: r.aka || "", updatedAt: r.updated_at || null, updatedBy: r.updated_by || null });
-function readNames(b) {
+export function readNames(b) {
   const nickname = tidy(b?.nickname), aka = tidy(b?.aka);
   if (!nickname) return { error: "กรอกชื่อเล่น" };
   if (!aka) return { error: "กรอกชื่อ AKA" };
@@ -63,7 +63,7 @@ function readNames(b) {
   if ([...aka].length > AKA_MAX) return { error: `AKA ยาวเกินไป (ไม่เกิน ${AKA_MAX} ตัวอักษร)` };
   return { nickname, aka };
 }
-const upsert = (env, id, nickname, aka, by) => env.DB.prepare(
+export const upsertAka = (env, id, nickname, aka, by) => env.DB.prepare(
   `INSERT INTO camp_aka (student_id,nickname,aka,updated_by,updated_at) VALUES (?,?,?,?,datetime('now'))
    ON CONFLICT(student_id) DO UPDATE SET nickname=excluded.nickname,aka=excluded.aka,updated_by=excluded.updated_by,updated_at=excluded.updated_at`).bind(id, nickname, aka, by);
 async function audit(env, w, action, entityId, metadata = {}) {
@@ -93,11 +93,11 @@ async function save(req, env) {
   if (!w.studentId || !w.verified) return fail(req, env, "ต้องใช้บัญชีอีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403, { code: "NOT_STUDENT" });
   const st = await env.DB.prepare("SELECT student_id FROM camp_students WHERE student_id=?").bind(w.studentId).first();
   if (!st) return fail(req, env, `ไม่พบรหัสนักศึกษา ${w.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403, { code: "NOT_IN_ROSTER" });
-  const cur = await state(env);
+  const cur = await akaState(env);
   if (cur === "pending") return fail(req, env, "ยังไม่ถึงเวลาเปิดรับการตั้งชื่อ", 403, { code: "NOT_OPEN" });
   if (cur !== "open") return fail(req, env, "ปิดรับการตั้งชื่อแล้ว", 403, { code: "CLOSED" });
   const r = readNames(await req.json().catch(() => null)); if (r.error) return fail(req, env, r.error);
-  await upsert(env, w.studentId, r.nickname, r.aka, w.email).run();
+  await upsertAka(env, w.studentId, r.nickname, r.aka, w.email).run();
   return json(req, env, { ok: true, student: shape(await env.DB.prepare(STUDENT_SQL).bind(w.studentId).first()) });
 }
 
@@ -169,7 +169,7 @@ async function adminSet(req, env) {
     return json(req, env, { ok: true });
   }
   const r = readNames(b); if (r.error) return fail(req, env, r.error);
-  await upsert(env, id, r.nickname, r.aka, a.email).run();
+  await upsertAka(env, id, r.nickname, r.aka, a.email).run();
   await audit(env, a, "AKA_SET", id, { nickname: r.nickname, aka: r.aka });
   return json(req, env, { ok: true, student: shape(await env.DB.prepare(STUDENT_SQL).bind(id).first()) });
 }

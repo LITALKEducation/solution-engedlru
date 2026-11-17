@@ -159,6 +159,21 @@ function expandQr() {
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
   drawQR($('qrBig'), st.student_id, Math.min(360, Math.max(220, window.innerWidth - 80)));
 }
+function editProfile() {
+  const st = me && me.student; if (!st) return;
+  const d = openDlg('<h3>แก้ไขข้อมูลของฉัน</h3><form id="pfForm" class="form" autocomplete="off"><label>ชื่อ-นามสกุล<input id="pfName" required maxlength="200"></label><label>ชื่อเล่น<input id="pfNick" maxlength="30"></label><label>ชื่อ AKA<input id="pfAka" maxlength="40"></label><label>รหัสบัตรประชาชน 13 หลัก<input id="pfNid" inputmode="numeric" maxlength="17" placeholder="ไม่บังคับ"></label><label>รหัสนักศึกษา<input value="" id="pfSid" disabled></label><p class="muted">รหัสนักศึกษา ชั้นปี เพศ และฝ่าย แก้ไม่ได้ที่นี่ (ฝ่ายเลือกได้ที่เมนู "เลือกฝ่าย") · ติดต่อแอดมินหากต้องแก้</p><div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
+  $('pfName').value = st.name || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfSid').value = st.student_id;
+  d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
+  $('pfForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); const btn = e.submitter; if (btn) btn.disabled = true;
+    try {
+      const r = await post('/camps/me/profile', { name: $('pfName').value, nickname: $('pfNick').value, aka: $('pfAka').value, nationalId: $('pfNid').value });
+      if (!r.ok) { toast(await errMsg(r), true); return; }
+      d.remove(); toast('บันทึกแล้ว'); await loadMe();
+    } catch (x) { toast(sessionGone(x) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); }
+    finally { if (btn) btn.disabled = false; }
+  });
+}
 function renderProfile() {
   const box = $('profile'); if (!box) return;
   if (!me) { box.innerHTML = ''; return; }
@@ -174,9 +189,10 @@ function renderProfile() {
   box.innerHTML = '<div class="card idcard">'
     + '<div class="pfhead">' + (authPicture ? '<img class="pfimg" src="' + esc(authPicture) + '" alt="รูปโปรไฟล์ของ ' + esc(st.name) + '" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pfimg ph\',textContent:\'' + init + '\'}))">' : '<span class="pfimg ph" aria-hidden="true">' + init + '</span>')
     + '<div><h2>' + esc(st.name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</h2><div class="meta">ชั้นปี ' + st.year + ' · ' + GL[st.gender] + '</div></div></div>'
-    + '<div class="pfgrid">' + row('ชื่อเล่น', st.nickname) + row('ชื่อ AKA', st.aka) + row('รหัสนักศึกษา', st.student_id) + row('รหัสบัตรประชาชน 13 หลัก', nid, 'wide nid') + '</div>'
+    + '<button class="btn primary" type="button" onclick="editProfile()">✎ แก้ไขข้อมูล</button>'
+    + '<div class="pfgrid">' + row('ฝ่าย', me.selection && me.selection.department_name, 'wide') + row('ชื่อเล่น', st.nickname) + row('ชื่อ AKA', st.aka) + row('รหัสนักศึกษา', st.student_id) + row('รหัสบัตรประชาชน 13 หลัก', nid, 'wide nid') + '</div>'
     + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><b>QR รหัสนักศึกษา</b><span>' + esc(st.student_id) + '</span><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
-    + '<p class="muted pfhint">ชื่อเล่น / AKA ตั้งหรือแก้ได้ที่ <a href="/aka/">ระบบ AKA</a></p>'
+    + '<p class="muted pfhint">ฝ่ายเปลี่ยนได้ที่เมนู <a href="/hr/choose">เลือกฝ่าย</a></p>'
     + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
   drawQR($('qrSmall'), st.student_id, 168);
 }

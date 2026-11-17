@@ -2,6 +2,7 @@
 // admins manage the roster (student id → name + year + gender) and per-department / per-year / per-gender quotas.
 import { json, corsHeaders } from "../lib/cors.js";
 import { putFile } from "../lib/files.js";
+import { akaState, readNames, upsertAka, tidy as tidyAka } from "./aka.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
 const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
@@ -253,12 +254,33 @@ async function me(request, env, url) {
     student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
     if (!student) reason = "not_in_roster";
     else if (!student.gender) reason = "no_gender";
-    if (student) selection = await env.DB.prepare("SELECT department_code,selected_at FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
+    if (student) selection = await env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(student.student_id).first();
   }
   return json(request, env, {
     email: w.email, googleName: w.user.name || "", isAdmin: admin, adminDeferred: defer, registration: reg,
     studentId: w.parsed?.studentId || null, student, selection, reason
   });
+}
+
+// a student edits their own card: full name, nickname, AKA, national ID (never student id, year, gender or department)
+async function updateProfile(request, env) {
+  const w = await who(request, env); if (w.response) return w.response;
+  if (!w.parsed || !w.verified) return fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403);
+  const cur = await env.DB.prepare("SELECT s.student_id,s.name,s.national_id,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
+  if (!cur) return fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403);
+  const b = await request.json().catch(() => null);
+  const name = clean(b?.name, 200); if (!name) return fail(request, env, "กรุณาระบุชื่อ-นามสกุล");
+  const nid = normalizeNationalId(b?.nationalId); if (nid === null) return fail(request, env, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
+  const blank = !tidyAka(b?.nickname) && !tidyAka(b?.aka) && !cur.nickname && !cur.aka;   // never named yet and left empty: only name / national ID change
+  const names = blank ? { nickname: "", aka: "" } : readNames(b); if (names.error) return fail(request, env, names.error);
+  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid || null, cur.student_id)];
+  if (names.nickname !== (cur.nickname || "") || names.aka !== (cur.aka || "")) {
+    if ((await akaState(env)) !== "open") return fail(request, env, "ปิดรับการตั้งชื่อเล่น/AKA แล้ว แก้ได้เฉพาะชื่อและเลขบัตร", 403, { code: "AKA_CLOSED" });
+    stmts.push(upsertAka(env, cur.student_id, names.nickname, names.aka, w.email));
+  }
+  await env.DB.batch(stmts);
+  await audit(env, w, "CAMP_PROFILE_SELF", cur.student_id, { nameChanged: name !== cur.name, nationalIdSet: !!nid });
+  return json(request, env, { ok: true });
 }
 
 async function eligibleStudent(request, env) {
@@ -607,6 +629,7 @@ export async function camps(request, env, url) {
     if (m === "GET" && p === "/camps/departments") return await departments(request, env);
     { const pm = /^\/camps\/department-photo\/([a-z0-9_-]{1,40})$/.exec(p); if (m === "GET" && pm) return await departmentPhoto(request, env, pm[1]); }
     if (m === "GET" && p === "/camps/me") return await me(request, env, url);
+    if (m === "POST" && p === "/camps/me/profile") return await updateProfile(request, env);
     if (m === "POST" && p === "/camps/select") return await select(request, env);
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
