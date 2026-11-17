@@ -97,3 +97,5 @@ td.nm{display:flex;align-items:center;gap:10px;font-weight:600}
 }
 @media(max-width:520px){.stats{grid-template-columns:minmax(0,1fr)}.pill.date{margin-left:0}.chart{height:220px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.foot{text-align:center;color:var(--mute);font-size:13px;padding:8px 0 4px}
