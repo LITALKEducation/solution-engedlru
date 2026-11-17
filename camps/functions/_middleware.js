@@ -17,7 +17,11 @@ export async function onRequestGet({ request, next, env }) {
   if (!(res.headers.get('content-type') || '').includes('text/html')) return res;
   let pages;
   try {
-    const r = await fetch((env && env.OG_API ? env.OG_API : API) + '/camps/og/pages', { cf: { cacheTtl: 30, cacheEverything: true }, signal: AbortSignal.timeout(4000) });
+    // A Worker cannot fetch another Worker of the same account through its public *.workers.dev address (Cloudflare answers 404 "error code: 1042"),
+    // so when the Pages project has a service binding named CAMPS_API to the engedlru-api Worker it is used instead of the public URL.
+    const r = env && env.CAMPS_API && env.CAMPS_API.fetch
+      ? await env.CAMPS_API.fetch(new Request('https://engedlru-api.internal/camps/og/pages'))
+      : await fetch((env && env.OG_API ? env.OG_API : API) + '/camps/og/pages', { cf: { cacheTtl: 30, cacheEverything: true }, signal: AbortSignal.timeout(4000) });
     if (!r.ok) return tag(res, 'api-' + r.status);
     pages = (await r.json()).pages;
   } catch (e) { return tag(res, 'api-error'); }
