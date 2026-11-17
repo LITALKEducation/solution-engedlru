@@ -8,12 +8,12 @@
 //             GET  /camps/shirt/sample                    the sample shirt picture
 //             GET  /camps/shirt/gallery                   the designs with designer + class group, for the public page /shirt/ (no sign-in; admins can switch it off)
 //   Admin:    GET  /camps/shirt/admin/overview            POST /camps/shirt/admin/settings
-//             POST /camps/shirt/admin/sample?area=x,y,w,h   body = picture   |  POST /camps/shirt/admin/sample/area {x,y,w,h}  |  POST /camps/shirt/admin/sample/reset
+//             POST /camps/shirt/admin/sample   body = picture   |  POST /camps/shirt/admin/sample/reset
 //             POST /camps/shirt/admin/design/hide | delete
 import { json } from "../lib/cors.js";
 import { who, requireAdmin, clean, fail } from "./camps.js";
 
-const MAX_IMAGE = 3 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300, NAME_MAX = 80, GROUP_MAX = 40, DEFAULT_AREA = { x: 32, y: 26, w: 36, h: 38 };   // print area on the sample shirt, in percent of the picture
+const MAX_IMAGE = 3 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300, NAME_MAX = 80, GROUP_MAX = 40;
 const KEYS = { submitFrom: "shirt_submit_from", submitTo: "shirt_submit_to", voteFrom: "shirt_vote_from", voteTo: "shirt_vote_to" };
 const sniff = (u8) => (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47 ? ["image/png", "png"]
   : u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff ? ["image/jpeg", "jpg"]
@@ -25,15 +25,14 @@ async function loadSettings(env) {
   const rows = (await env.DB.prepare("SELECT key,value FROM camp_settings WHERE key LIKE 'shirt_%'").all()).results || [];
   const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   const t = (k) => { const n = num(m[k]); return Number.isFinite(n) ? n : null; };
-  return { submitFrom: t(KEYS.submitFrom), submitTo: t(KEYS.submitTo), voteFrom: t(KEYS.voteFrom), voteTo: t(KEYS.voteTo), resultsPublic: m.shirt_results_public === "1", galleryPublic: m.shirt_gallery_public !== "0", _sample: { key: m.shirt_sample_key || "", mime: m.shirt_sample_mime || "", area: m.shirt_sample_area || "", v: m.shirt_sample_v || "" } };
+  return { submitFrom: t(KEYS.submitFrom), submitTo: t(KEYS.submitTo), voteFrom: t(KEYS.voteFrom), voteTo: t(KEYS.voteTo), resultsPublic: m.shirt_results_public === "1", galleryPublic: m.shirt_gallery_public !== "0", _sample: { key: m.shirt_sample_key || "", mime: m.shirt_sample_mime || "", v: m.shirt_sample_v || "" } };
 }
 // a window is only active when both its times are set: 'unset' | 'before' | 'open' | 'after'
 const windowState = (from, to, now) => (from == null || to == null ? "unset" : now < from ? "before" : now < to ? "open" : "after");
 const publicSettings = (st) => { const { _sample, ...rest } = st; return rest; };
 const phases = (st, now = Date.now()) => ({ submit: windowState(st.submitFrom, st.submitTo, now), vote: windowState(st.voteFrom, st.voteTo, now) });
-const parseArea = (v) => { const a = String(v || "").split(",").map(Number); return a.length === 4 && a.every(Number.isFinite) ? { x: a[0], y: a[1], w: a[2], h: a[3] } : { ...DEFAULT_AREA }; };
-// the sample shirt as the pages need it: { image: url | null, area }
-const sampleInfo = (url, st) => ({ image: st._sample.key ? `${url.protocol}//${url.host}/camps/shirt/sample?v=${encodeURIComponent(st._sample.v)}` : null, area: parseArea(st._sample.area) });
+// the sample shirt as the pages need it: { image: url | null } (shown as it is, no layout)
+const sampleInfo = (url, st) => ({ image: st._sample.key ? `${url.protocol}//${url.host}/camps/shirt/sample?v=${encodeURIComponent(st._sample.v)}` : null });
 const imageUrl = (url, d) => `${url.protocol}//${url.host}/camps/shirt/image/${d.id}?v=${encodeURIComponent(d.image_key.split("-").pop().split(".")[0])}`;
 const setting = (env, key, value) => env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? ""));
 async function audit(env, w, action, entityId, metadata = {}) {
@@ -151,14 +150,6 @@ async function gallery(request, env, url) {
   return r;
 }
 // ---------- the sample shirt (uploaded by an admin) ----------
-const readArea = (v) => {
-  const a = typeof v === "string" ? v.split(",").map(Number) : [v?.x, v?.y, v?.w, v?.h].map(Number);
-  if (a.length !== 4 || !a.every(Number.isFinite)) return null;
-  const [x, y, w, h] = a.map((n) => Math.round(n * 10) / 10);
-  if (w < 5 || h < 5 || x < 0 || y < 0 || x + w > 100.01 || y + h > 100.01) return null;   // a print area inside the picture
-  return { x, y, w, h };
-};
-const areaStr = (a) => `${a.x},${a.y},${a.w},${a.h}`;
 async function sampleImage(request, env) {
   const st = await loadSettings(env); if (!st._sample.key) return new Response("Not Found", { status: 404 });
   const obj = await env.FILES.get(st._sample.key); if (!obj) return new Response("Not Found", { status: 404 });
@@ -168,30 +159,21 @@ async function sampleImage(request, env) {
 }
 async function adminSample(request, env, url) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
-  const area = url.searchParams.has("area") ? readArea(url.searchParams.get("area")) : null;
-  if (url.searchParams.has("area") && !area) return fail(request, env, "พื้นที่พิมพ์ไม่ถูกต้อง");
   const buf = new Uint8Array(await request.arrayBuffer());
   if (!buf.length) return fail(request, env, "เลือกรูปเสื้อตัวอย่าง");
   if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 3 MB)", 413);
   const kind = sniff(buf); if (!kind) return fail(request, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
   const old = await loadSettings(env), key = `camps/shirt/sample-${Date.now()}.${kind[1]}`;
   await env.FILES.put(key, buf, { httpMetadata: { contentType: kind[0] } });
-  await env.DB.batch([setting(env, "shirt_sample_key", key), setting(env, "shirt_sample_mime", kind[0]), setting(env, "shirt_sample_v", Date.now()), setting(env, "shirt_sample_area", areaStr(area || parseArea(old._sample.area)))]);
+  await env.DB.batch([setting(env, "shirt_sample_key", key), setting(env, "shirt_sample_mime", kind[0]), setting(env, "shirt_sample_v", Date.now())]);
   if (old._sample.key) { try { await env.FILES.delete(old._sample.key); } catch (e) { /* the new picture is saved; an orphan file is harmless */ } }
   await audit(env, a, "SHIRT_SAMPLE", null, { mime: kind[0], bytes: buf.length });
   return json(request, env, { ok: true, sample: sampleInfo(url, await loadSettings(env)) });
 }
-async function adminSampleArea(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
-  const area = readArea(await request.json().catch(() => null)); if (!area) return fail(request, env, "พื้นที่พิมพ์ไม่ถูกต้อง");
-  await setting(env, "shirt_sample_area", areaStr(area)).run();
-  await audit(env, a, "SHIRT_SAMPLE_AREA", null, area);
-  return json(request, env, { ok: true, area });
-}
 async function adminSampleReset(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const st = await loadSettings(env);
-  await env.DB.batch([setting(env, "shirt_sample_key", ""), setting(env, "shirt_sample_mime", ""), setting(env, "shirt_sample_area", ""), setting(env, "shirt_sample_v", "")]);
+  await env.DB.batch([setting(env, "shirt_sample_key", ""), setting(env, "shirt_sample_mime", ""), setting(env, "shirt_sample_v", "")]);
   if (st._sample.key) { try { await env.FILES.delete(st._sample.key); } catch (e) { /* ignore */ } }
   await audit(env, a, "SHIRT_SAMPLE_RESET", null);
   return json(request, env, { ok: true });
@@ -253,7 +235,6 @@ export async function shirt(request, env, url) {
     if (m === "GET" && p === "/camps/shirt/sample") return await sampleImage(request, env);
     if (m === "GET" && p === "/camps/shirt/gallery") return await gallery(request, env, url);
     if (m === "POST" && p === "/camps/shirt/admin/sample") return await adminSample(request, env, url);
-    if (m === "POST" && p === "/camps/shirt/admin/sample/area") return await adminSampleArea(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/sample/reset") return await adminSampleReset(request, env);
     if (m === "GET" && p === "/camps/shirt/admin/overview") return await adminOverview(request, env, url);
     if (m === "POST" && p === "/camps/shirt/admin/settings") return await adminSettings(request, env);
