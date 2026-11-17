@@ -81,7 +81,7 @@ async function init(){
  try{
   if(!window.auth0)throw new Error('โหลดระบบเข้าสู่ระบบไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
   auth0Client=await withTimeout(auth0.createAuth0Client({domain:AUTH_DOMAIN,clientId:CLIENT_ID,cacheLocation:'localstorage',useRefreshTokens:true,authorizationParams:{redirect_uri:APP_URL}}),T,'เชื่อมต่อระบบเข้าสู่ระบบไม่ทัน');
-  if(location.search.includes('code=')||location.search.includes('error=')){await withTimeout(auth0Client.handleRedirectCallback(),T,'ยืนยันการเข้าสู่ระบบไม่ทัน');history.replaceState({},document.title,APP_URL);}
+  if(location.search.includes('code=')||location.search.includes('error=')){await withTimeout(auth0Client.handleRedirectCallback(),T,'ยืนยันการเข้าสู่ระบบไม่ทัน');history.replaceState({},document.title,location.pathname);}
   if(!await withTimeout(auth0Client.isAuthenticated(),T,'ตรวจสอบสถานะไม่ทัน')){show('login');return}
   const token=await withTimeout(auth0Client.getTokenSilently(),T,'ขอสิทธิ์เข้าใช้งานไม่ทัน');
   const r=await withTimeout(fetch(API+'/budget/me',{headers:{Authorization:'Bearer '+token}}),15000,'เชื่อมต่อเซิร์ฟเวอร์ไม่ทัน');

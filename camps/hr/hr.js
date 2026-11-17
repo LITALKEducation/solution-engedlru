@@ -105,7 +105,7 @@ async function initAuth() {
     if (location.search.includes('code=') || location.search.includes('error=')) {
       let callbackResult;
       try { callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'เข้าสู่ระบบช้าเกินไป ลองใหม่อีกครั้ง'); }
-      finally { history.replaceState({}, document.title, HR_URL); }   // never leave ?code= / ?error= in the address bar (a reload would replay it)
+      finally { history.replaceState({}, document.title, location.pathname); }   // never leave ?code= / ?error= in the address bar (a reload would replay it)
       // Auth0 always lands on /hr/; go back to the HR page where sign-in started (appState first, then this tab's sessionStorage).
       let back = (callbackResult && callbackResult.appState && callbackResult.appState.returnTo) || '';
       if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }

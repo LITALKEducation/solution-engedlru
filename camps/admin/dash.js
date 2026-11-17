@@ -53,6 +53,7 @@ async function tick() {
   try {
     await new Promise((res, rej) => { let n = 0; const w = () => (window.auth0 ? res() : ++n > 100 ? rej(new Error('โหลดหน้าเข้าสู่ระบบไม่สำเร็จ')) : setTimeout(w, 100)); w(); });
     auth = await auth0.createAuth0Client({ domain: DOMAIN, clientId: CLIENT, cacheLocation: 'localstorage', useRefreshTokens: true, authorizationParams: { redirect_uri: HR_URL } });
+    if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } catch (e) { signin(e.message); return; } }
     if (await auth.isAuthenticated()) tick(); else signin();
   } catch (e) { root.innerHTML = '<div class="dcard"><p class="dmute">' + esc(e.message || 'เข้าใช้งานไม่ได้ชั่วคราว') + '</p></div>'; }
 })();

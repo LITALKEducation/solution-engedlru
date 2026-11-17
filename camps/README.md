@@ -44,27 +44,18 @@ The student pages (`/hr/`, `/hr/choose`, `/hr/select`) show only a Google sign-i
 ### Checks (CI)
 `.github/workflows/ci.yml` runs on every pull request touching `worker/` or `camps/`: `npm run check` (every script parses, every local `src`/`href` in `camps/**/*.html` exists, migration names), `npm test` (API tests against in-memory D1 with all migrations applied) and `wrangler deploy --dry-run`. The deploy workflow runs the same checks before it applies migrations.
 
-### One Auth0 application per system
-Budget, HR, Lottery, QR check and AKA each have **their own Auth0 application**, their own Client ID and **one callback URL each**, so a misconfiguration or outage in one can never stop sign-in in another. The Worker validates tokens with Auth0 `/userinfo` and reads roles per **user**, so no Worker change or role change is needed.
+### Sign-in runs on the Worker (one Auth0 application, one callback)
+Every Camps page (budget, HR, admin, lottery, QR check, AKA) signs in through the Worker, not directly with Auth0, so Auth0 needs only **one** application and **two** URLs, whatever pages are added later:
 
-Create five applications in Auth0 (Applications → Create → *Single Page Web Applications*), e.g. `Camps Budget`, `Camps HR`, `Camps Lotto`, `Camps QR Check`, `Camps AKA`, and for **each** one:
-1. *Allowed Web Origins* = `https://enged.sorasukt.com`
-2. *Allowed Callback URLs* **and** *Allowed Logout URLs* = exactly the one URL in the table
-3. *Advanced → Grant Types*: Implicit, Authorization Code, **Refresh Token**; and *Refresh Token Rotation* **on** (the apps use refresh tokens)
-4. *Connections*: enable **google-oauth2**
-5. Copy the **Client ID** into the one constant of that app:
+1. Auth0 → Applications → the existing SPA (`AUTH0_CLIENT_ID` in `worker/wrangler.toml`, default `PGqozL…`).
+2. *Allowed Callback URLs* → add `https://engedlru-api.stnetworld.workers.dev/auth/callback` (use the Worker's own URL if it has a custom domain).
+3. *Allowed Logout URLs* → add `https://engedlru-api.stnetworld.workers.dev/auth/logged-out`.
+4. *Grant Types*: Authorization Code and **Refresh Token** (rotation on is fine); *Connections*: google-oauth2.
+5. Deploy the **Worker first** (it adds `/auth/*` and migration `0018_auth_tmp.sql`), then the Pages site. The old per-page callback / logout URLs and the other Auth0 applications are no longer used and can be removed once sign-in is verified.
 
-| System | Callback + logout URL (only this one) | Where the Client ID goes |
-|---|---|---|
-| Budget | `https://enged.sorasukt.com/budget/` | `CLIENT_ID` in `budget/assets/budget-v2.js` (or `window.BUDGET_AUTH0_CLIENT_ID`) |
-| HR | `https://enged.sorasukt.com/hr/` | `CLIENT_ID` in `hr/hr.js` (or `window.HR_AUTH0_CLIENT_ID`) |
-| Lottery | `https://enged.sorasukt.com/lotto/` | `CLIENT` in `lotto/app.js` (or `window.LOTTO_AUTH0_CLIENT_ID`) |
-| QR check | `https://enged.sorasukt.com/qrcheck/` | `CLIENT` in `qrcheck/app.js` (or `window.QRCHECK_AUTH0_CLIENT_ID`) |
-| AKA | `https://enged.sorasukt.com/aka/` | `CLIENT` in `aka/app.js` (or `window.AKA_AUTH0_CLIENT_ID`) |
+How it works: `assets/worker-auth.js` replaces the auth0-spa-js script (same calls: `createAuth0Client`, `loginWithRedirect`, `handleRedirectCallback`, `getTokenSilently`, `getUser`, `logout`). `GET /auth/login?returnTo=<page>` starts Authorization Code + PKCE on the Worker (state in D1 `auth_tmp`, 10 min); Auth0 returns to `/auth/callback`, the Worker swaps the code for tokens and sends the browser back to **the page it started from** with a one-time `?code=` (2 min, single use, no tokens in any URL); the page trades it at `POST /auth/exchange`. Tokens refresh through `POST /auth/refresh` (no CORS / Allowed Web Origins setting needed; two tabs refresh one at a time with `navigator.locks`; if Auth0 is down the session is kept, only a revoked refresh token signs the user out). The session lives in `localStorage` (`camps.session.v1`) and is **shared by every Camps page**, so signing in once covers all systems. `returnTo` must be an `ALLOWED_ORIGINS` origin and a path under `/hr/ /admin/ /budget/ /lotto/ /qrcheck/ /aka/`. API calls still send the Auth0 access token and the Worker still validates it with `/userinfo`, so roles and permissions are unchanged. Everyone signs in once more after the switch.
 
-Until a system's own Client ID is pasted in, it keeps using the old shared application (that application must keep its previous URLs while you migrate; `npm run check` in `worker/` prints a warning while two systems still share an ID). Migrate one system at a time and remove its URLs from the old application afterwards.
-
-Roles (`camp_admin`, `budget_admin`) belong to users, not applications, so they keep working. Each application has its own token cache, so the first time a user opens a second system they go through Auth0 once more; the Auth0 single-sign-on session makes that one click (no new Google prompt). Signing out ends the shared Auth0 session, so the other systems ask for sign-in the next time their token needs refreshing.
+Roles (`camp_admin`, `budget_admin`) belong to users, so they keep working.
 
 ### How sign-in works
 - Each system has a single callback (`/budget/`, `/hr/`, `/lotto/`, `/qrcheck/`, `/aka/`). In HR, Auth0 always lands on `/hr/`; the HR page where sign-in started travels in the Auth0 `appState.returnTo` (fallback: the tab's `hrReturn`) and `/hr/` sends you back there (only `/hr/…` paths are accepted).
