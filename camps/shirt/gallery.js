@@ -6,7 +6,7 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var when = function (ms) { return new Date(ms).toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' }); };
   var range = function (a, b) { return a == null || b == null ? 'ยังไม่กำหนดวัน' : when(a) + ' – ' + when(b); };
-  var name = function (d) { return d.title || ('แบบของ ' + d.designer); };
+  var name = function (d) { return d.title || d.designer; };
   var who = function (d) { return '<p class="shwho">ออกแบบโดย <b>' + esc(d.designer) + '</b> · ' + esc(d.classGroup) + '</p>'; };
   var data = null, current = null;
   function pic(src) { return '<img class="shpic" loading="lazy" src="' + esc(src) + '" alt="">'; }
@@ -20,7 +20,7 @@
     if (!d.galleryPublic) { $('gGrid').innerHTML = '<p>ผลงานจะแสดงเมื่อแอดมินเปิดให้ดู</p>'; return; }
     if (!list.length) { $('gGrid').innerHTML = '<p>ยังไม่มีผลงานที่ส่งเข้ามา</p>'; return; }
     $('gGrid').innerHTML = list.map(function (x, i) {
-      return '<figure class="shcard"><button type="button" class="shimg" data-id="' + esc(x.id) + '" aria-label="ขยายรูป ' + esc(name(x)) + '">' + pic(x.image) + '</button><figcaption><span class="t">' + (d.resultsPublic ? '<span class="rank">#' + (i + 1) + '</span>' : '') + esc(name(x)) + '</span>' + who(x) + (x.description ? '<p>' + esc(x.description) + '</p>' : '') + (d.resultsPublic ? '<p class="shvotes"><b>' + (x.votes || 0) + '</b> โหวต</p>' : '') + '</figcaption></figure>';
+      return '<figure class="shcard"><button type="button" class="shimg" data-id="' + esc(x.id) + '" aria-label="ขยายรูป ' + esc(name(x)) + '">' + pic(x.image) + '</button><figcaption><span class="t">' + (d.resultsPublic ? '<span class="rank">#' + (i + 1) + '</span>' : '') + esc(x.designer) + '</span><span class="cls">' + esc(x.classGroup) + '</span>' + (x.title ? '<span class="tt">' + esc(x.title) + '</span>' : '') + (d.resultsPublic ? '<span class="shvotes"><b>' + (x.votes || 0) + '</b> โหวต</span>' : '') + '</figcaption></figure>';
     }).join('');
   }
   function drawBox() {

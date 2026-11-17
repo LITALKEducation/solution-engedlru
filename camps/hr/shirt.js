@@ -3,11 +3,11 @@
 // designs and announce the results. Runs after hr.js (shares api(), toast(), esc() ...).
 let shirtX = null;
 let shSample = { image: null };   // the admin's sample shirt picture, shown as it is (null = no box)
-const shWhen = (ms) => (ms == null ? '—' : new Date(ms).toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' }));
+const shWhen = (ms) => (ms == null ? '—' : new Date(ms).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }));
 const SH_STATE = { unset: ['ยังไม่กำหนดวัน', ''], before: ['ยังไม่ถึงเวลา', ''], open: ['เปิดอยู่', 'open'], after: ['ปิดแล้ว', 'closed'] };
 const shChip = (st) => { const v = SH_STATE[st] || SH_STATE.unset; return '<span class="state-chip ' + v[1] + '">' + v[0] + '</span>'; };
 const shRange = (a, b) => (a == null || b == null ? 'ยังไม่กำหนดวัน' : shWhen(a) + ' – ' + shWhen(b));
-const shName = (d) => d.title || ('แบบของ ' + d.designer);   // the title is optional: fall back to the designer
+const shName = (d) => d.title || d.designer;   // the title is optional (old designs may have one): the designer's name stands in
 const shWho = (d) => '<p class="shwho">ออกแบบโดย <b>' + esc(d.designer) + '</b> · ' + esc(d.classGroup) + '</p>';
 const shErr = async (r) => { try { const d = await r.json(); return d.error || 'เกิดข้อผิดพลาด (' + r.status + ')'; } catch (e) { return 'เกิดข้อผิดพลาด (' + r.status + ')'; } };
 
@@ -38,9 +38,9 @@ function shLightbox(src, title, whoHtml) {
 }
 
 // what the upload form shows while it is filled in: the shirt with the design, the designer and the class group
-function shLive(src, designer, group, title) {
+function shLive(src, designer, group) {
   return '<div class="shlivecard">' + (src ? '<img class="shpic" src="' + esc(src) + '" alt="ตัวอย่างผลงาน">' : '<div class="shnoimg">เลือกรูปเพื่อดูตัวอย่าง</div>')
-    + '<p class="shliveT">' + esc(title || 'ชื่อแบบ (ถ้ามี)') + '</p><p class="shwho">ออกแบบโดย <b>' + (designer ? esc(designer) : '<i>ชื่อผู้ออกแบบ</i>') + '</b> · ' + (group ? esc(group) : '<i>หมู่เรียน</i>') + '</p></div>';
+    + '<p class="shwho"><b>' + (designer ? esc(designer) : '<i>ชื่อผู้ออกแบบ</i>') + '</b> · ' + (group ? esc(group) : '<i>หมู่เรียน</i>') + '</p></div>';
 }
 // ---------- student page ----------
 async function loadShirt() {
@@ -67,17 +67,16 @@ function renderShirtSubmit() {
       : '<p class="muted">' + (x.submit === 'before' ? 'ยังไม่ถึงเวลารับผลงาน เปิดรับ ' + esc(shWhen(x.schedule.submitFrom)) : x.submit === 'unset' ? 'ยังไม่กำหนดวันรับผลงาน' : 'ปิดรับผลงานแล้ว คุณไม่ได้ส่งผลงาน') + '</p>';
     host.innerHTML = h + '</div>'; if ($('shMineBig')) $('shMineBig').onclick = () => shLightbox(my.image, shName(my), shWho(my)); return;
   }
-  h += '<p class="muted">ส่งได้ 1 ผลงาน แก้ไขหรือเปลี่ยนรูปได้จนถึง ' + esc(shWhen(x.schedule.submitTo)) + ' · <em class="req">*</em> = ต้องกรอก</p><div class="shup"><form id="shForm" class="form" novalidate autocomplete="off">'
+  h += '<p class="muted">ส่งได้ 1 ผลงาน แก้ไขได้จนถึง ' + esc(shWhen(x.schedule.submitTo)) + '</p><div class="shup"><form id="shForm" class="form" novalidate autocomplete="off">'
     + '<label><span>ชื่อผู้ออกแบบ <em class="req">*</em></span><input id="shDesigner" maxlength="80" required></label><label><span>หมู่เรียน <em class="req">*</em></span><input id="shGroup" maxlength="40" required placeholder="เช่น ปี 2 หมู่ 1"></label>'
-    + '<label><span>ชื่อแบบ (ไม่บังคับ)</span><input id="shTitle" maxlength="60"></label><label><span>คำอธิบาย (ไม่บังคับ)</span><textarea id="shDesc" rows="3" maxlength="300"></textarea></label>'
-    + '<label><span>รูปลายเสื้อ ' + (my ? '(เลือกใหม่เมื่อต้องการเปลี่ยนรูป)' : '<em class="req">*</em>') + '</span><input id="shFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
+    + '<label><span>รูปลายเสื้อ ' + (my ? '(เลือกใหม่ถ้าต้องการเปลี่ยน)' : '<em class="req">*</em>') + '</span><input id="shFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
     + '<div class="filerow"><button class="btn primary" type="submit" id="shSave">' + (my ? 'บันทึกการแก้ไข' : 'ส่งผลงาน') + '</button>' + (my ? '<button class="btn danger" type="button" id="shDel">ลบผลงาน</button>' : '') + '</div></form>'
     + '<div class="shlive" id="shLive" aria-live="polite"></div></div>';
   host.innerHTML = h + '</div>';
-  $('shDesigner').value = my ? my.designer : (x.student && x.student.name) || ''; $('shGroup').value = my ? my.classGroup : ''; $('shTitle').value = my ? my.title : ''; $('shDesc').value = my ? my.description : '';
+  $('shDesigner').value = my ? my.designer : (x.student && x.student.name) || ''; $('shGroup').value = my ? my.classGroup : '';
   let blob = null, blobUrl = null;
-  const live = () => { $('shLive').innerHTML = shLive(blobUrl || (my && my.image) || '', $('shDesigner').value.trim(), $('shGroup').value.trim(), $('shTitle').value.trim()); };
-  ['shDesigner', 'shGroup', 'shTitle'].forEach((id) => { $(id).oninput = live; }); live();
+  const live = () => { $('shLive').innerHTML = shLive(blobUrl || (my && my.image) || '', $('shDesigner').value.trim(), $('shGroup').value.trim()); };
+  ['shDesigner', 'shGroup'].forEach((id) => { $(id).oninput = live; }); live();
   $('shFile').onchange = async (e) => {
     const f = e.target.files[0]; blob = null; if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; } if (!f) return live();
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { e.target.value = ''; live(); return toast('ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น', true); }
@@ -91,7 +90,7 @@ function renderShirtSubmit() {
     if (!my && !blob) { $('shFile').focus(); return toast('เลือกรูปลายเสื้อ', true); }
     $('shSave').disabled = true;
     try {
-      const q = new URLSearchParams({ designer, group, title: $('shTitle').value.trim(), description: $('shDesc').value.trim() });
+      const q = new URLSearchParams({ designer, group, title: my ? my.title : '', description: my ? my.description : '' });   // no title / description fields any more: keep what an old design has
       const r = await api('/camps/shirt/design?' + q, { method: 'POST', headers: blob ? { 'Content-Type': blob.type } : {}, body: blob || undefined });
       if (!r.ok) { toast(await shErr(r), true); await loadShirt(); return; }
       toast('บันทึกผลงานแล้ว'); await loadShirt();
@@ -109,16 +108,18 @@ function renderShirtVote() {
     host.innerHTML = h + '<p class="muted">' + (x.vote === 'unset' ? 'ยังไม่กำหนดวันโหวต' : 'ผลงานทั้งหมดจะเปิดให้ดูและโหวตเมื่อถึงเวลาโหวต ' + esc(shWhen(x.schedule.voteFrom))) + '</p></div>'; return;
   }
   const open = x.vote === 'open';
-  h += '<p class="muted">' + (open ? 'โหวตได้คนละ 1 แบบ (ไม่ใช่ของตัวเอง) เปลี่ยนใจได้จนถึง ' + esc(shWhen(x.schedule.voteTo)) : x.vote === 'before' ? 'ดูแบบที่ส่งมาได้ก่อน โหวตได้เมื่อถึงเวลาโหวต ' + esc(shWhen(x.schedule.voteFrom)) : x.vote === 'unset' ? 'ยังไม่กำหนดวันโหวต' : 'ปิดโหวตแล้ว' + (x.resultsPublic ? '' : ' · รอแอดมินประกาศผล')) + ' · <a href="/shirt/">หน้าสาธารณะ (ดูได้โดยไม่ต้องเข้าสู่ระบบ)</a></p>';
+  const mine = x.designs.find((d) => d.id === x.myVote);
+  h += '<p class="muted">' + (open ? 'โหวตได้ 1 แบบ เปลี่ยนใจได้จนถึง ' + esc(shWhen(x.schedule.voteTo)) : x.vote === 'before' ? 'เปิดโหวต ' + esc(shWhen(x.schedule.voteFrom)) : x.vote === 'unset' ? 'ยังไม่กำหนดวันโหวต' : 'ปิดโหวตแล้ว' + (x.resultsPublic ? '' : ' · รอประกาศผล')) + ' · <a href="/shirt/">หน้าสาธารณะ</a></p>'
+    + (mine ? '<p class="shvotedline">✓ คุณโหวตให้ <b>' + esc(mine.designer) + '</b></p>' : '');
   let list = x.designs.slice();
   if (x.resultsPublic) list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
   if (!list.length) h += '<p class="muted">ยังไม่มีผลงาน</p>';
   h += '<div class="shgrid">' + list.map((d, i) => {
     const voted = x.myVote === d.id;
-    const btn = !open ? '' : d.mine ? '<span class="tag">ผลงานของคุณ</span>' : '<button class="btn sm ' + (voted ? '' : 'primary') + '" data-vote="' + d.id + '" aria-pressed="' + voted + '">' + (voted ? '✓ โหวตแล้ว (กดเพื่อยกเลิก)' : 'โหวตแบบนี้') + '</button>';
+    const btn = !open ? '' : d.mine ? '<span class="tag">ผลงานของคุณ</span>' : '<button class="btn sm ' + (voted ? '' : 'primary') + '" data-vote="' + d.id + '" aria-pressed="' + voted + '" title="' + (voted ? 'กดเพื่อยกเลิกโหวต' : '') + '">' + (voted ? '✓ โหวตแล้ว' : 'โหวต') + '</button>';
     return '<figure class="shcard' + (voted ? ' voted' : '') + '"><button type="button" class="shimg" data-big="' + d.id + '" aria-label="ขยายรูป ' + esc(shName(d)) + '">' + shMock(d.image, 'white') + '</button>'
-      + '<figcaption><b>' + (x.resultsPublic ? '<span class="shrank">#' + (i + 1) + '</span> ' : '') + esc(shName(d)) + '</b>' + shWho(d) + (d.description ? '<p class="muted">' + esc(d.description) + '</p>' : '')
-      + (x.resultsPublic ? '<p class="shvotes"><b>' + (d.votes || 0) + '</b> โหวต</p>' : '') + '<div class="shact">' + (!open && d.mine ? '<span class="tag">ผลงานของคุณ</span>' : '') + (!open && voted ? '<span class="tag ok">คุณโหวตแบบนี้</span>' : '') + btn + '</div></figcaption></figure>';
+      + '<figcaption><b>' + (x.resultsPublic ? '<span class="shrank">#' + (i + 1) + '</span> ' : '') + esc(d.designer) + '</b><span class="shcls">' + esc(d.classGroup) + '</span>' + (d.title ? '<span class="shtt">' + esc(d.title) + '</span>' : '')
+      + (x.resultsPublic ? '<span class="shvotes"><b>' + (d.votes || 0) + '</b> โหวต</span>' : '') + '<div class="shact">' + (!open && d.mine ? '<span class="tag">ผลงานของคุณ</span>' : '') + (!open && voted ? '<span class="tag ok">คุณโหวตแบบนี้</span>' : '') + btn + '</div></figcaption></figure>';
   }).join('') + '</div></div>';
   host.innerHTML = h;
   host.onclick = async (e) => {

@@ -441,3 +441,11 @@ body[data-page] .uc{border-radius:18px}
 /* the sample shirt in a box of its own */
 .shsamplepic{width:min(260px,100%);flex:none;border-radius:16px;overflow:hidden;background:var(--panel,#f3f2f4)}.shsamplepic 
 .shsamplepic{display:block;max-width:min(420px,100%);height:auto;border-radius:16px;background:var(--panel,#f3f2f4)}
+
+/* /hr/shirt: compact gallery */
+.shgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.shcard figcaption{padding:10px 12px 12px;gap:2px}.shcard figcaption b{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.shcls,.shtt{font-size:12px;color:var(--mute);line-height:1.4}.shtt{font-style:italic}
+.shvotes{font-size:12px;color:var(--mute)}.shvotes b{font-size:18px;color:var(--ink,#161616)}
+.shact{margin-top:8px}.shact .btn{min-height:38px}
+.shvotedline{margin:2px 0 10px;padding:8px 12px;border-radius:12px;background:#dcfce7;color:#15803d;font-size:14px}
