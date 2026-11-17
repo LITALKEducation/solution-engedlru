@@ -30,18 +30,9 @@ function shResize(file) {
     im.src = url;
   });
 }
-// the design shown on a shirt: the admin's sample shirt picture with the design placed in its print area, or a built-in T-shirt drawing when none was uploaded
-const SH_COLORS = [['white', 'ขาว', '#ffffff', '#cfcfd6'], ['black', 'ดำ', '#202023', '#000000'], ['red', 'แดง', '#c62828', '#8f1b1b'], ['navy', 'กรมท่า', '#1e2f5a', '#12204a'], ['grey', 'เทา', '#a3a2a8', '#7c7b81']];
-function shMock(src, color, areaOverride) {
-  if (shSample.image) {
-    const a = areaOverride || shSample.area;
-    return '<div class="shmockimg" role="img" aria-label="ตัวอย่างลายบนเสื้อ"><img class="shbase" src="' + esc(shSample.image) + '" alt="">' + (src ? '<img class="shdesign" src="' + esc(src) + '" alt="" style="left:' + a.x + '%;top:' + a.y + '%;width:' + a.w + '%;height:' + a.h + '%">' : '') + '</div>';
-  }
-  const c = SH_COLORS.find((x) => x[0] === color) || SH_COLORS[0];
-  return '<svg class="shmock" viewBox="0 0 300 300" role="img" aria-label="ตัวอย่างลายบนเสื้อสี' + c[1] + '"><path d="M96 22 L18 58 L44 120 L76 104 L76 282 L224 282 L224 104 L256 120 L282 58 L204 22 Q150 66 96 22 Z" fill="' + c[2] + '" stroke="' + c[3] + '" stroke-width="3" stroke-linejoin="round"/>'
-    + '<path d="M96 22 Q150 66 204 22" fill="none" stroke="' + c[3] + '" stroke-width="5" stroke-linecap="round"/><path d="M76 104 L76 282 M224 104 L224 282" stroke="' + c[3] + '" stroke-opacity=".18" stroke-width="2"/>'
-    + (src ? '<image href="' + esc(src) + '" x="98" y="86" width="104" height="118" preserveAspectRatio="xMidYMid meet"/>' : '') + '</svg>';
-}
+// the design shown on a shirt (assets/shirt-mock.js): the admin's sample shirt picture with the design in its print area, or a built-in drawing
+const SH_COLORS = window.ShirtMock.COLORS;
+const shMock = (src, color, areaOverride) => window.ShirtMock.mock(shSample, src, color, areaOverride);
 function shLightbox(src, title, whoHtml) {
   const d = openDlg('<h3>' + esc(title) + '</h3>' + (whoHtml || '') + '<div class="shtabs seg" role="tablist"><button type="button" role="tab" class="on" data-v="mock">บนเสื้อ</button><button type="button" role="tab" data-v="img">รูปต้นฉบับ</button></div>'
     + '<div class="shbig" id="shBig"></div><div class="shdots" id="shDots" role="group" aria-label="สีเสื้อ">' + SH_COLORS.map((c, i) => '<button type="button" class="shdot' + (i === 0 ? ' on' : '') + '" data-c="' + c[0] + '" aria-label="เสื้อสี' + c[1] + '" aria-pressed="' + (i === 0) + '" style="background:' + c[2] + '"></button>').join('') + '</div><div class="btns"><button class="btn primary" data-x>ปิด</button></div>');
@@ -78,7 +69,7 @@ function renderShirt() {
   const time = '<div class="card shtime"><div class="shrow"><b>รับผลงาน</b>' + shChip(x.submit) + '<span>' + esc(shRange(sc.submitFrom, sc.submitTo)) + '</span></div><div class="shrow"><b>โหวต</b>' + shChip(x.vote) + '<span>' + esc(shRange(sc.voteFrom, sc.voteTo)) + '</span></div></div>';
   if (x.reason) { box.innerHTML = time + '<div class="card acct"><div class="warn">' + esc(x.error || 'ใช้งานไม่ได้') + '</div><button class="btn primary sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div>'; return; }
   shSample = x.sample || shSample;
-  box.innerHTML = time + '<div id="shSubmit"></div><div id="shVote"></div>';
+  box.innerHTML = time + '<div class="card shsec shsample"><h2>เสื้อตัวอย่าง</h2><div class="shsamplebody"><div class="shsamplepic">' + window.ShirtMock.sampleOnly(shSample, 'white') + '</div><div><p>ลายของทุกคนจะถูกวางบนเสื้อตัวนี้</p><p class="muted">กรอบเส้นประคือตำแหน่งที่ลายถูกพิมพ์ เลือกรูปที่ออกแบบให้อยู่ในกรอบนี้</p></div></div></div><div id="shSubmit"></div><div id="shVote"></div>';
   renderShirtSubmit(); renderShirtVote();
 }
 function renderShirtSubmit() {
@@ -132,7 +123,7 @@ function renderShirtVote() {
     host.innerHTML = h + '<p class="muted">' + (x.vote === 'unset' ? 'ยังไม่กำหนดวันโหวต' : 'ผลงานทั้งหมดจะเปิดให้ดูและโหวตเมื่อถึงเวลาโหวต ' + esc(shWhen(x.schedule.voteFrom))) + '</p></div>'; return;
   }
   const open = x.vote === 'open';
-  h += '<p class="muted">' + (open ? 'โหวตได้คนละ 1 แบบ (ไม่ใช่ของตัวเอง) เปลี่ยนใจได้จนถึง ' + esc(shWhen(x.schedule.voteTo)) : 'ปิดโหวตแล้ว' + (x.resultsPublic ? '' : ' · รอแอดมินประกาศผล')) + '</p>';
+  h += '<p class="muted">' + (open ? 'โหวตได้คนละ 1 แบบ (ไม่ใช่ของตัวเอง) เปลี่ยนใจได้จนถึง ' + esc(shWhen(x.schedule.voteTo)) : x.vote === 'before' ? 'ดูแบบที่ส่งมาได้ก่อน โหวตได้เมื่อถึงเวลาโหวต ' + esc(shWhen(x.schedule.voteFrom)) : x.vote === 'unset' ? 'ยังไม่กำหนดวันโหวต' : 'ปิดโหวตแล้ว' + (x.resultsPublic ? '' : ' · รอแอดมินประกาศผล')) + ' · <a href="/shirt/">หน้าสาธารณะ (ดูได้โดยไม่ต้องเข้าสู่ระบบ)</a></p>';
   let list = x.designs.slice();
   if (x.resultsPublic) list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
   if (!list.length) h += '<p class="muted">ยังไม่มีผลงาน</p>';
@@ -182,7 +173,8 @@ function renderShirtAdmin() {
       + '<p class="muted">ส่งโดย ' + esc(d.studentName) + ' · ' + esc(d.studentId) + '</p><p class="shvotes"><b>' + d.votes + '</b> โหวต' + (d.hidden ? ' · <span class="tag">ซ่อนอยู่</span>' : '') + '</p><div class="shact"><button class="btn sm" data-hide="' + d.id + '" data-to="' + (d.hidden ? 0 : 1) + '">' + (d.hidden ? 'แสดง' : 'ซ่อน') + '</button><button class="btn sm danger" data-del="' + d.id + '">ลบ</button></div></figcaption></figure>').join('') + '</div>' : '<p class="muted">ยังไม่มีใครส่งผลงาน</p>') + '</div>'
     + '<div class="panel"><h3>กำหนดวัน</h3><p class="muted">นักศึกษาส่งผลงานได้ในช่วง “รับผลงาน” และโหวตได้ในช่วง “โหวต” ช่วงโหวตต้องเริ่มหลังปิดรับผลงาน เว้นว่างทั้งสองช่องถ้ายังไม่กำหนด (ใช้เวลาตามเครื่องของคุณ)</p>'
     + win('sub', 'รับผลงาน', 'ช่วงที่นักศึกษาอัปโหลดและแก้ไขผลงาน', s.submitFrom, s.submitTo) + win('vote', 'โหวต', 'ช่วงที่นักศึกษาดูผลงานทั้งหมดและโหวต', s.voteFrom, s.voteTo)
-    + '<label class="chk"><input type="checkbox" id="shPub"' + (s.resultsPublic ? ' checked' : '') + '> ประกาศผลให้นักศึกษาเห็นคะแนน (ปิดไว้ = เห็นเฉพาะแอดมิน)</label>'
+    + '<label class="chk"><input type="checkbox" id="shGal"' + (s.galleryPublic !== false ? ' checked' : '') + '> แสดงผลงานที่ส่งมาแล้วในหน้าสาธารณะ <a href="/shirt/" target="_blank" rel="noopener">/shirt/</a> (ทุกคนดูได้โดยไม่ต้องเข้าสู่ระบบ เห็นชื่อผู้ออกแบบและหมู่เรียน)</label>'
+    + '<label class="chk"><input type="checkbox" id="shPub"' + (s.resultsPublic ? ' checked' : '') + '> ประกาศผลให้เห็นคะแนนโหวต (ปิดไว้ = เห็นเฉพาะแอดมิน)</label>'
     + '<div class="filerow"><button class="btn primary" type="button" id="shSaveSet">บันทึกวันที่</button><button class="btn sm" type="button" id="shClear">ล้างวันที่ทั้งหมด</button></div></div>';
   // sample shirt: live preview with a real design (the first one) or the stand-in badge; sliders move the print area
   let pending = null, pendingUrl = null;
@@ -213,7 +205,7 @@ function renderShirtAdmin() {
   if ($('shResetSample')) $('shResetSample').onclick = async () => { if (!(await confirmDlg('ใช้เสื้อพื้นฐาน?', 'รูปเสื้อตัวอย่างที่อัปโหลดจะถูกลบ แล้วกลับไปใช้เสื้อภาพวาดพื้นฐาน', 'ตกลง'))) return; const r = await post('/camps/shirt/admin/sample/reset'); if (!r.ok) return toast(await shErr(r), true); toast('กลับไปใช้เสื้อพื้นฐานแล้ว'); loadShirtAdmin(); };
   const save = async (clear) => {
     const v = (id) => (clear ? null : fromLocalInput($(id).value));
-    const r = await post('/camps/shirt/admin/settings', { submitFrom: v('subFrom'), submitTo: v('subTo'), voteFrom: v('voteFrom'), voteTo: v('voteTo'), resultsPublic: clear ? false : $('shPub').checked });
+    const r = await post('/camps/shirt/admin/settings', { submitFrom: v('subFrom'), submitTo: v('subTo'), voteFrom: v('voteFrom'), voteTo: v('voteTo'), resultsPublic: clear ? false : $('shPub').checked, galleryPublic: clear ? true : $('shGal').checked });
     if (!r.ok) return toast(await shErr(r), true); toast(clear ? 'ล้างวันที่แล้ว' : 'บันทึกแล้ว'); loadShirtAdmin();
   };
   $('shSaveSet').onclick = () => save(false);

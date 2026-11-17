@@ -6,6 +6,7 @@
 //             POST /camps/shirt/design/delete             POST /camps/shirt/vote {designId}      POST /camps/shirt/unvote
 //   Public:   GET  /camps/shirt/image/<id>                the picture of a visible design (random ids, so URLs cannot be guessed)
 //             GET  /camps/shirt/sample                    the sample shirt picture
+//             GET  /camps/shirt/gallery                   the designs with designer + class group, for the public page /shirt/ (no sign-in; admins can switch it off)
 //   Admin:    GET  /camps/shirt/admin/overview            POST /camps/shirt/admin/settings
 //             POST /camps/shirt/admin/sample?area=x,y,w,h   body = picture   |  POST /camps/shirt/admin/sample/area {x,y,w,h}  |  POST /camps/shirt/admin/sample/reset
 //             POST /camps/shirt/admin/design/hide | delete
@@ -24,7 +25,7 @@ async function loadSettings(env) {
   const rows = (await env.DB.prepare("SELECT key,value FROM camp_settings WHERE key LIKE 'shirt_%'").all()).results || [];
   const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   const t = (k) => { const n = num(m[k]); return Number.isFinite(n) ? n : null; };
-  return { submitFrom: t(KEYS.submitFrom), submitTo: t(KEYS.submitTo), voteFrom: t(KEYS.voteFrom), voteTo: t(KEYS.voteTo), resultsPublic: m.shirt_results_public === "1", _sample: { key: m.shirt_sample_key || "", mime: m.shirt_sample_mime || "", area: m.shirt_sample_area || "", v: m.shirt_sample_v || "" } };
+  return { submitFrom: t(KEYS.submitFrom), submitTo: t(KEYS.submitTo), voteFrom: t(KEYS.voteFrom), voteTo: t(KEYS.voteTo), resultsPublic: m.shirt_results_public === "1", galleryPublic: m.shirt_gallery_public !== "0", _sample: { key: m.shirt_sample_key || "", mime: m.shirt_sample_mime || "", area: m.shirt_sample_area || "", v: m.shirt_sample_v || "" } };
 }
 // a window is only active when both its times are set: 'unset' | 'before' | 'open' | 'after'
 const windowState = (from, to, now) => (from == null || to == null ? "unset" : now < from ? "before" : now < to ? "open" : "after");
@@ -63,8 +64,8 @@ async function me(request, env, url) {
   const { s } = r, st = await loadSettings(env), now = Date.now(), ph = phases(st, now);
   const my = await mine(env, s.student_id);
   const vote = await env.DB.prepare("SELECT design_id FROM camp_shirt_votes WHERE student_id=?").bind(s.student_id).first();
-  let gallery = null;   // hidden until voting opens, so nobody copies designs during submission
-  if (ph.vote === "open" || ph.vote === "after") {
+  let gallery = null;   // shown while the public gallery is on, otherwise from the day voting opens
+  if (st.galleryPublic || ph.vote === "open" || ph.vote === "after") {
     const rows = (await env.DB.prepare(
       `SELECT d.*,(SELECT COUNT(*) FROM camp_shirt_votes v WHERE v.design_id=d.id) votes FROM camp_shirt_designs d WHERE d.hidden=0 ORDER BY d.id`).all()).results || [];
     gallery = rows.map((d) => shapeDesign(url, d, { mine: d.student_id === s.student_id, ...(st.resultsPublic ? { votes: d.votes } : {}) }));
@@ -137,6 +138,18 @@ async function image(request, env, id) {
   return new Response(obj.body, { headers: h });
 }
 
+// public page /shirt/: every visible design with who made it; no sign-in, no student ids. The counts only appear once the admins announced the results.
+async function gallery(request, env, url) {
+  const st = await loadSettings(env), ph = phases(st);
+  let designs = [];
+  if (st.galleryPublic) {
+    const rows = (await env.DB.prepare(`SELECT d.*,(SELECT COUNT(*) FROM camp_shirt_votes v WHERE v.design_id=d.id) votes FROM camp_shirt_designs d WHERE d.hidden=0 ORDER BY d.id`).all()).results || [];
+    designs = rows.map((d) => shapeDesign(url, d, st.resultsPublic ? { votes: d.votes } : {}));
+  }
+  const r = json(request, env, { now: Date.now(), galleryPublic: st.galleryPublic, resultsPublic: st.resultsPublic, schedule: { submitFrom: st.submitFrom, submitTo: st.submitTo, voteFrom: st.voteFrom, voteTo: st.voteTo }, submit: ph.submit, vote: ph.vote, sample: sampleInfo(url, st), designs });
+  r.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+  return r;
+}
 // ---------- the sample shirt (uploaded by an admin) ----------
 const readArea = (v) => {
   const a = typeof v === "string" ? v.split(",").map(Number) : [v?.x, v?.y, v?.w, v?.h].map(Number);
@@ -205,9 +218,9 @@ async function adminSettings(request, env) {
   if (v.submitFrom != null && v.submitTo <= v.submitFrom) return fail(request, env, "วันปิดรับผลงานต้องหลังวันเริ่มรับ");
   if (v.voteFrom != null && v.voteTo <= v.voteFrom) return fail(request, env, "วันปิดโหวตต้องหลังวันเริ่มโหวต");
   if (v.submitTo != null && v.voteFrom != null && v.voteFrom < v.submitTo) return fail(request, env, "ต้องเริ่มโหวตหลังปิดรับผลงาน (ไม่ให้ซ้อนกัน)");
-  const pub = b.resultsPublic === true;
-  await env.DB.batch([...Object.entries(KEYS).map(([k, key]) => setting(env, key, v[k] ?? "")), setting(env, "shirt_results_public", pub ? "1" : "0")]);
-  await audit(env, a, "SHIRT_SETTINGS", null, { ...v, resultsPublic: pub });
+  const pub = b.resultsPublic === true, gal = b.galleryPublic !== false;   // the public gallery stays on unless the admin switches it off
+  await env.DB.batch([...Object.entries(KEYS).map(([k, key]) => setting(env, key, v[k] ?? "")), setting(env, "shirt_results_public", pub ? "1" : "0"), setting(env, "shirt_gallery_public", gal ? "1" : "0")]);
+  await audit(env, a, "SHIRT_SETTINGS", null, { ...v, resultsPublic: pub, galleryPublic: gal });
   return json(request, env, { ok: true, settings: publicSettings(await loadSettings(env)) });
 }
 async function adminHide(request, env) {
@@ -238,6 +251,7 @@ export async function shirt(request, env, url) {
     if (m === "POST" && p === "/camps/shirt/unvote") return await unvote(request, env);
     { const im = /^\/camps\/shirt\/image\/([a-f0-9]{24})$/.exec(p); if (m === "GET" && im) return await image(request, env, im[1]); }
     if (m === "GET" && p === "/camps/shirt/sample") return await sampleImage(request, env);
+    if (m === "GET" && p === "/camps/shirt/gallery") return await gallery(request, env, url);
     if (m === "POST" && p === "/camps/shirt/admin/sample") return await adminSample(request, env, url);
     if (m === "POST" && p === "/camps/shirt/admin/sample/area") return await adminSampleArea(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/sample/reset") return await adminSampleReset(request, env);

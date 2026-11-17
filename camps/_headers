@@ -10,6 +10,8 @@
   Cache-Control: public, max-age=0, must-revalidate
 /aka/*
   Cache-Control: public, max-age=0, must-revalidate
+/shirt/*
+  Cache-Control: public, max-age=0, must-revalidate
 /admin/*
   Cache-Control: public, max-age=0, must-revalidate
 /icons/*

@@ -8,9 +8,9 @@ async function call(who,method,path,body,raw){const url=new URL('https://api.x'+
  const r=await shirt(new Request(url,{method,headers:h,body:raw?raw:body?JSON.stringify(body):undefined}),env,url);let d=null;try{d=await r.clone().json()}catch(e){}return {s:r.status,d,r}}
 for(const [id,n] of [['6740102220','One'],['6740102221','Two'],['6740102222','Three'],['6840100001','Fresher']])db.exec(`INSERT INTO camp_students (student_id,name,year,gender) VALUES ('${id}','Student ${n}',3,NULL)`);   // no gender on purpose: not needed for shirts
 const H=3600e3,now=Date.now();
-const setWin=async(o)=>call('admin','POST','/camps/shirt/admin/settings',{resultsPublic:false,...o});
+const setWin=async(o)=>call('admin','POST','/camps/shirt/admin/settings',{resultsPublic:false,galleryPublic:false,...o});
 console.log('1. phases');
-let r=await call('s1','GET','/camps/shirt/me');ok(r.s===200&&r.d.submit==='unset'&&r.d.vote==='unset'&&r.d.designs===null,'nothing scheduled: both windows unset, no gallery');
+let r=await call('s1','GET','/camps/shirt/me');ok(r.s===200&&r.d.submit==='unset'&&r.d.vote==='unset'&&Array.isArray(r.d.designs)&&r.d.designs.length===0,'nothing scheduled: both windows unset, empty gallery (the public gallery is on by default)');
 r=await call('s1','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,PNG);ok(r.s===403&&r.d.code==='SUBMIT_CLOSED','upload refused while unset');
 ok(!!r.d,'(refusal is JSON)');
 console.log('2. settings validation / permissions');
@@ -91,7 +91,7 @@ const t2=Date.now();await setWin({submitFrom:t2-H,submitTo:t2+H,voteFrom:t2+2*H,
 r=await call('s2','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=B2',null,PNG);ok(r.s===200,'s2 uploads again');
 r=await call('s2','POST','/camps/shirt/design/delete');ok(r.s===200,'delete own design in the window');
 r=await call('s2','GET','/camps/shirt/me');ok(r.d.myDesign===null,'gone');
-r=await call('admin','POST','/camps/shirt/admin/settings',{resultsPublic:false,submitFrom:null,submitTo:null,voteFrom:null,voteTo:null});r=await call('s1','GET','/camps/shirt/me');ok(r.d.submit==='unset'&&r.d.vote==='unset','windows can be cleared');
+r=await call('admin','POST','/camps/shirt/admin/settings',{resultsPublic:false,galleryPublic:false,submitFrom:null,submitTo:null,voteFrom:null,voteTo:null});r=await call('s1','GET','/camps/shirt/me');ok(r.d.submit==='unset'&&r.d.vote==='unset','windows can be cleared');
 r=await call('s1','GET','/camps/shirt/nope');ok(r.s===404,'unknown route');
 console.log('6. sample shirt (admin)');
 r=await call(null,'GET','/camps/shirt/sample');ok(r.s===404,'no sample yet: 404');
@@ -119,8 +119,27 @@ r=await call('s1','POST','/camps/shirt/admin/sample/reset');ok(r.s===403,'studen
 r=await call('admin','POST','/camps/shirt/admin/sample/reset');ok(r.s===200,'admin removes the sample');
 r=await call(null,'GET','/camps/shirt/sample');ok(r.s===404&&![...env.FILES._m.keys()].some(k=>k.includes('sample-')),'sample gone (404, R2 object deleted)');
 r=await call('s2','GET','/camps/shirt/me');ok(r.d.sample.image===null,'me reports no sample again');
-console.log('7. through the worker router');
+console.log('7. public gallery (no sign-in)');
+const t3=Date.now();await setWin({submitFrom:t3-H,submitTo:t3+H,voteFrom:t3+2*H,voteTo:t3+3*H,galleryPublic:false});
+r=await call('s1','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=%E0%B8%A5%E0%B8%B2%E0%B8%A2',null,PNG);ok(r.s===200,'(a design to show)');
+r=await call(null,'GET','/camps/shirt/gallery');ok(r.s===200&&r.d.galleryPublic===false&&r.d.designs.length===0&&/max-age=30/.test(r.r.headers.get('cache-control')||''),'public gallery switched off: no designs, short cache');
+r=await call('s2','GET','/camps/shirt/me');ok(r.d.designs===null,'gallery off + voting not open: students see no gallery');
+r=await call('admin','POST','/camps/shirt/admin/settings',{resultsPublic:false,submitFrom:t3-H,submitTo:t3+H,voteFrom:t3+2*H,voteTo:t3+3*H});ok(r.s===200&&r.d.settings.galleryPublic===true,'the public gallery is on unless switched off');
+r=await call(null,'GET','/camps/shirt/gallery');const gd=(r.d.designs||[]).find(x=>x.designer==='สมชาย');ok(r.s===200&&r.d.designs.length>=2&&gd&&gd.classGroup==='ปี 2 หมู่ 1'&&gd.title==='ลาย'&&/^https:\/\/api\.x\/camps\/shirt\/image\//.test(gd.image),'anyone sees the designs with the designer and class group');const nAll=r.d.designs.length;
+ok(!JSON.stringify(r.d).includes('6740102220')&&!JSON.stringify(r.d).includes('student_id')&&!('_sample' in r.d)&&!JSON.stringify(r.d).includes('Student One'),'no student id / roster name / internals in the public payload');
+ok(r.d.designs.every(x=>!('votes' in x))&&'sample' in r.d&&r.d.sample.area.w>0&&r.d.vote==='before'&&r.d.submit==='open','no counts before the announcement; sample + phases included');
+const imgp=new URL(gd.image).pathname;r=await call(null,'GET',imgp);ok(r.s===200,'its picture is public');
+r=await call('s2','GET','/camps/shirt/me');ok(r.d.designs&&r.d.designs.length===nAll&&r.d.vote==='before','signed-in students see the gallery too (voting still closed)');
+r=await call('s2','POST','/camps/shirt/vote',{designId:gd.id});ok(r.s===403&&r.d.code==='VOTE_CLOSED','voting still needs the vote window and a sign-in');
+r=await call(null,'POST','/camps/shirt/vote',{designId:'a'.repeat(24)});ok(r.s===401,'voting still needs a sign-in');
+const gid=gd.id;
+await call('admin','POST','/camps/shirt/admin/design/hide',{id:gid,hidden:true});r=await call(null,'GET','/camps/shirt/gallery');ok(r.d.designs.length===nAll-1&&!r.d.designs.some(x=>x.id===gid),'a hidden design leaves the public gallery');
+await call('admin','POST','/camps/shirt/admin/design/hide',{id:gid,hidden:false});
+await call('admin','POST','/camps/shirt/admin/settings',{resultsPublic:true,submitFrom:t3-H,submitTo:t3+H,voteFrom:t3+2*H,voteTo:t3+3*H});r=await call(null,'GET','/camps/shirt/gallery');ok(r.d.resultsPublic&&r.d.designs.every(x=>typeof x.votes==='number'),'counts appear once announced');
+r=await call('admin','POST','/camps/shirt/admin/settings',{resultsPublic:false,galleryPublic:false,submitFrom:null,submitTo:null,voteFrom:null,voteTo:null});r=await call(null,'GET','/camps/shirt/gallery');ok(r.d.designs.length===0&&r.d.submit==='unset','switch off + clear again');
+console.log('8. through the worker router');
 const worker=(await import('../src/index.js')).default;
+const pg=await worker.fetch(new Request('https://api.x/camps/shirt/gallery',{headers:{Origin:'https://enged.sorasukt.com'}}),env,{waitUntil(){}});ok(pg.status===200&&pg.headers.get('access-control-allow-origin')==='https://enged.sorasukt.com','/camps/shirt/gallery through the router with CORS, no Authorization');
 const nav=await worker.fetch(new Request('https://api.x/camps/shirt/sample'),env,{waitUntil(){}});ok(nav.status===404,'/camps/shirt/* reaches the shirt handler (not the generic camps router)');
 const me=await worker.fetch(new Request('https://api.x/camps/shirt/me',{headers:{Origin:'https://enged.sorasukt.com',Authorization:'Bearer s1'}}),env,{waitUntil(){}});ok(me.status===200&&me.headers.get('access-control-allow-origin')==='https://enged.sorasukt.com','me through the router with CORS');
 console.log(failn?`shirt: ${pass} passed, ${failn} FAILED`:`shirt: ${pass} passed, 0 failed`);process.exit(failn?1:0);
