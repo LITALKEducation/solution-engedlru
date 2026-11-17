@@ -28,16 +28,18 @@ r=await call('admin','POST','/camps/admin/students',{studentId:'6740102220',name
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102220',name:'Student One',year:3,gender:'M',nationalId:'1-2345-67890-12-3'});ok(r.s===200,'national id saved');
 r=await call('s1','GET','/camps/me');ok(r.d.student&&r.d.student.national_id==='1234567890123'&&'nickname' in r.d.student,'me returns national id + nickname/aka');
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102220',name:'Student One',year:3,gender:'M'});r=await call('s1','GET','/camps/me');ok(r.d.student.national_id==='1234567890123','national id kept when not resent');
-r=await call('s1','POST','/camps/me/profile',{name:'Student Uno',nickname:'Uno',aka:'Ace',nationalId:'1234567890124'});ok(r.s===200,'student edits own card');
-r=await call('s1','GET','/camps/me');ok(r.d.student.name==='Student Uno'&&r.d.student.nickname==='Uno'&&r.d.student.aka==='Ace'&&r.d.student.national_id==='1234567890124'&&r.d.student.year===3,'card edits stored, year untouched');
-const P=(x)=>({name:'Student Uno',nickname:'Uno',aka:'Ace',nationalId:'1234567890124',...x});
-r=await call('s1','POST','/camps/me/profile',P({nameEn:'Student Uno',birthDate:'2005-03-09',phone:'081-234-5678',guardianPhone:'+66 89 123 4567'}));ok(r.s===200,'extra details saved');
-r=await call('s1','GET','/camps/me');ok(r.d.student.name_en==='Student Uno'&&r.d.student.birth_date==='2005-03-09'&&r.d.student.phone==='0812345678'&&r.d.student.guardian_phone==='0891234567','extra details returned, phones normalised');
-for(const [k,v] of [['nameEn','สมชาย'],['nameEn','A1'],['birthDate','2005-02-30'],['birthDate','2999-01-01'],['birthDate','09/03/2005'],['phone','12345'],['guardianPhone','abcdefghij']]){r=await call('s1','POST','/camps/me/profile',P({[k]:v}));ok(r.s===400,'rejected '+k+'='+v)}
+const P=(x)=>({name:'Student Uno',nameEn:'Student Uno',birthDate:'2005-03-09',nickname:'Uno',aka:'Ace',nationalId:'1234567890124',phone:'081-234-5678',guardianPhone:'+66 89 123 4567',...x});
+r=await call('s1','POST','/camps/me/profile',P());ok(r.s===200,'student edits own card (all fields)');
+r=await call('s1','GET','/camps/me');const st=r.d.student;ok(st.name==='Student Uno'&&st.nickname==='Uno'&&st.aka==='Ace'&&st.national_id==='1234567890124'&&st.year===3&&st.name_en==='Student Uno'&&st.birth_date==='2005-03-09'&&st.phone==='0812345678'&&st.guardian_phone==='0891234567'&&r.d.akaState==='open','card edits stored, phones normalised, year untouched, me tells naming is open');
+for(const k of ['name','nameEn','birthDate','nationalId','phone','guardianPhone','nickname','aka']){r=await call('s1','POST','/camps/me/profile',P({[k]:''}));ok(r.s===400,'required: '+k+' empty rejected');r=await call('s1','POST','/camps/me/profile',P({[k]:undefined}));ok(r.s===400,'required: '+k+' missing rejected')}
+for(const [k,v] of [['nameEn','สมชาย'],['nameEn','A1'],['birthDate','2005-02-30'],['birthDate','2999-01-01'],['birthDate','09/03/2005'],['phone','12345'],['guardianPhone','abcdefghij'],['nationalId','12']]){r=await call('s1','POST','/camps/me/profile',P({[k]:v}));ok(r.s===400,'rejected '+k+'='+v)}
 r=await call('s1','POST','/camps/me/profile',P({birthDate:'2548-03-09'}));r=await call('s1','GET','/camps/me');ok(r.d.student.birth_date==='2005-03-09','Buddhist-era year converted');
-r=await call('s1','POST','/camps/me/profile',P({}));r=await call('s1','GET','/camps/me');ok(r.d.student.phone===null&&r.d.student.birth_date===null&&r.d.student.name_en===null,'blank fields clear the values');
-r=await call('s1','POST','/camps/me/profile',{name:'',nickname:'a',aka:'b'});ok(r.s===400,'empty name rejected');
-r=await call('s1','POST','/camps/me/profile',{name:'Student Uno',nickname:'Uno',aka:'Ace',nationalId:'12'});ok(r.s===400,'bad national id rejected (self)');
+r=await call('s1','GET','/camps/me');ok(r.d.student.name_en==='Student Uno','failed saves changed nothing');
+db.exec("UPDATE camp_settings SET value='closed' WHERE key='aka_state'");
+r=await call('s1','POST','/camps/me/profile',P({nickname:'',aka:'',nameEn:'Student Uno Two'}));ok(r.s===200,'naming closed: nickname/AKA not required');
+r=await call('s1','GET','/camps/me');ok(r.d.student.nickname==='Uno'&&r.d.student.aka==='Ace'&&r.d.student.name_en==='Student Uno Two'&&r.d.akaState==='closed','naming closed: names kept, other fields saved');
+r=await call('s1','POST','/camps/me/profile',P({nickname:'X',aka:'Y'}));r=await call('s1','GET','/camps/me');ok(r.d.student.nickname==='Uno','naming closed: nickname/AKA cannot be changed');
+db.exec("UPDATE camp_settings SET value='open' WHERE key='aka_state'");
 r=await call(null,'POST','/camps/me/profile',{name:'x'});ok(r.s===401,'anon cannot edit card');
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102229',name:'x',year:3});ok(r.s===400,'gender required');
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102229',name:'นางสาวสมหญิง',year:3});ok(r.s===200,'gender inferred from นางสาว');

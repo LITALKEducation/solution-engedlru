@@ -166,13 +166,15 @@ const fmtBirth = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); r
 const fmtPhone = (v) => { const s = String(v || '').replace(/\D/g, ''); return s.length === 10 ? s.slice(0, 3) + '-' + s.slice(3, 6) + '-' + s.slice(6) : s.length === 9 ? s.slice(0, 2) + '-' + s.slice(2, 5) + '-' + s.slice(5) : s; };
 function editProfile() {
   const st = me && me.student; if (!st) return;
-  const f = (id, label, attrs) => '<label>' + label + '<input id="' + id + '" ' + attrs + '></label>';
-  const d = openDlg('<h3>แก้ไขข้อมูลของฉัน</h3><form id="pfForm" class="form" autocomplete="off">'
-    + '<p class="pfsec">ชื่อ</p>' + f('pfName', 'ชื่อ-นามสกุล (ไทย)', 'required maxlength="200"') + f('pfNameEn', 'ชื่อ-สกุล (อังกฤษ)', 'maxlength="200" placeholder="Somchai Jaidee" autocapitalize="words"') + f('pfNick', 'ชื่อเล่น', 'maxlength="30"') + f('pfAka', 'ชื่อ AKA', 'maxlength="40"')
-    + '<p class="pfsec">ข้อมูลส่วนตัว</p>' + f('pfBirth', 'วันเกิด', 'type="date" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" placeholder="ไม่บังคับ"')
-    + '<p class="pfsec">ติดต่อ</p>' + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" placeholder="08x-xxx-xxxx"')
-    + f('pfSid', 'รหัสนักศึกษา', 'id2="x" disabled')
-    + '<p class="muted">รหัสนักศึกษา ชั้นปี เพศ และฝ่าย แก้ไม่ได้ที่นี่ (ฝ่ายเลือกได้ที่เมนู "เลือกฝ่าย") · ติดต่อแอดมินหากต้องแก้</p><div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
+  const akaOpen = !me.akaState || me.akaState === 'open';   // once an admin closes naming, nickname and AKA stay as they are
+  const f = (id, label, attrs, req) => '<label><span>' + label + (req === false ? '' : ' <em class="req" aria-hidden="true">*</em>') + '</span><input id="' + id + '" ' + (req === false ? '' : 'required aria-required="true" ') + attrs + '></label>';
+  const d = openDlg('<h3>แก้ไขข้อมูลของฉัน</h3><p class="muted">ต้องกรอกทุกช่อง <em class="req">*</em></p><form id="pfForm" class="form" autocomplete="off">'
+    + '<p class="pfsec">ชื่อ</p>' + f('pfName', 'ชื่อ-นามสกุล (ไทย)', 'maxlength="200"') + f('pfNameEn', 'ชื่อ-สกุล (อังกฤษ)', 'maxlength="200" pattern="[A-Za-z][A-Za-z .\'\\-]*" title="ตัวอักษรภาษาอังกฤษเท่านั้น" placeholder="Somchai Jaidee" autocapitalize="words"')
+    + f('pfNick', 'ชื่อเล่น', 'maxlength="30"' + (akaOpen ? '' : ' disabled'), akaOpen) + f('pfAka', 'ชื่อ AKA', 'maxlength="40"' + (akaOpen ? '' : ' disabled'), akaOpen)
+    + '<p class="pfsec">ข้อมูลส่วนตัว</p>' + f('pfBirth', 'วันเกิด', 'type="date" min="1900-01-01" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก"')
+    + '<p class="pfsec">ติดต่อ</p>' + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"')
+    + f('pfSid', 'รหัสนักศึกษา', 'disabled', false)
+    + '<p class="muted">รหัสนักศึกษา ชั้นปี เพศ และฝ่าย แก้ไม่ได้ที่นี่ (ฝ่ายเลือกได้ที่เมนู "เลือกฝ่าย")' + (akaOpen ? '' : ' · ปิดรับการแก้ชื่อเล่น/AKA แล้ว') + ' · ติดต่อแอดมินหากต้องแก้</p><div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
   $('pfName').value = st.name || ''; $('pfNameEn').value = st.name_en || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfBirth').value = st.birth_date || '';
   $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfPhone').value = st.phone || ''; $('pfGPhone').value = st.guardian_phone || ''; $('pfSid').value = st.student_id;
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
