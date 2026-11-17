@@ -54,6 +54,8 @@ ok(r.s === 200 && r.d.page.customImage === true && /\/camps\/og\/image\?page=hr&
 const k1 = db.prepare("select image_key k, image_mime m from camp_og_pages where page='hr'").get();
 ok(k1.m === 'image/png' && /^camps\/og\/hr-\d+\.png$/.test(k1.k) && env.FILES._m.has(k1.k), 'image stored in R2 under camps/og/');
 r = await call(null, 'GET', '/camps/og/image?page=hr'); ok(r.s === 200 && r.h.get('content-type') === 'image/png' && r.d.length === 40, 'public image is served');
+{ const u = new URL('https://engedlru-api.internal/camps/og/pages'); const x = await (await campsOg(new Request(u), env, u)).json();
+  ok(x.pages.hr.image.startsWith('https://engedlru-api.stnetworld.workers.dev/camps/og/image?page=hr'), 'via the service binding the custom image uses the public Worker address, not .internal'); }
 r = await call(null, 'GET', '/camps/og/image?page=aka'); ok(r.s === 404, 'no custom image -> 404 (the page uses the static default)');
 r = await call(null, 'GET', '/camps/og/image?page=zzz'); ok(r.s === 404, 'unknown page image 404');
 r = await call(null, 'GET', '/camps/og/pages'); ok(r.d.pages.hr.customImage === true && r.d.pages.hr.image.includes('/camps/og/image?page=hr') && r.d.pages.aka.customImage === false, 'public list points at the custom image');

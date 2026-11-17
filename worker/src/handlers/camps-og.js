@@ -21,7 +21,10 @@ async function audit(env, w, action, entityId, metadata = {}) {
     .bind(crypto.randomUUID(), w.user.sub, w.email || "unknown", action, "og", entityId == null ? null : String(entityId), JSON.stringify(metadata)).run();
 }
 const SQL_ALL = "SELECT page,title,description,image_key,image_mime,updated_by,updated_at FROM camp_og_pages";
-const apiBase = (url) => `${url.protocol}//${url.host}`;
+// The Pages Function reaches this Worker through the CAMPS_API service binding at https://engedlru-api.internal, a host no crawler can open,
+// so the custom-image URL must then use the Worker's public address instead of the request's host.
+export const OG_PUBLIC_API = "https://engedlru-api.stnetworld.workers.dev";
+const apiBase = (url) => (url.hostname.endsWith(".internal") ? OG_PUBLIC_API : `${url.protocol}//${url.host}`);
 // one page: defaults, the admin's overrides, and the values to publish
 function merge(key, row, url) {
   const d = OG_PAGES[key];
