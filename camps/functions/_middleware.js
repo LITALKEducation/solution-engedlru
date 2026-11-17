@@ -8,18 +8,23 @@ const norm = (p) => (p.length > 1 ? p.replace(/\/$/, '') : p);
 const attr = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const set = (name, value) => ({ element(el) { el.setAttribute(name, attr(value)); } });
 
+// X-Camps-OG tells you what happened (curl -sI https://enged.sorasukt.com/hr/ | grep -i x-camps-og): applied:<page> = the admin's values were
+// written into the HTML; no-match = this path is not an OG page; api-<status> / api-error = the API did not answer, default tags were served.
+const tag = (res, v) => { const out = new Response(res.body, res); out.headers.set('X-Camps-OG', v); return out; };
+
 export async function onRequestGet({ request, next, env }) {
   const res = await next();
   if (!(res.headers.get('content-type') || '').includes('text/html')) return res;
   let pages;
   try {
-    const r = await fetch((env && env.OG_API ? env.OG_API : API) + '/camps/og/pages', { cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(1500) });
-    if (!r.ok) return res;
+    const r = await fetch((env && env.OG_API ? env.OG_API : API) + '/camps/og/pages', { cf: { cacheTtl: 30, cacheEverything: true }, signal: AbortSignal.timeout(4000) });
+    if (!r.ok) return tag(res, 'api-' + r.status);
     pages = (await r.json()).pages;
-  } catch (e) { return res; }
+  } catch (e) { return tag(res, 'api-error'); }
   const path = norm(new URL(request.url).pathname.replace(/\.html$/, '').replace(/\/index$/, '/'));
-  const p = Object.values(pages || {}).find((x) => (x.paths || [x.path]).some((q) => norm(q) === path));
-  if (!p) return res;
+  const hit = Object.entries(pages || {}).find(([, x]) => (x.paths || [x.path]).some((q) => norm(q) === path));
+  const p = hit && hit[1], key = hit && hit[0];
+  if (!p) return tag(res, 'no-match');
   const rw = new HTMLRewriter()
     .on('meta[name="description"]', set('content', p.description))
     .on('meta[property="og:title"]', set('content', p.title)).on('meta[name="twitter:title"]', set('content', p.title))
@@ -29,5 +34,6 @@ export async function onRequestGet({ request, next, env }) {
   if (p.customImage) rw.on('meta[property="og:image:width"]', { element(el) { el.remove(); } }).on('meta[property="og:image:height"]', { element(el) { el.remove(); } });
   const out = rw.transform(res);
   out.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  out.headers.set('X-Camps-OG', 'applied:' + key);
   return out;
 }
