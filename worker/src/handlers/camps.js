@@ -75,8 +75,11 @@ const HEADER_KEYS = {
   prefix: /^(คำนำหน้า|คำนำหน้าชื่อ|คำนำหน้านาม|title|prefix)$/i,
   year: /^(ชั้นปี|ชั้นปีที่|ชั้น|ปี|ปีที่|ปีการศึกษา|year|level)$/i,
   gender: /^(เพศ|gender|sex)$/i,
-  dept: /^(ฝ่าย|department|dept)$/i
+  dept: /^(ฝ่าย|department|dept)$/i,
+  nid: /^(เลขบัตรประชาชน|เลขประจำตัวประชาชน|รหัสบัตรประชาชน|บัตรประชาชน|เลขบัตร|nationalid|national_id|citizenid|idcard)$/i
 };
+// 13 digits, spaces / dashes allowed ("" when absent, null when present but invalid)
+const normalizeNationalId = (v) => { const s = String(v ?? "").replace(/[\s-]/g, ""); if (!s) return ""; return /^\d{13}$/.test(s) ? s : null; };
 
 // "teaching" | "ฝ่ายการสอน" | "การสอน" -> department code (null when unknown)
 function resolveDept(depList, v) {
@@ -247,7 +250,7 @@ async function me(request, env, url) {
   if (!w.parsed) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
   else {
-    student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
+    student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
     if (!student) reason = "not_in_roster";
     else if (!student.gender) reason = "no_gender";
     if (student) selection = await env.DB.prepare("SELECT department_code,selected_at FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
@@ -444,14 +447,15 @@ async function adminStudents(request, env, url) {
   if (YEARS.includes(year)) { where.push("s.year=?"); p.push(year); }
   if (GENDERS.includes(gender)) { where.push("s.gender=?"); p.push(gender); }
   const rows = await env.DB.prepare(
-    `SELECT s.student_id,s.name,s.year,s.gender,sel.department_code,d.name department_name
+    `SELECT s.student_id,s.name,s.year,s.gender,s.national_id,sel.department_code,d.name department_name
      FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code
      WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 2000`).bind(...p).all();
   return json(request, env, { students: rows.results || [] });
 }
 
-function upsertStudentStmt(env, id, name, year, gender) {
-  return env.DB.prepare("INSERT INTO camp_students (student_id,name,year,gender) VALUES (?,?,?,?) ON CONFLICT(student_id) DO UPDATE SET name=excluded.name,year=excluded.year,gender=excluded.gender,updated_at=datetime('now')").bind(id, name, year, gender);
+function upsertStudentStmt(env, id, name, year, gender, nid) {
+  // nid "" / undefined keeps the stored national ID
+  return env.DB.prepare("INSERT INTO camp_students (student_id,name,year,gender,national_id) VALUES (?,?,?,?,?) ON CONFLICT(student_id) DO UPDATE SET name=excluded.name,year=excluded.year,gender=excluded.gender,national_id=COALESCE(excluded.national_id,camp_students.national_id),updated_at=datetime('now')").bind(id, name, year, gender, nid || null);
 }
 const syncSelectionStmt = (env, id, year, gender) => env.DB.prepare("UPDATE camp_selections SET year=?,gender=? WHERE student_id=?").bind(year, gender, id);
 
@@ -464,9 +468,11 @@ async function adminUpsertStudent(request, env) {
   if (!name) return fail(request, env, "กรุณาระบุชื่อ");
   if (!YEARS.includes(year)) return fail(request, env, "ชั้นปีต้องเป็น 1–4");
   if (!gender) return fail(request, env, "กรุณาเลือกเพศ (ชาย/หญิง)");
+  const nid = normalizeNationalId(b?.nationalId);
+  if (nid === null) return fail(request, env, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
   const old = await env.DB.prepare("SELECT year FROM camp_students WHERE student_id=?").bind(id).first();
-  await env.DB.batch([upsertStudentStmt(env, id, name, year, gender), syncSelectionStmt(env, id, year, gender)]);
-  await audit(env, a, "CAMP_STUDENT", id, { name, year, gender, created: !old });
+  await env.DB.batch([upsertStudentStmt(env, id, name, year, gender, nid), syncSelectionStmt(env, id, year, gender)]);
+  await audit(env, a, "CAMP_STUDENT", id, { name, year, gender, created: !old, nationalIdSet: !!nid });
   return json(request, env, { ok: true, created: !old });
 }
 
@@ -483,7 +489,7 @@ async function adminBulkStudents(request, env) {
   const keyed = {};
   head.forEach((c, i) => { for (const k of Object.keys(HEADER_KEYS)) if (HEADER_KEYS[k].test(c.replace(/\s+/g, "")) && keyed[k] === undefined) keyed[k] = i; });
   let data = rows, hasHeader = false;
-  if (Object.keys(keyed).length >= 2 && !normalizeStudentId(head[keyed.id ?? 0])) { hasHeader = true; data = rows.slice(1); col = { id: keyed.id ?? -1, name: keyed.name ?? -1, last: keyed.last ?? -1, prefix: keyed.prefix ?? -1, year: keyed.year ?? -1, gender: keyed.gender ?? -1, dept: keyed.dept ?? -1 }; if (col.id < 0 || col.name < 0 || col.year < 0) return fail(request, env, "หัวตารางต้องมีคอลัมน์ รหัส, ชื่อ และชั้นปี (เพศไม่บังคับถ้าชื่อมีคำนำหน้า นาย/นางสาว)"); }
+  if (Object.keys(keyed).length >= 2 && !normalizeStudentId(head[keyed.id ?? 0])) { hasHeader = true; data = rows.slice(1); col = { id: keyed.id ?? -1, name: keyed.name ?? -1, last: keyed.last ?? -1, prefix: keyed.prefix ?? -1, year: keyed.year ?? -1, gender: keyed.gender ?? -1, dept: keyed.dept ?? -1, nid: keyed.nid ?? -1 }; if (col.id < 0 || col.name < 0 || col.year < 0) return fail(request, env, "หัวตารางต้องมีคอลัมน์ รหัส, ชื่อ และชั้นปี (เพศไม่บังคับถ้าชื่อมีคำนำหน้า นาย/นางสาว)"); }
   const depList = (await env.DB.prepare("SELECT code,name FROM camp_departments").all()).results || [];
   const good = [], errors = [];
   for (const r of data) {
@@ -501,7 +507,9 @@ async function adminBulkStudents(request, env) {
     const rawD = col.dept >= 0 ? c[col.dept] : "";
     const dept = rawD ? resolveDept(depList, rawD) : null;
     if (rawD && !dept) { errors.push({ line: r.line, text, error: `ไม่พบฝ่าย "${rawD}"` }); continue; }
-    good.push({ id, name, year, gender, dept });
+    const nid = col.nid >= 0 ? normalizeNationalId(c[col.nid]) : "";
+    if (nid === null) { errors.push({ line: r.line, text, error: "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก" }); continue; }
+    good.push({ id, name, year, gender, dept, nid });
   }
   const dedup = new Map(); for (const g of good) dedup.set(g.id, g);
   const list = [...dedup.values()];
@@ -514,7 +522,7 @@ async function adminBulkStudents(request, env) {
   const stmts = [];
   let assigned = 0;
   for (const g of list) {
-    stmts.push(upsertStudentStmt(env, g.id, g.name, g.year, g.gender));
+    stmts.push(upsertStudentStmt(env, g.id, g.name, g.year, g.gender, g.nid));
     if (g.dept) { stmts.push(upsertSelectionStmt(env, g.id, g.dept, g.year, g.gender)); assigned++; } else stmts.push(syncSelectionStmt(env, g.id, g.year, g.gender));
   }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));

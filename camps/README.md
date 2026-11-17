@@ -9,7 +9,8 @@ Cloudflare Pages project, root directory `camps`, no build command.
 | `/lotto/` | **Lottery scanning system.** Admins and assigned officers scan a student's QR to verify the draw number and mark them as registered (check in, then open the gift); roster / draw-number management for admins. See `lotto/README.md`. |
 | `/aka/` | **ระบบ AKA** — each student sets a nickname and a camp name (AKA) until an admin closes naming; admins edit and export by department (year 4 → 1). Separate system with its own Auth0 application. See `aka/README.md`. |
 | `/qrcheck/` | **ระบบเช็ค QR.** Looks the student up in the HR registration data (name, year, department) and records the result of admin-defined checks (ตรวจครั้งที่ 1, ตรวจสอบป้ายกับ AKA, …). Separate system with its own Auth0 application. See `qrcheck/README.md`. |
-| `/hr/` | ฝ่ายบุคคล · ภาพรวมฝ่าย: the 5 departments | `/hr/overview` … | moved to `/admin/hr/…` (redirects). |(shows the duties, head and your slot for the chosen one). |
+| `/hr/` | ฝ่ายบุคคล · **บัตรของฉัน**: the signed-in student's card — Auth0 (Google) photo, name from D1, nickname, AKA, student ID, 13-digit national ID (`camp_students.national_id`, migration 0017; admins set it on นักศึกษา or with a `เลขบัตรประชาชน` CSV column) and a QR of the student ID (tap to enlarge). `/hr/overview` … moved to `/admin/hr/…` (redirects). |
+| `/hr/departments` | ฝ่ายบุคคล · ภาพรวมฝ่าย: the 5 departments (shows the duties, head and your slot for the chosen one). |
 | `/hr/choose` | ฝ่ายบุคคล · เลือกฝ่าย: shows only the head of each department; tap one to preview, pick it and register (Google sign-in). |
 | `/hr/overview` `/hr/quota` `/hr/students` `/hr/settings` | ฝ่ายบุคคล · ผู้ดูแล: one page per admin function, each a menu item visible only to admins (`/hr/admin` redirects to `/hr/overview`). |
 | `/budget/` | Finance web app (Auth0 login, installable PWA, phone install required). See `budget/README.md`. |

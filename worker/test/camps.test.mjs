@@ -24,6 +24,10 @@ for(const [m,p,b] of [['GET','/camps/admin/overview'],['POST','/camps/admin/stat
 console.log('4. roster (single add)');
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102220',name:'Student One',year:3,gender:'M'});ok(r.s===200&&r.d.created,'add s1 (year 3, ชาย)');
 r=await call('admin','POST','/camps/admin/students',{studentId:'sb6740102221@lru.ac.th',name:'Student Two',year:3,gender:'หญิง'});ok(r.s===200,'add s2 via email, gender in Thai');
+r=await call('admin','POST','/camps/admin/students',{studentId:'6740102220',name:'Student One',year:3,gender:'M',nationalId:'123'});ok(r.s===400,'bad national id rejected');
+r=await call('admin','POST','/camps/admin/students',{studentId:'6740102220',name:'Student One',year:3,gender:'M',nationalId:'1-2345-67890-12-3'});ok(r.s===200,'national id saved');
+r=await call('s1','GET','/camps/me');ok(r.d.student&&r.d.student.national_id==='1234567890123'&&'nickname' in r.d.student,'me returns national id + nickname/aka');
+r=await call('admin','POST','/camps/admin/students',{studentId:'6740102220',name:'Student One',year:3,gender:'M'});r=await call('s1','GET','/camps/me');ok(r.d.student.national_id==='1234567890123','national id kept when not resent');
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102229',name:'x',year:3});ok(r.s===400,'gender required');
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102229',name:'นางสาวสมหญิง',year:3});ok(r.s===200,'gender inferred from นางสาว');
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740102228',name:'x',year:3,gender:'??'});ok(r.s===400,'bad gender rejected');
