@@ -1,14 +1,18 @@
-// Camp shirt (/hr/shirt for students, /admin/hr/shirt for admins): students upload one design while submissions are open, then vote for one
-// design (not their own) while voting is open. Admins set both windows, can hide / delete designs, see live counts and announce the results.
-//   Student:  GET  /camps/shirt/me                       phase, my design, my vote, the gallery (from the day voting opens)
-//             POST /camps/shirt/design?title=&description=   body = image (PNG / JPG / WebP, <= 3 MB); the image may be left out when only the text changes
+// Camp shirt (/hr/shirt for students, /admin/hr/shirt for admins): students upload ONE design (picture + designer's name + class group / หมู่เรียน) while
+// submissions are open, then vote for one design (not their own) while voting is open. The ADMINS upload the sample shirt the designs are shown on.
+// Admins also set both date windows, hide / delete designs, see live counts and announce the results.
+//   Student:  GET  /camps/shirt/me                       dates, sample shirt, my design, my vote, the gallery (from the day voting opens)
+//             POST /camps/shirt/design?designer=&group=&title=&description=   body = image (PNG / JPG / WebP, <= 3 MB; optional when only the text changes)
 //             POST /camps/shirt/design/delete             POST /camps/shirt/vote {designId}      POST /camps/shirt/unvote
-//   Public:   GET  /camps/shirt/image/<id>                the picture of a visible design (ids are random, so URLs cannot be guessed)
-//   Admin:    GET  /camps/shirt/admin/overview            POST /camps/shirt/admin/settings       POST /camps/shirt/admin/design/hide | delete
+//   Public:   GET  /camps/shirt/image/<id>                the picture of a visible design (random ids, so URLs cannot be guessed)
+//             GET  /camps/shirt/sample                    the sample shirt picture
+//   Admin:    GET  /camps/shirt/admin/overview            POST /camps/shirt/admin/settings
+//             POST /camps/shirt/admin/sample?area=x,y,w,h   body = picture   |  POST /camps/shirt/admin/sample/area {x,y,w,h}  |  POST /camps/shirt/admin/sample/reset
+//             POST /camps/shirt/admin/design/hide | delete
 import { json } from "../lib/cors.js";
 import { who, requireAdmin, clean, fail } from "./camps.js";
 
-const MAX_IMAGE = 3 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300;
+const MAX_IMAGE = 3 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300, NAME_MAX = 80, GROUP_MAX = 40, DEFAULT_AREA = { x: 32, y: 26, w: 36, h: 38 };   // print area on the sample shirt, in percent of the picture
 const KEYS = { submitFrom: "shirt_submit_from", submitTo: "shirt_submit_to", voteFrom: "shirt_vote_from", voteTo: "shirt_vote_to" };
 const sniff = (u8) => (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47 ? ["image/png", "png"]
   : u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff ? ["image/jpeg", "jpg"]
@@ -20,11 +24,15 @@ async function loadSettings(env) {
   const rows = (await env.DB.prepare("SELECT key,value FROM camp_settings WHERE key LIKE 'shirt_%'").all()).results || [];
   const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   const t = (k) => { const n = num(m[k]); return Number.isFinite(n) ? n : null; };
-  return { submitFrom: t(KEYS.submitFrom), submitTo: t(KEYS.submitTo), voteFrom: t(KEYS.voteFrom), voteTo: t(KEYS.voteTo), resultsPublic: m.shirt_results_public === "1" };
+  return { submitFrom: t(KEYS.submitFrom), submitTo: t(KEYS.submitTo), voteFrom: t(KEYS.voteFrom), voteTo: t(KEYS.voteTo), resultsPublic: m.shirt_results_public === "1", _sample: { key: m.shirt_sample_key || "", mime: m.shirt_sample_mime || "", area: m.shirt_sample_area || "", v: m.shirt_sample_v || "" } };
 }
 // a window is only active when both its times are set: 'unset' | 'before' | 'open' | 'after'
 const windowState = (from, to, now) => (from == null || to == null ? "unset" : now < from ? "before" : now < to ? "open" : "after");
+const publicSettings = (st) => { const { _sample, ...rest } = st; return rest; };
 const phases = (st, now = Date.now()) => ({ submit: windowState(st.submitFrom, st.submitTo, now), vote: windowState(st.voteFrom, st.voteTo, now) });
+const parseArea = (v) => { const a = String(v || "").split(",").map(Number); return a.length === 4 && a.every(Number.isFinite) ? { x: a[0], y: a[1], w: a[2], h: a[3] } : { ...DEFAULT_AREA }; };
+// the sample shirt as the pages need it: { image: url | null, area }
+const sampleInfo = (url, st) => ({ image: st._sample.key ? `${url.protocol}//${url.host}/camps/shirt/sample?v=${encodeURIComponent(st._sample.v)}` : null, area: parseArea(st._sample.area) });
 const imageUrl = (url, d) => `${url.protocol}//${url.host}/camps/shirt/image/${d.id}?v=${encodeURIComponent(d.image_key.split("-").pop().split(".")[0])}`;
 const setting = (env, key, value) => env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? ""));
 async function audit(env, w, action, entityId, metadata = {}) {
@@ -42,14 +50,14 @@ async function student(request, env) {
   return { w, s };
 }
 const mine = (env, id) => env.DB.prepare("SELECT * FROM camp_shirt_designs WHERE student_id=?").bind(id).first();
-const shapeDesign = (url, d, extra = {}) => ({ id: d.id, title: d.title, description: d.description, image: imageUrl(url, d), ...extra });
+const shapeDesign = (url, d, extra = {}) => ({ id: d.id, title: d.title, description: d.description, designer: d.designer_name, classGroup: d.class_group, image: imageUrl(url, d), ...extra });
 
 // ---------- student ----------
 async function me(request, env, url) {
   const r = await student(request, env);
   if (r.response) {   // the page shows why instead of failing: not a university email / not on the roster
     const body = await r.response.clone().json().catch(() => ({}));
-    if (r.response.status === 403 && body.reason) { const st = await loadSettings(env); return json(request, env, { reason: body.reason, error: body.error, schedule: st, ...phases(st), now: Date.now() }); }
+    if (r.response.status === 403 && body.reason) { const st = await loadSettings(env); return json(request, env, { reason: body.reason, error: body.error, schedule: publicSettings(st), ...phases(st), now: Date.now() }); }
     return r.response;
   }
   const { s } = r, st = await loadSettings(env), now = Date.now(), ph = phases(st, now);
@@ -62,27 +70,29 @@ async function me(request, env, url) {
     gallery = rows.map((d) => shapeDesign(url, d, { mine: d.student_id === s.student_id, ...(st.resultsPublic ? { votes: d.votes } : {}) }));
   }
   return json(request, env, { student: { studentId: s.student_id, name: s.name }, schedule: { submitFrom: st.submitFrom, submitTo: st.submitTo, voteFrom: st.voteFrom, voteTo: st.voteTo }, submit: ph.submit, vote: ph.vote, now,
-    resultsPublic: st.resultsPublic, myDesign: my ? shapeDesign(url, my, { hidden: !!my.hidden }) : null, myVote: vote?.design_id || null, designs: gallery });
+    resultsPublic: st.resultsPublic, sample: sampleInfo(url, st), myDesign: my ? shapeDesign(url, my, { hidden: !!my.hidden }) : null, myVote: vote?.design_id || null, designs: gallery });
 }
 async function saveDesign(request, env, url) {
   const r = await student(request, env); if (r.response) return r.response;
   const { w, s } = r, st = await loadSettings(env);
   if (phases(st).submit !== "open") return fail(request, env, "ไม่อยู่ในช่วงรับผลงาน", 403, { code: "SUBMIT_CLOSED" });
   if (phases(st).vote === "open") return fail(request, env, "เปิดโหวตแล้ว แก้ผลงานไม่ได้", 403, { code: "VOTE_OPEN" });
+  const designer = clean(url.searchParams.get("designer"), NAME_MAX), group = clean(url.searchParams.get("group"), GROUP_MAX);
   const title = clean(url.searchParams.get("title"), TITLE_MAX), description = clean(url.searchParams.get("description"), DESC_MAX);
-  if (!title) return fail(request, env, "กรอกชื่อผลงาน");
+  if (!designer) return fail(request, env, "กรอกชื่อผู้ออกแบบ", 400, { field: "designer" });
+  if (!group) return fail(request, env, "กรอกหมู่เรียน", 400, { field: "group" });
   const old = await mine(env, s.student_id);
   const buf = new Uint8Array(await request.arrayBuffer());
   let kind = null;
   if (buf.length) {
     if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 3 MB)", 413);
     kind = sniff(buf); if (!kind) return fail(request, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
-  } else if (!old) return fail(request, env, "เลือกรูปผลงาน");
+  } else if (!old) return fail(request, env, "เลือกรูปผลงาน", 400, { field: "image" });
   let imageKey = old?.image_key, mime = old?.image_mime;
   if (kind) { imageKey = `camps/shirt/${s.student_id}-${Date.now()}.${kind[1]}`; mime = kind[0]; await env.FILES.put(imageKey, buf, { httpMetadata: { contentType: mime } }); }
   const id = old?.id || rid();
-  await env.DB.prepare(`INSERT INTO camp_shirt_designs (id,student_id,title,description,image_key,image_mime) VALUES (?,?,?,?,?,?)
-    ON CONFLICT(student_id) DO UPDATE SET title=excluded.title,description=excluded.description,image_key=excluded.image_key,image_mime=excluded.image_mime,updated_at=datetime('now')`).bind(id, s.student_id, title, description, imageKey, mime).run();
+  await env.DB.prepare(`INSERT INTO camp_shirt_designs (id,student_id,designer_name,class_group,title,description,image_key,image_mime) VALUES (?,?,?,?,?,?,?,?)
+    ON CONFLICT(student_id) DO UPDATE SET designer_name=excluded.designer_name,class_group=excluded.class_group,title=excluded.title,description=excluded.description,image_key=excluded.image_key,image_mime=excluded.image_mime,updated_at=datetime('now')`).bind(id, s.student_id, designer, group, title, description, imageKey, mime).run();
   if (kind && old?.image_key && old.image_key !== imageKey) { try { await env.FILES.delete(old.image_key); } catch (e) { /* orphan file is harmless */ } }
   await audit(env, w, "SHIRT_DESIGN", s.student_id, { created: !old, newImage: !!kind });
   return json(request, env, { ok: true, design: shapeDesign(url, await mine(env, s.student_id)) });
@@ -127,6 +137,53 @@ async function image(request, env, id) {
   return new Response(obj.body, { headers: h });
 }
 
+// ---------- the sample shirt (uploaded by an admin) ----------
+const readArea = (v) => {
+  const a = typeof v === "string" ? v.split(",").map(Number) : [v?.x, v?.y, v?.w, v?.h].map(Number);
+  if (a.length !== 4 || !a.every(Number.isFinite)) return null;
+  const [x, y, w, h] = a.map((n) => Math.round(n * 10) / 10);
+  if (w < 5 || h < 5 || x < 0 || y < 0 || x + w > 100.01 || y + h > 100.01) return null;   // a print area inside the picture
+  return { x, y, w, h };
+};
+const areaStr = (a) => `${a.x},${a.y},${a.w},${a.h}`;
+async function sampleImage(request, env) {
+  const st = await loadSettings(env); if (!st._sample.key) return new Response("Not Found", { status: 404 });
+  const obj = await env.FILES.get(st._sample.key); if (!obj) return new Response("Not Found", { status: 404 });
+  const h = new Headers(); if (obj.writeHttpMetadata) obj.writeHttpMetadata(h);
+  h.set("Content-Type", st._sample.mime || "image/png"); h.set("Cache-Control", "public, max-age=3600"); h.set("Access-Control-Allow-Origin", "*"); h.set("X-Content-Type-Options", "nosniff");
+  return new Response(obj.body, { headers: h });
+}
+async function adminSample(request, env, url) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const area = url.searchParams.has("area") ? readArea(url.searchParams.get("area")) : null;
+  if (url.searchParams.has("area") && !area) return fail(request, env, "พื้นที่พิมพ์ไม่ถูกต้อง");
+  const buf = new Uint8Array(await request.arrayBuffer());
+  if (!buf.length) return fail(request, env, "เลือกรูปเสื้อตัวอย่าง");
+  if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 3 MB)", 413);
+  const kind = sniff(buf); if (!kind) return fail(request, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
+  const old = await loadSettings(env), key = `camps/shirt/sample-${Date.now()}.${kind[1]}`;
+  await env.FILES.put(key, buf, { httpMetadata: { contentType: kind[0] } });
+  await env.DB.batch([setting(env, "shirt_sample_key", key), setting(env, "shirt_sample_mime", kind[0]), setting(env, "shirt_sample_v", Date.now()), setting(env, "shirt_sample_area", areaStr(area || parseArea(old._sample.area)))]);
+  if (old._sample.key) { try { await env.FILES.delete(old._sample.key); } catch (e) { /* the new picture is saved; an orphan file is harmless */ } }
+  await audit(env, a, "SHIRT_SAMPLE", null, { mime: kind[0], bytes: buf.length });
+  return json(request, env, { ok: true, sample: sampleInfo(url, await loadSettings(env)) });
+}
+async function adminSampleArea(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const area = readArea(await request.json().catch(() => null)); if (!area) return fail(request, env, "พื้นที่พิมพ์ไม่ถูกต้อง");
+  await setting(env, "shirt_sample_area", areaStr(area)).run();
+  await audit(env, a, "SHIRT_SAMPLE_AREA", null, area);
+  return json(request, env, { ok: true, area });
+}
+async function adminSampleReset(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const st = await loadSettings(env);
+  await env.DB.batch([setting(env, "shirt_sample_key", ""), setting(env, "shirt_sample_mime", ""), setting(env, "shirt_sample_area", ""), setting(env, "shirt_sample_v", "")]);
+  if (st._sample.key) { try { await env.FILES.delete(st._sample.key); } catch (e) { /* ignore */ } }
+  await audit(env, a, "SHIRT_SAMPLE_RESET", null);
+  return json(request, env, { ok: true });
+}
+
 // ---------- admin ----------
 async function adminOverview(request, env, url) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
@@ -134,7 +191,7 @@ async function adminOverview(request, env, url) {
   const rows = (await env.DB.prepare(
     `SELECT d.*,s.name student_name,(SELECT COUNT(*) FROM camp_shirt_votes v WHERE v.design_id=d.id) votes FROM camp_shirt_designs d LEFT JOIN camp_students s ON s.student_id=d.student_id ORDER BY votes DESC,d.created_at`).all()).results || [];
   const voters = (await env.DB.prepare("SELECT COUNT(*) c FROM camp_shirt_votes").first())?.c || 0;
-  return json(request, env, { now, settings: st, submit: ph.submit, vote: ph.vote, totals: { designs: rows.length, votes: voters },
+  return json(request, env, { now, settings: publicSettings(st), sample: sampleInfo(url, st), submit: ph.submit, vote: ph.vote, totals: { designs: rows.length, votes: voters },
     designs: rows.map((d) => shapeDesign(url, d, { studentId: d.student_id, studentName: d.student_name || "", hidden: !!d.hidden, votes: d.votes, createdAt: d.created_at })) });
 }
 // both ends of a window or none; the vote window cannot start before submissions end (a design could otherwise be swapped after it gathered votes)
@@ -151,7 +208,7 @@ async function adminSettings(request, env) {
   const pub = b.resultsPublic === true;
   await env.DB.batch([...Object.entries(KEYS).map(([k, key]) => setting(env, key, v[k] ?? "")), setting(env, "shirt_results_public", pub ? "1" : "0")]);
   await audit(env, a, "SHIRT_SETTINGS", null, { ...v, resultsPublic: pub });
-  return json(request, env, { ok: true, settings: await loadSettings(env) });
+  return json(request, env, { ok: true, settings: publicSettings(await loadSettings(env)) });
 }
 async function adminHide(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
@@ -180,6 +237,10 @@ export async function shirt(request, env, url) {
     if (m === "POST" && p === "/camps/shirt/vote") return await vote(request, env);
     if (m === "POST" && p === "/camps/shirt/unvote") return await unvote(request, env);
     { const im = /^\/camps\/shirt\/image\/([a-f0-9]{24})$/.exec(p); if (m === "GET" && im) return await image(request, env, im[1]); }
+    if (m === "GET" && p === "/camps/shirt/sample") return await sampleImage(request, env);
+    if (m === "POST" && p === "/camps/shirt/admin/sample") return await adminSample(request, env, url);
+    if (m === "POST" && p === "/camps/shirt/admin/sample/area") return await adminSampleArea(request, env);
+    if (m === "POST" && p === "/camps/shirt/admin/sample/reset") return await adminSampleReset(request, env);
     if (m === "GET" && p === "/camps/shirt/admin/overview") return await adminOverview(request, env, url);
     if (m === "POST" && p === "/camps/shirt/admin/settings") return await adminSettings(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/hide") return await adminHide(request, env);
