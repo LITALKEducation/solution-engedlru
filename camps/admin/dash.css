@@ -59,3 +59,15 @@ td.nm{display:flex;align-items:center;gap:10px;font-weight:600}
 @media(max-width:520px){.stats{grid-template-columns:minmax(0,1fr)}.pill.date{margin-left:0}.chart{height:220px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
+
+/* minimalist pass */
+.card,.stat{background:#fff;border:1px solid var(--line);border-radius:8px}
+.stat.dark{background:#fff;color:var(--ink)}.stat.dark span,.stat.dark small{color:var(--mute)}
+.stat.dark .bar{background:var(--soft)}.stat.dark .bar i{background:var(--dark)}
+.stat b{font-weight:600}
+.pill{background:var(--soft);border-radius:999px;font-weight:500;padding:5px 14px}
+.pill.dark{background:var(--dark);color:#fff;font-weight:500}
+.pill.open{background:#f0f7f2;color:#166534;font-weight:500}.pill.closed{background:#fdf2f1;color:#b42318;font-weight:500}
+.well{border-radius:6px}.well i{background:var(--dark);border-radius:6px}
+.bar,.bar i{border-radius:99px}
+.iconbtn{border-radius:8px;background:#fff;border:1px solid var(--line)}

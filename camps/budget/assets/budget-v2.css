@@ -1,7 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 :root{--brand:#d32f2f;--brand-d:#b71c1c;--brand-l:#fde8e8;--panel:#faf3f2;--ink:#171212;--mute:#6b6163;--line:#efe6e5;--page:#e8eaea;--in:#15803d;--don:#6d28d9;--r:24px;--nav-h:68px;--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px);--col:520px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;font-family:'Noto Sans Thai',system-ui,sans-serif;background:var(--page);color:var(--ink);overscroll-behavior-y:contain}
+body{margin:0;font-family:'Inter','Noto Sans Thai',system-ui,sans-serif;background:var(--page);color:var(--ink);overscroll-behavior-y:contain}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;touch-action:manipulation}
 .hidden{display:none!important}
@@ -557,3 +558,21 @@ input,select,textarea{transition:border-color .18s,box-shadow .18s}
 .skip:focus{top:12px}
 main:focus{outline:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- minimalist pass: ink + hairlines, red kept only for expenses / alerts ---- */
+:root{--brand:#171717;--brand-d:#000;--brand-l:#f5f5f5;--panel:#fafafa;--ink:#171717;--mute:#6b6b6b;--line:#e8e8e8;--page:#fff;--r:8px}
+body{-webkit-font-smoothing:antialiased}
+@media(min-width:560px){#app{box-shadow:0 0 0 1px var(--line)}}
+.round,.auth-card,.hero-panel{background:var(--panel)}
+.round{border-radius:8px;border:1px solid var(--line)}
+.hero-panel{border-radius:0;border-bottom:1px solid var(--line)}
+.bal{font-weight:600;letter-spacing:-.02em}
+.chip-sel,.pn{background:#fff;border:1px solid var(--line);font-weight:500}
+.act .ab{background:#fff;border:1px solid var(--line);border-radius:8px}
+.act .ab.primary{background:var(--ink);border-color:var(--ink);box-shadow:none}
+.cardico{background:var(--ink)}
+.fab{box-shadow:none!important;border-radius:8px!important;background:var(--ink)!important}
+.card{border-radius:8px}
+.install{border-radius:8px;border:1px solid var(--line)}
+.pn.out::before{background:#b42318}
+.badge{background:var(--ink)}
