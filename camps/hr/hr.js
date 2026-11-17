@@ -13,6 +13,7 @@ const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k
 const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
 const TAB = document.body.dataset.tab || 'overview';
 const PROFILE = PAGE === 'student' && TAB === 'profile';    // /hr/: my card (photo, names, ids, QR)
+const SHIRT = PAGE === 'student' && TAB === 'shirt';        // /hr/shirt: upload a shirt design + vote (hr/shirt.js)
 const AKA = PAGE === 'student' && TAB === 'aka';            // /hr/aka: nickname + AKA
 const SELECT = PAGE === 'student' && TAB === 'select';      // /hr/select: quick pick from a dropdown
 const CHOOSE = PAGE === 'student' && TAB === 'choose';      // /hr/choose: pick a department (heads only)     // which admin page this is
@@ -30,7 +31,7 @@ const STATE_TEXT = {
   open: ['เปิดลงทะเบียน', 'แตะฝ่ายที่สนใจ ดูที่ว่างของแต่ละชั้นปี แล้วกดลงทะเบียน'],
   closed: ['ปิดลงทะเบียนแล้ว', 'ปิดลงทะเบียนแล้ว ยังดูรายละเอียดของแต่ละฝ่ายได้']
 };
-const ADMIN_PAGES = [['overview', 'ภาพรวม', '/admin/hr/overview'], ['quota', 'โควตา', '/admin/hr/quota'], ['live', 'สด', '/admin/hr/live'], ['students', 'นักศึกษา', '/admin/hr/students'], ['survey', 'แบบสำรวจ', '/admin/hr/survey'], ['og', 'ตัวอย่างลิงก์', '/admin/hr/og'], ['settings', 'ตั้งค่า', '/admin/hr/settings']];
+const ADMIN_PAGES = [['overview', 'ภาพรวม', '/admin/hr/overview'], ['quota', 'โควตา', '/admin/hr/quota'], ['live', 'สด', '/admin/hr/live'], ['students', 'นักศึกษา', '/admin/hr/students'], ['survey', 'แบบสำรวจ', '/admin/hr/survey'], ['shirt', 'เสื้อค่าย', '/admin/hr/shirt'], ['og', 'ตัวอย่างลิงก์', '/admin/hr/og'], ['settings', 'ตั้งค่า', '/admin/hr/settings']];
 
 let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null;
 let schedule = null, geo = { enabled: false }, srvOff = 0;   // automatic open/close schedule, location rule, server-clock offset (ms)
@@ -134,7 +135,7 @@ function renderNav() {
   if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
-  else el.innerHTML = [['profile', '/hr/', 'ข้อมูลของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
+  else el.innerHTML = [['profile', '/hr/', 'ข้อมูลของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
 }
 function renderState() {
@@ -268,7 +269,7 @@ function renderUserChip(x) {
 function renderAcct(x) {
   renderUserChip(x);
   const box = $('acct');
-  if (!box) { if (PROFILE || AKA) { const pb = $(PROFILE ? 'profile' : 'akaBox'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()')) + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
+  if (!box) { if (PROFILE || AKA || SHIRT) { const pb = $(PROFILE ? 'profile' : AKA ? 'akaBox' : 'shirtBox'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()')) + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
   if (!me) {
     box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
@@ -469,6 +470,7 @@ async function loadMe() {
   loadMe.tries = 0; const wasAdmin = !!(me && me.isAdmin); me = await r.json(); if (me.adminDeferred && wasAdmin) me.isAdmin = true; state = me.registration || state; renderState(); renderAcct(); renderNav();
   if (PROFILE) { ungate(); renderProfile(); checkAdminLater(); return; }
   if (AKA) { ungate(); loadAka(); checkAdminLater(); return; }
+  if (SHIRT) { ungate(); loadShirt(); checkAdminLater(); return; }
   if (PAGE === 'student' && TAB === 'survey') { ungate(); loadSurveyMe(); return; }   // hr/survey.js
   if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); checkAdminLater(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
@@ -480,7 +482,7 @@ function renderGate(x) {
   let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
   if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
   if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
-  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : SHIRT ? 'ส่งผลงานและโหวตเสื้อค่าย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
@@ -544,6 +546,7 @@ async function loadAdminPage() {
   if (TAB === 'students') return loadStudents();
   if (TAB === 'survey') return loadSurvey();   // hr/survey.js
   if (TAB === 'og') return loadOg();   // hr/og.js
+  if (TAB === 'shirt') return loadShirtAdmin();   // hr/shirt.js
   if (TAB === 'live') return startLive();
   let r;
   try { r = await api('/camps/admin/overview'); } catch (e) { if (sessionGone(e)) { me = null; renderAdmin(); renderUserChip(); return; } body.innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadAdminPage()'); return; }

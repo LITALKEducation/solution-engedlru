@@ -5,11 +5,11 @@ import { putFile } from "../lib/files.js";
 import { akaState, readNames, upsertAka, tidy as tidyAka } from "./aka.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
-const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
+export const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
 // Thai-safe text: NFC, no zero-width marks, NBSP -> space, collapsed spaces; Thai digits (๐-๙) -> 0-9 for ids / years
 const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[\u200b-\u200d\u2060\ufeff]/g, "").replace(/[\u00a0\u2007\u202f\u3000]/g, " ").replace(/[ \t]+/g, " ").trim();
 const asciiDigits = (s) => String(s ?? "").replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50));
-const clean = (s, max = 200) => tidy(s).slice(0, max);
+export const clean = (s, max = 200) => tidy(s).slice(0, max);
 const YEARS = [1, 2, 3, 4];
 const GENDERS = ["M", "F"]; // M = ชาย, F = หญิง
 const STATES = ["pending", "open", "closed"];
@@ -135,7 +135,7 @@ async function audit(env, w, action, entityId, metadata = {}) {
 }
 
 // Resolve the signed-in Google user.
-async function who(request, env) {
+export async function who(request, env) {
   const a = await getAuth0UserFromRequest(request, env);
   if (!a.user) {
     return { response: a.unavailable
@@ -156,7 +156,7 @@ async function adminStatus(env, user, strict) {
     return false;
   }
 }
-async function requireAdmin(request, env) {
+export async function requireAdmin(request, env) {
   const w = await who(request, env);
   if (w.response) return w;
   let ok;
