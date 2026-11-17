@@ -436,3 +436,9 @@ body[data-page] .uc{border-radius:18px}
 .shtabs{display:flex;gap:8px;margin:8px 0}.shtabs button{border:0;border-radius:999px;padding:0 18px;min-height:38px;font-weight:600;cursor:pointer}
 .shbig .shmock{max-width:420px;margin:0 auto;border-radius:14px}
 .shdots{display:flex;gap:10px;justify-content:center;margin:12px 0}.shdot{width:34px;height:34px;border-radius:50%;border:2px solid #cfcfd6;cursor:pointer;padding:0}.shdot.on{outline:3px solid var(--dark,#1f1f21);outline-offset:2px}
+
+.shwho{margin:0;font-size:13px;color:var(--mute)}.shwho b{color:var(--ink,#161616)}.shwho i{font-style:normal;opacity:.6}
+.shup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px);gap:20px;align-items:start}@media(max-width:760px){.shup{grid-template-columns:minmax(0,1fr)}}
+.shlivecard{background:var(--panel,#f3f2f4);border-radius:18px;padding:12px;text-align:center}.shlivecard .shmock{border-radius:12px}
+.shliveT{margin:8px 0 2px;font-weight:700}.shnoimg{aspect-ratio:1/1;display:grid;place-items:center;color:var(--mute);border:2px dashed #cfcfd6;border-radius:12px;font-size:14px;padding:12px}
+.shwin .muted{margin:0 0 6px;font-size:13px}
