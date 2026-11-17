@@ -481,12 +481,13 @@ async function adminStudents(request, env, url) {
   const q = clean(url.searchParams.get("q"), 80).toLowerCase();
   const year = Number(url.searchParams.get("year")), gender = url.searchParams.get("gender");
   const where = ["1=1"], p = [];
-  if (q) { where.push("(lower(s.name) LIKE ? OR s.student_id LIKE ?)"); p.push(`%${q}%`, `%${q}%`); }
+  if (q) { where.push("(lower(s.name) LIKE ? OR s.student_id LIKE ? OR lower(s.name_en) LIKE ? OR lower(a.nickname) LIKE ? OR lower(a.aka) LIKE ? OR s.phone LIKE ? OR s.guardian_phone LIKE ?)"); p.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
   if (YEARS.includes(year)) { where.push("s.year=?"); p.push(year); }
   if (GENDERS.includes(gender)) { where.push("s.gender=?"); p.push(gender); }
+  // everything stored about a student (admins only): names, nickname / AKA, birth date, phones, national ID, department
   const rows = await env.DB.prepare(
-    `SELECT s.student_id,s.name,s.year,s.gender,s.national_id,sel.department_code,d.name department_name
-     FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code
+    `SELECT s.student_id,s.name,s.name_en,s.year,s.gender,s.national_id,s.birth_date,s.phone,s.guardian_phone,a.nickname,a.aka,sel.department_code,d.name department_name
+     FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code LEFT JOIN camp_aka a ON a.student_id=s.student_id
      WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 2000`).bind(...p).all();
   return json(request, env, { students: rows.results || [] });
 }

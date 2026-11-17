@@ -556,7 +556,7 @@ function renderOverview() {
   const a = adminData, sumG = (g) => YEARS.reduce((s, y) => s + (a.students[g][y] || 0), 0), total = sumG('M') + sumG('F');
   const rows = a.departments.map((d) => '<tr><td><b>' + esc(d.name) + '</b></td>' + YEARS.map((y) => '<td>' + GENDERS.map((g) => cell(d, g, y)).join('') + '</td>').join('') + '<td>' + GENDERS.map((g) => { const q = YEARS.reduce((s, y) => s + d.quota[g][y], 0), f = YEARS.reduce((s, y) => s + d.filled[g][y], 0); return '<div class="gc"><span>' + (g === 'M' ? 'ช' : 'ญ') + '</span> ' + f + '/' + q + '</div>'; }).join('') + '</td></tr>').join('');
   $('adminBody').innerHTML = '<div class="panel"><h3>ลงทะเบียนแล้ว / โควตา (ช = ชาย · ญ = หญิง)</h3><div class="tbl-wrap" tabindex="0" role="region" aria-label="ตารางลงทะเบียนแล้วต่อโควตา"><table><thead><tr><th>ฝ่าย</th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
-    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap" tabindex="0" role="region" aria-label="ตารางจำนวนนักศึกษาในรายชื่อ"><table><thead><tr><th><span class="sr">เพศ</span></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportXlsx()">ดาวน์โหลด Excel (รายชื่อ + ฝ่าย)</button> <button class="btn sm" onclick="exportCsv()">CSV</button></div></div>'
+    + '<div class="panel"><h3>นักศึกษาในรายชื่อ</h3><div class="tbl-wrap" tabindex="0" role="region" aria-label="ตารางจำนวนนักศึกษาในรายชื่อ"><table><thead><tr><th><span class="sr">เพศ</span></th>' + YEARS.map((y) => '<th>ปี ' + y + '</th>').join('') + '<th>รวม</th></tr></thead><tbody>' + GENDERS.map((g) => '<tr><td><b>' + GL[g] + '</b></td>' + YEARS.map((y) => '<td>' + (a.students[g][y] || 0) + '</td>').join('') + '<td><b>' + sumG(g) + '</b></td></tr>').join('') + '</tbody></table></div><p class="muted" style="margin-top:10px">รวม <b>' + total + '</b> คน · ลงทะเบียนแล้ว <b>' + a.selectedTotal + '</b> คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p><div style="margin-top:10px"><button class="btn sm" onclick="exportDialog(\'all\')">ส่งออกรายชื่อ (Excel / PDF)…</button></div></div>'
     + '<div class="panel" id="regList"><h3>ผู้ลงทะเบียนแต่ละฝ่าย</h3><div class="skeleton"></div></div>';
   loadRegList();
 }
@@ -784,7 +784,7 @@ async function loadStudents() {
     + '<div class="panel"><h3>นำเข้าจากไฟล์ Excel / CSV</h3><p class="muted" style="margin-bottom:10px">คอลัมน์: <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> (เพศ = ชาย/หญิง หรือ M/F ถ้าไม่มีคอลัมน์เพศ ระบบอ่านจากคำนำหน้า นาย/นางสาว) เพิ่มคอลัมน์ที่ 5 <b>ฝ่าย</b> ได้ถ้าอยากใส่เข้าฝ่ายพร้อมกัน (เช่น ฝ่ายการสอน) มีแถวหัวตารางหรือไม่ก็ได้ ใช้ , หรือ ; หรือแท็บ คั่นได้ รองรับไฟล์ Excel (.xlsx) โดยอ่านจากชีตแรก</p>'
     + '<div class="filerow"><label class="btn ghost" for="csvFile">เลือกไฟล์ Excel / CSV</label><input id="csvFile" type="file" accept=".xlsx,.xls,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden"><button class="btn sm" type="button" onclick="downloadTemplate()">ดาวน์โหลดไฟล์ตัวอย่าง (Excel)</button><span id="csvName" class="muted"></span></div>'
     + '<textarea id="bulk" placeholder="หรือวางข้อมูลที่นี่&#10;รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย&#10;6840100001,สมหญิง รักเรียน,2,หญิง"></textarea><div style="margin-top:10px"><button class="btn primary sm" id="bulkBtn">นำเข้า</button></div><div id="bulkRes" class="result"></div></div>'
-    + '<div class="panel"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><div class="form fl"><input id="stQ" type="search" aria-label="ค้นหาชื่อหรือรหัส" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF" aria-label="กรองตามชั้นปี"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG" aria-label="กรองตามเพศ"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
+    + '<div class="panel"><div class="stHead"><h3>รายชื่อนักศึกษา <span class="muted" id="stCount"></span></h3><button class="btn primary sm" type="button" onclick="exportDialog()">ส่งออก (Excel / PDF)…</button></div><div class="form fl"><input id="stQ" type="search" aria-label="ค้นหาชื่อหรือรหัส" placeholder="ค้นหาชื่อหรือรหัส"><select id="stF" aria-label="กรองตามชั้นปี"><option value="">ทุกชั้นปี</option>' + YEARS.map((y) => '<option value="' + y + '">ปี ' + y + '</option>').join('') + '</select><select id="stFG" aria-label="กรองตามเพศ"><option value="">ทุกเพศ</option><option value="M">ชาย</option><option value="F">หญิง</option></select></div><div id="stList" style="margin-top:8px"><div class="skeleton"></div></div></div>';
   $('stId').addEventListener('input', () => { const y = suggestYear($('stId').value); if (y && !$('stYr').dataset.touched) $('stYr').value = y; });
   $('stName').addEventListener('input', () => { const g = /^(นาย|เด็กชาย)/.test($('stName').value.trim()) ? 'M' : /^(นางสาว|นาง|เด็กหญิง)/.test($('stName').value.trim()) ? 'F' : ''; if (g && !$('stG').dataset.touched) $('stG').value = g; });
   $('stYr').addEventListener('change', () => { $('stYr').dataset.touched = '1'; });
@@ -805,7 +805,9 @@ async function loadStudentList() {
   if (!r.ok) { list.innerHTML = failBox(await errMsg(r), 'loadStudentList()'); return; }
   students = (await r.json()).students || [];
   $('stCount').textContent = '(' + students.length + ' คน)';
-  list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b><small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + '<button class="btn sm" onclick="assignDialog(' + i + ')">' + (s.department_code ? 'ย้ายฝ่าย' : 'กำหนดฝ่าย') + '</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
+  const dv = (k, v) => '<div><dt>' + k + '</dt><dd>' + (v ? esc(v) : '<i>—</i>') + '</dd></div>';
+  list.innerHTML = students.map((s, i) => '<div class="srow"><div class="m"><b>' + esc(s.name) + '</b>' + (s.name_en ? '<span class="sen">' + esc(s.name_en) + '</span>' : '') + '<small>' + esc(s.student_id) + ' · ปี ' + s.year + ' · ' + GL[s.gender] + ' · ' + (s.department_name ? 'ฝ่าย: ' + esc(s.department_name).replace(/^ฝ่าย/, '') : 'ยังไม่ลงทะเบียน') + '</small>'
+    + '<dl class="sdet">' + dv('ชื่อเล่น', s.nickname) + dv('AKA', s.aka) + dv('วันเกิด', fmtBirth(s.birth_date)) + dv('เบอร์โทรศัพท์', fmtPhone(s.phone)) + dv('เบอร์ผู้ปกครอง', fmtPhone(s.guardian_phone)) + dv('รหัสบัตรประชาชน', fmtNid(s.national_id)) + '</dl></div><div class="acts"><button class="btn sm" onclick="editStudent(' + i + ')">แก้ไข</button>' + '<button class="btn sm" onclick="assignDialog(' + i + ')">' + (s.department_code ? 'ย้ายฝ่าย' : 'กำหนดฝ่าย') + '</button>' + (s.department_code ? '<button class="btn sm" onclick="clearSel(' + i + ')">ล้างฝ่าย</button>' : '') + '<button class="btn sm danger" onclick="delStudent(' + i + ')">ลบ</button></div></div>').join('') || '<div class="muted" style="padding:14px 0;text-align:center">ไม่พบนักศึกษา</div>';
 }
 async function saveStudent(e) {
   e.preventDefault();
@@ -870,17 +872,68 @@ async function bulkImport() {
     toast('นำเข้าเสร็จแล้ว'); loadStudentList();
   } finally { btn.disabled = false; }
 }
-async function exportXlsx() {
-  const r = await api('/camps/admin/students'); if (!r.ok) return toast(await errMsg(r), true);
-  const list = (await r.json()).students || [];
-  await saveXlsx([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย']].concat(list.map((s) => [String(s.student_id), s.name, s.year, GL[s.gender], s.department_name || ''])), 'camp-students.xlsx', [16, 26, 8, 8, 18]);
+// ---------- export students: pick the columns, then Excel / PDF / CSV ----------
+const EXPORT_COLS = [
+  ['student_id', 'รหัสนักศึกษา', (s) => String(s.student_id), 14], ['name', 'ชื่อ-นามสกุล (ไทย)', (s) => s.name, 28], ['name_en', 'ชื่อ-สกุล (อังกฤษ)', (s) => s.name_en || '', 26],
+  ['nickname', 'ชื่อเล่น', (s) => s.nickname || '', 12], ['aka', 'AKA', (s) => s.aka || '', 16], ['year', 'ชั้นปี', (s) => s.year, 8], ['gender', 'เพศ', (s) => GL[s.gender], 8],
+  ['department', 'ฝ่าย', (s) => s.department_name || '', 20], ['birth_date', 'วันเกิด', (s) => fmtBirth(s.birth_date), 18], ['phone', 'เบอร์โทรศัพท์', (s) => fmtPhone(s.phone), 14],
+  ['guardian_phone', 'เบอร์ผู้ปกครอง', (s) => fmtPhone(s.guardian_phone), 14], ['national_id', 'รหัสบัตรประชาชน', (s) => fmtNid(s.national_id), 20]
+];
+const loadExportPrefs = () => { try { const v = JSON.parse(localStorage.getItem('stExport') || 'null'); if (v && Array.isArray(v.cols)) return v; } catch (e) { /* ignore */ } return { cols: EXPORT_COLS.map((c) => c[0]), fmt: 'xlsx' }; };
+// list: the students to export (the filtered list on the students page, everyone from the overview page)
+async function exportDialog(scope) {
+  let list = scope === 'all' ? null : students.slice();
+  if (!list) { const r = await api('/camps/admin/students'); if (!r.ok) return toast(await errMsg(r), true); list = (await r.json()).students || []; }
+  if (!list.length) return toast('ไม่มีรายชื่อให้ส่งออก', true);
+  const pref = loadExportPrefs();
+  const d = openDlg('<h3>ส่งออกรายชื่อนักศึกษา</h3><p class="muted">' + (scope === 'all' ? 'นักศึกษาทั้งหมด' : 'รายชื่อที่แสดงอยู่ตอนนี้') + ' ' + list.length + ' คน · เลือกข้อมูลที่ต้องการ</p>'
+    + '<div class="expcols" id="expCols">' + EXPORT_COLS.map((c) => '<label class="chk"><input type="checkbox" value="' + c[0] + '"' + (pref.cols.includes(c[0]) ? ' checked' : '') + '> ' + c[1] + '</label>').join('') + '</div>'
+    + '<div class="filerow"><button type="button" class="btn sm" id="expAll">เลือกทั้งหมด</button><button type="button" class="btn sm" id="expNone">ไม่เลือกเลย</button></div>'
+    + '<div class="expfmt" role="radiogroup" aria-label="รูปแบบไฟล์">' + [['xlsx', 'Excel (.xlsx)'], ['pdf', 'PDF'], ['csv', 'CSV']].map((f) => '<label class="chk"><input type="radio" name="expFmt" value="' + f[0] + '"' + (pref.fmt === f[0] ? ' checked' : '') + '> ' + f[1] + '</label>').join('') + '</div>'
+    + '<div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="button" id="expGo">ส่งออก</button></div>');
+  const boxes = () => [...d.querySelectorAll('#expCols input')];
+  d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
+  $('expAll').onclick = () => boxes().forEach((b) => { b.checked = true; });
+  $('expNone').onclick = () => boxes().forEach((b) => { b.checked = false; });
+  $('expGo').onclick = async () => {
+    const cols = EXPORT_COLS.filter((c) => boxes().some((b) => b.checked && b.value === c[0])), fmt = (d.querySelector('input[name=expFmt]:checked') || {}).value || 'xlsx';
+    if (!cols.length) return toast('เลือกข้อมูลที่ต้องการส่งออกอย่างน้อย 1 อย่าง', true);
+    try { localStorage.setItem('stExport', JSON.stringify({ cols: cols.map((c) => c[0]), fmt })); } catch (e) { /* ignore */ }
+    $('expGo').disabled = true;
+    try { const ok = await (fmt === 'pdf' ? exportStudentsPdf : fmt === 'csv' ? exportStudentsCsv : exportStudentsXlsx)(list, cols); if (ok !== false) d.remove(); } finally { const b = $('expGo'); if (b) b.disabled = false; }
+  };
 }
-async function exportCsv() {
-  const r = await api('/camps/admin/students'); if (!r.ok) return toast(await errMsg(r), true);
-  const list = (await r.json()).students || [];
+const rowsOf = (list, cols) => list.map((s) => cols.map((c) => c[2](s)));
+function exportStudentsXlsx(list, cols) {
+  return loadXlsx().then((X) => {
+    const ws = X.utils.aoa_to_sheet([cols.map((c) => c[1])].concat(rowsOf(list, cols))); ws['!cols'] = cols.map((c) => ({ wch: c[3] }));
+    const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'นักศึกษา'); X.writeFile(wb, 'camp-students-' + stamp() + '.xlsx'); return true;
+  }).catch(() => { toast('สร้างไฟล์ Excel ไม่ได้', true); return false; });
+}
+function exportStudentsCsv(list, cols) {
   const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const csv = '﻿' + ['รหัสนักศึกษา,ชื่อ,ชั้นปี,เพศ,ฝ่าย'].concat(list.map((s) => [q(s.student_id), q(s.name), s.year, q(GL[s.gender]), q(s.department_name || '')].join(','))).join('\r\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students.csv'; document.body.appendChild(a); a.click(); a.remove();
+  const csv = '﻿' + [cols.map((c) => q(c[1])).join(',')].concat(rowsOf(list, cols).map((r) => r.map(q).join(','))).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students-' + stamp() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); return true;
+}
+async function exportStudentsPdf(list, cols) {
+  try {
+    if (!window.jspdf) { await loadJs('/hr/vendor/jspdf.umd.min.js'); await loadJs('/hr/vendor/jspdf.plugin.autotable.min.js'); }
+    const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
+    if (!thFonts) thFonts = { n: await b64('/assets/fonts/SarabunTH-Regular.ttf'), b: await b64('/assets/fonts/SarabunTH-Bold.ttf') };
+    if (!window.thaiShape) await loadJs('/assets/thai-shape.js');
+    const wide = cols.length > 6, doc = new window.jspdf.jsPDF({ orientation: wide ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    const T = window.thaiShape, rawText = doc.text.bind(doc), rawTable = doc.autoTable.bind(doc);
+    doc.text = (s, ...a) => rawText(Array.isArray(s) ? s.map(T) : T(s), ...a);
+    doc.autoTable = (o) => rawTable({ ...o, didParseCell: (d) => { d.cell.text = d.cell.text.map(T); if (o.didParseCell) o.didParseCell(d); } });
+    doc.addFileToVFS('Sarabun-Regular.ttf', thFonts.n); doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
+    doc.addFileToVFS('Sarabun-Bold.ttf', thFonts.b); doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold');
+    const fs = cols.length > 10 ? 7 : cols.length > 7 ? 8 : 10, W = wide ? 297 : 210;
+    doc.setFont('Sarabun', 'bold'); doc.setFontSize(18); doc.text('รายชื่อนักศึกษา', 14, 16);
+    doc.setFont('Sarabun', 'normal'); doc.setFontSize(10); doc.text(list.length + ' คน · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH'), 14, 22);
+    doc.autoTable({ startY: 27, head: [['#'].concat(cols.map((c) => c[1]))], body: list.map((s, i) => [i + 1].concat(cols.map((c) => String(c[2](s))))), styles: { font: 'Sarabun', fontSize: fs, cellPadding: 1.6, overflow: 'linebreak' }, headStyles: { font: 'Sarabun', fontStyle: 'bold', fillColor: [31, 31, 33] }, margin: { left: 10, right: 10, bottom: 14 }, columnStyles: { 0: { cellWidth: 9 } } });
+    const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, W - 10, (wide ? 210 : 297) - 6, { align: 'right' }); }
+    doc.save('camp-students-' + stamp() + '.pdf'); return true;
+  } catch (e) { toast('สร้างไฟล์ PDF ไม่ได้', true); return false; }
 }
 
 // ---------- export registrations by department (Excel / PDF) ----------
