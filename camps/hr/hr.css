@@ -387,3 +387,6 @@ body[data-page] .uc{border-radius:18px}
 .pfh{margin:6px 0 -4px;font-size:14px;color:var(--mute);font-weight:700;letter-spacing:.02em}
 .pfsec{margin:6px 0 0;font-size:13px;font-weight:700;color:var(--brand-d)}
 @media(max-width:420px){.pfhead{flex-wrap:wrap}.pfedit{margin-left:auto}}
+
+.req{color:#b91c1c;font-style:normal;font-weight:800}
+#pfForm input:invalid:not(:placeholder-shown),#pfForm input[type=date]:invalid{border-color:#b91c1c!important}

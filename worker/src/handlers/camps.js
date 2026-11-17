@@ -257,7 +257,7 @@ async function me(request, env, url) {
     if (student) selection = await env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(student.student_id).first();
   }
   return json(request, env, {
-    email: w.email, googleName: w.user.name || "", isAdmin: admin, adminDeferred: defer, registration: reg,
+    email: w.email, googleName: w.user.name || "", isAdmin: admin, adminDeferred: defer, registration: reg, akaState: student ? await akaState(env) : null,
     studentId: w.parsed?.studentId || null, student, selection, reason
   });
 }
@@ -282,17 +282,17 @@ async function updateProfile(request, env) {
   if (!cur) return fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403);
   const b = await request.json().catch(() => null);
   const name = clean(b?.name, 200); if (!name) return fail(request, env, "กรุณาระบุชื่อ-นามสกุล");
-  const nid = normalizeNationalId(b?.nationalId); if (nid === null) return fail(request, env, "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
-  const nameEn = normalizeNameEn(b?.nameEn); if (nameEn === null) return fail(request, env, "ชื่อ-สกุลภาษาอังกฤษใช้ได้เฉพาะตัวอักษรภาษาอังกฤษ");
-  const birth = normalizeBirth(b?.birthDate); if (birth === null) return fail(request, env, "วันเกิดไม่ถูกต้อง");
-  const phone = normalizePhone(b?.phone); if (phone === null) return fail(request, env, "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0");
-  const gphone = normalizePhone(b?.guardianPhone); if (gphone === null) return fail(request, env, "เบอร์ผู้ปกครองต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0");
-  const blank = !tidyAka(b?.nickname) && !tidyAka(b?.aka) && !cur.nickname && !cur.aka;   // never named yet and left empty: only name / national ID change
-  const names = blank ? { nickname: "", aka: "" } : readNames(b); if (names.error) return fail(request, env, names.error);
-  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,name_en=?,birth_date=?,phone=?,guardian_phone=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid || null, nameEn || null, birth || null, phone || null, gphone || null, cur.student_id)];
-  if (names.nickname !== (cur.nickname || "") || names.aka !== (cur.aka || "")) {
-    if ((await akaState(env)) !== "open") return fail(request, env, "ปิดรับการตั้งชื่อเล่น/AKA แล้ว แก้ได้เฉพาะชื่อและเลขบัตร", 403, { code: "AKA_CLOSED" });
-    stmts.push(upsertAka(env, cur.student_id, names.nickname, names.aka, w.email));
+  const nid = normalizeNationalId(b?.nationalId); if (!nid) return fail(request, env, "กรอกรหัสบัตรประชาชน 13 หลักให้ครบ", 400, { field: "nationalId" });
+  const nameEn = normalizeNameEn(b?.nameEn); if (!nameEn) return fail(request, env, nameEn === null ? "ชื่อ-สกุลภาษาอังกฤษใช้ได้เฉพาะตัวอักษรภาษาอังกฤษ" : "กรอกชื่อ-สกุลภาษาอังกฤษ", 400, { field: "nameEn" });
+  const birth = normalizeBirth(b?.birthDate); if (!birth) return fail(request, env, birth === null ? "วันเกิดไม่ถูกต้อง" : "กรอกวันเกิด", 400, { field: "birthDate" });
+  const phone = normalizePhone(b?.phone); if (!phone) return fail(request, env, phone === null ? "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" : "กรอกเบอร์โทรศัพท์", 400, { field: "phone" });
+  const gphone = normalizePhone(b?.guardianPhone); if (!gphone) return fail(request, env, gphone === null ? "เบอร์ผู้ปกครองต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" : "กรอกเบอร์ผู้ปกครอง", 400, { field: "guardianPhone" });
+  const open = (await akaState(env)) === "open";
+  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,name_en=?,birth_date=?,phone=?,guardian_phone=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid, nameEn, birth, phone, gphone, cur.student_id)];
+  // nickname + AKA are required while naming is open; once an admin closes naming they stay as they are
+  if (open) {
+    const names = readNames(b); if (names.error) return fail(request, env, names.error, 400, { field: "nickname" });
+    if (names.nickname !== (cur.nickname || "") || names.aka !== (cur.aka || "")) stmts.push(upsertAka(env, cur.student_id, names.nickname, names.aka, w.email));
   }
   await env.DB.batch(stmts);
   await audit(env, w, "CAMP_PROFILE_SELF", cur.student_id, { nameChanged: name !== cur.name, nationalIdSet: !!nid });
