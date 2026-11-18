@@ -30,7 +30,7 @@ r=await call('s1','POST','/camps/shirt/design?group=G&title=A',null,PNG);ok(r.s=
 r=await call('s1','POST','/camps/shirt/design?designer=D&title=A',null,PNG);ok(r.s===400&&r.d.field==='group','class group (หมู่เรียน) required');
 r=await call('s1','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,new Uint8Array(0));ok(r.s===400,'image required for the first upload');
 r=await call('s1','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,GIF);ok(r.s===400,'GIF refused (magic bytes)');
-r=await call('s1','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,new Uint8Array(3*1024*1024+1).fill(0x89));ok(r.s===413||r.s===400,'oversize refused');
+r=await call('s1','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,new Uint8Array(10*1024*1024+1).fill(0x89));ok(r.s===413||r.s===400,'oversize refused');
 r=await call('gmail','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,PNG);ok(r.s===403,'non-university email refused');
 r=await call('unverified','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,PNG);ok(r.s===403,'unverified email refused');
 r=await call('other','POST','/camps/shirt/design?designer=%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2&group=%E0%B8%9B%E0%B8%B5+2+%E0%B8%AB%E0%B8%A1%E0%B8%B9%E0%B9%88+1&title=A',null,PNG);ok(r.s===403&&r.d.reason==='not_in_roster','not on the roster refused');
@@ -100,7 +100,7 @@ for(const who of ['s1','gmail']){r=await call(who,'POST','/camps/shirt/admin/sam
 r=await call(null,'POST','/camps/shirt/admin/sample',null,PNG);ok(r.s===401,'anonymous cannot upload the sample');
 r=await call('admin','POST','/camps/shirt/admin/sample',null,new Uint8Array(0));ok(r.s===400,'sample picture required');
 r=await call('admin','POST','/camps/shirt/admin/sample',null,GIF);ok(r.s===400,'sample: GIF refused');
-r=await call('admin','POST','/camps/shirt/admin/sample',null,new Uint8Array(3*1024*1024+1).fill(0x89));ok(r.s===413||r.s===400,'sample: oversize refused');
+r=await call('admin','POST','/camps/shirt/admin/sample',null,new Uint8Array(10*1024*1024+1).fill(0x89));ok(r.s===413||r.s===400,'sample: oversize refused');
 const filesBefore=env.FILES._m.size;
 r=await call('admin','POST','/camps/shirt/admin/sample',null,PNG);ok(r.s===200&&/^https:\/\/api\.x\/camps\/shirt\/sample\?v=/.test(r.d.sample.image)&&Object.keys(r.d.sample).join()==='image','admin uploads the sample shirt picture');
 ok(env.FILES._m.size===filesBefore+1,'sample stored in R2');const sampleKey1=[...env.FILES._m.keys()].find(k=>k.includes('sample-'));

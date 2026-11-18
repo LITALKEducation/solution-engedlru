@@ -11,12 +11,12 @@ const shName = (d) => d.title || d.designer;   // the title is optional (old des
 const shWho = (d) => '<p class="shwho">ออกแบบโดย <b>' + esc(d.designer) + '</b> · ' + esc(d.classGroup) + '</p>';
 const shErr = async (r) => { try { const d = await r.json(); return d.error || 'เกิดข้อผิดพลาด (' + r.status + ')'; } catch (e) { return 'เกิดข้อผิดพลาด (' + r.status + ')'; } };
 
-// downscale in the browser: longest side 1600 px; the server still checks the type and size
+// downscale in the browser: longest side 1080 px; the server still checks the type and size
 function shResize(file) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file), im = new Image();
     im.onload = () => {
-      const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+      const k = Math.min(1, 1080 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
       c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
       const g = c.getContext('2d'), keepAlpha = file.type !== 'image/jpeg';
       if (!keepAlpha) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); }
@@ -24,7 +24,7 @@ function shResize(file) {
       const jpeg = () => c.toBlob((b) => (b ? res(b) : rej(new Error('resize'))), 'image/jpeg', 0.88);
       if (!keepAlpha) return jpeg();
       // PNG / WebP keep their transparent background (it matters on a coloured shirt); a PNG that is still too big becomes a JPEG
-      c.toBlob((b) => (b && b.size <= 2.8 * 1024 * 1024 ? res(b) : jpeg()), 'image/png');
+      c.toBlob((b) => (b && b.size <= 9.8 * 1024 * 1024 ? res(b) : jpeg()), 'image/png');
     };
     im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('image')); };
     im.src = url;
@@ -69,7 +69,7 @@ function renderShirtSubmit() {
   }
   h += '<p class="muted">ส่งได้ 1 ผลงาน แก้ไขได้จนถึง ' + esc(shWhen(x.schedule.submitTo)) + '</p><div class="shup"><form id="shForm" class="form" novalidate autocomplete="off">'
     + '<label><span>ชื่อผู้ออกแบบ <em class="req">*</em></span><input id="shDesigner" maxlength="80" required></label><label><span>หมู่เรียน <em class="req">*</em></span><input id="shGroup" maxlength="40" required placeholder="เช่น ปี 2 หมู่ 1"></label>'
-    + '<label><span>รูปลายเสื้อ ' + (my ? '(เลือกใหม่ถ้าต้องการเปลี่ยน)' : '<em class="req">*</em>') + '</span><input id="shFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
+    + '<label><span>รูปลายเสื้อ ' + (my ? '(เลือกใหม่ถ้าต้องการเปลี่ยน)' : '<em class="req">*</em>') + '<small class="hint"> PNG / JPG / WebP ไม่เกิน 10 MB (ย่อเป็นไม่เกิน 1080 × 1080 px อัตโนมัติ)</small></span><input id="shFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
     + '<div class="filerow"><button class="btn primary" type="submit" id="shSave">' + (my ? 'บันทึกการแก้ไข' : 'ส่งผลงาน') + '</button>' + (my ? '<button class="btn danger" type="button" id="shDel">ลบผลงาน</button>' : '') + '</div></form>'
     + '<div class="shlive" id="shLive" aria-live="polite"></div></div>';
   host.innerHTML = h + '</div>';
@@ -149,7 +149,7 @@ function renderShirtAdmin() {
   const win = (idp, label, hint, from, to) => '<div class="shwin"><h4>' + label + ' ' + shChip(idp === 'sub' ? a.submit : a.vote) + '</h4><p class="muted">' + hint + '</p><div class="form cols"><label>เริ่ม<input type="datetime-local" id="' + idp + 'From" value="' + toLocalInput(from) + '"></label><label>สิ้นสุด<input type="datetime-local" id="' + idp + 'To" value="' + toLocalInput(to) + '"></label></div></div>';
   body.innerHTML = '<div class="panel" id="shSampleP"><h3>เสื้อตัวอย่าง</h3><p class="muted">อัปโหลดรูปเสื้อตัวอย่างเอง รูปนี้จะแสดงตามที่อัปโหลดในกล่องเสื้อตัวอย่างของหน้านักศึกษาและหน้าสาธารณะ (ไม่มีกรอบหรือเลย์เอาต์เพิ่ม)</p>'
     + (smp.image ? '<img class="shsamplepic" src="' + esc(smp.image) + '" alt="เสื้อตัวอย่าง">' : '<p class="muted">ยังไม่ได้อัปโหลด กล่องเสื้อตัวอย่างจะไม่แสดง</p>')
-    + '<div class="form"><label><span>รูปเสื้อตัวอย่าง (PNG / JPG / WebP ไม่เกิน 3 MB)</span><input id="shSampleFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
+    + '<div class="form"><label><span>รูปเสื้อตัวอย่าง (PNG / JPG / WebP ไม่เกิน 10 MB, ย่อเป็น 1080 × 1080 px)</span><input id="shSampleFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
     + '<div class="filerow"><button class="btn primary" type="button" id="shUpSample">' + (smp.image ? 'เปลี่ยนรูป' : 'อัปโหลดรูป') + '</button>' + (smp.image ? '<button class="btn danger" type="button" id="shResetSample">ลบรูปเสื้อตัวอย่าง</button>' : '') + '</div></div></div>'
     + '<div class="panel"><h3>ผลงานทั้งหมด <span class="muted">(' + a.totals.designs + ' ผลงาน · ' + a.totals.votes + ' โหวต)</span></h3>'
     + (a.designs.length ? '<div class="shgrid">' + a.designs.map((d) => '<figure class="shcard' + (d.hidden ? ' off' : '') + '"><button type="button" class="shimg" data-big="' + d.id + '" aria-label="ขยายรูป">' + shMock(d.image, 'white') + '</button><figcaption><b>' + esc(shName(d)) + '</b>' + shWho(d)

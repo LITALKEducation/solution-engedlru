@@ -2,7 +2,7 @@
 // submissions are open, then vote for one design (not their own) while voting is open. The ADMINS upload the sample shirt the designs are shown on.
 // Admins also set both date windows, hide / delete designs, see live counts and announce the results.
 //   Student:  GET  /camps/shirt/me                       dates, sample shirt, my design, my vote, the gallery (from the day voting opens)
-//             POST /camps/shirt/design?designer=&group=&title=&description=   body = image (PNG / JPG / WebP, <= 3 MB; optional when only the text changes)
+//             POST /camps/shirt/design?designer=&group=&title=&description=   body = image (PNG / JPG / WebP, <= 10 MB; optional when only the text changes)
 //             POST /camps/shirt/design/delete             POST /camps/shirt/vote {designId}      POST /camps/shirt/unvote
 //   Public:   GET  /camps/shirt/image/<id>                the picture of a visible design (random ids, so URLs cannot be guessed)
 //             GET  /camps/shirt/sample                    the sample shirt picture
@@ -13,7 +13,7 @@
 import { json } from "../lib/cors.js";
 import { who, requireAdmin, clean, fail } from "./camps.js";
 
-const MAX_IMAGE = 3 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300, NAME_MAX = 80, GROUP_MAX = 40;
+const MAX_IMAGE = 10 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300, NAME_MAX = 80, GROUP_MAX = 40;
 const KEYS = { submitFrom: "shirt_submit_from", submitTo: "shirt_submit_to", voteFrom: "shirt_vote_from", voteTo: "shirt_vote_to" };
 const sniff = (u8) => (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47 ? ["image/png", "png"]
   : u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff ? ["image/jpeg", "jpg"]
@@ -85,7 +85,7 @@ async function saveDesign(request, env, url) {
   const buf = new Uint8Array(await request.arrayBuffer());
   let kind = null;
   if (buf.length) {
-    if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 3 MB)", 413);
+    if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 10 MB)", 413);
     kind = sniff(buf); if (!kind) return fail(request, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
   } else if (!old) return fail(request, env, "เลือกรูปผลงาน", 400, { field: "image" });
   let imageKey = old?.image_key, mime = old?.image_mime;
@@ -161,7 +161,7 @@ async function adminSample(request, env, url) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const buf = new Uint8Array(await request.arrayBuffer());
   if (!buf.length) return fail(request, env, "เลือกรูปเสื้อตัวอย่าง");
-  if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 3 MB)", 413);
+  if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 10 MB)", 413);
   const kind = sniff(buf); if (!kind) return fail(request, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
   const old = await loadSettings(env), key = `camps/shirt/sample-${Date.now()}.${kind[1]}`;
   await env.FILES.put(key, buf, { httpMetadata: { contentType: kind[0] } });
