@@ -135,7 +135,18 @@ function renderNav() {
   if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
-  else el.innerHTML = [['profile', '/hr/', 'ข้อมูลของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
+  else {
+    const tabs = [['profile', '/hr/', 'ข้อมูลส่วนตัว'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกจากหัวหน้า'], ['select', '/hr/select', 'เลือกจากรายการ']];
+    const cur = tabs.find((t) => t[0] === TAB) || tabs[0];
+    const link = ([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>';
+    // wide screens: the row of links. Phones: an HTML dropdown (not the OS picker) that shows the current page and opens a panel of links
+    el.innerHTML = tabs.map(link).join('')
+      + '<div class="hrdd"><button type="button" class="hrdd-btn" aria-haspopup="true" aria-expanded="false" aria-controls="hrddList"><span>' + cur[2] + '</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>'
+      + '<div class="hrdd-list" id="hrddList" role="menu">' + tabs.map(([k, h, l]) => '<a role="menuitem" href="' + h + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + (TAB === k ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + '</a>').join('') + '</div></div>';
+    const dd = el.querySelector('.hrdd'), btn = dd.querySelector('.hrdd-btn'), setOpen = (o) => { dd.classList.toggle('open', o); btn.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+    btn.onclick = (e) => { e.stopPropagation(); setOpen(!dd.classList.contains('open')); };
+    if (!window.__hrddBound) { window.__hrddBound = 1; document.addEventListener('click', (e) => { const d = document.querySelector('.hrdd.open'); if (d && !d.contains(e.target)) { d.classList.remove('open'); d.querySelector('.hrdd-btn').setAttribute('aria-expanded', 'false'); } }); document.addEventListener('keydown', (e) => { const d = document.querySelector('.hrdd.open'); if (e.key === 'Escape' && d) { d.classList.remove('open'); const b = d.querySelector('.hrdd-btn'); b.setAttribute('aria-expanded', 'false'); b.focus(); } }); }
+  }
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
 }
 function renderState() {
@@ -161,30 +172,71 @@ function expandQr() {
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
   drawQR($('qrBig'), st.student_id, Math.min(360, Math.max(220, window.innerWidth - 80)));
 }
+const BLOODS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'], DIETS = ['ฮาลาล', 'มังสวิรัติ', 'วีแกน', 'ไม่ทานหมู', 'ไม่ทานเนื้อวัว', 'ไม่ทานอาหารทะเล'];
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 // 2005-03-09 -> "9 มีนาคม 2548"
 const fmtBirth = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? (+m[3]) + ' ' + TH_MONTHS[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; };
 const fmtPhone = (v) => { const s = String(v || '').replace(/\D/g, ''); return s.length === 10 ? s.slice(0, 3) + '-' + s.slice(3, 6) + '-' + s.slice(6) : s.length === 9 ? s.slice(0, 2) + '-' + s.slice(2, 5) + '-' + s.slice(5) : s; };
+// an HTML dropdown (instead of the OS picker) that opens in the flow of the form, so a scrolling dialog never clips it
+function selHTML(id, label, opts, val) {
+  const cur = opts.find((o) => o[0] === val) || opts[0];
+  return '<div class="sel" data-sel="' + id + '"><span class="sel-lbl" id="' + id + 'L">' + label + '</span><button type="button" class="sel-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="' + id + 'L ' + id + 'V"><span id="' + id + 'V">' + esc(cur[1]) + '</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>'
+    + '<div class="sel-list" role="listbox" aria-labelledby="' + id + 'L">' + opts.map((o) => '<button type="button" role="option" class="sel-opt' + (o[0] === cur[0] ? ' on' : '') + '" data-v="' + esc(o[0]) + '" aria-selected="' + (o[0] === cur[0]) + '">' + esc(o[1]) + '</button>').join('') + '</div><input type="hidden" id="' + id + '" value="' + esc(cur[0]) + '"></div>';
+}
+function selBind(root, onPick) {
+  root.querySelectorAll('.sel').forEach((box) => {
+    const btn = box.querySelector('.sel-btn'), inp = box.querySelector('input[type=hidden]'), setOpen = (o) => { box.classList.toggle('open', o); btn.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+    btn.onclick = () => { const o = !box.classList.contains('open'); root.querySelectorAll('.sel.open').forEach((x) => { x.classList.remove('open'); x.querySelector('.sel-btn').setAttribute('aria-expanded', 'false'); }); setOpen(o); };
+    box.querySelectorAll('.sel-opt').forEach((o) => { o.onclick = () => { inp.value = o.dataset.v; box.querySelector('.sel-btn span').textContent = o.textContent; box.querySelectorAll('.sel-opt').forEach((x) => { const on = x === o; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false'); }); setOpen(false); btn.focus(); if (onPick) onPick(inp.id, inp.value); }; });
+  });
+}
+const fmtTyped = { nid: (v) => { const d = v.replace(/\D/g, '').slice(0, 13); return [d.slice(0, 1), d.slice(1, 5), d.slice(5, 10), d.slice(10, 12), d.slice(12)].filter(Boolean).join('-'); }, phone: (v) => (/^\s*\+/.test(v) ? v : (() => { const d = v.replace(/\D/g, '').slice(0, 10); return [d.slice(0, 3), d.slice(3, 6), d.slice(6)].filter(Boolean).join('-'); })()) };
 function editProfile() {
   const st = me && me.student; if (!st) return;
   const akaOpen = !me.akaState || me.akaState === 'open';   // once an admin closes naming, nickname and AKA stay as they are
-  const f = (id, label, attrs, req) => '<label><span>' + label + (req === false ? '' : ' <em class="req" aria-hidden="true">*</em>') + '</span><input id="' + id + '" ' + (req === false ? '' : 'required aria-required="true" ') + attrs + '></label>';
-  const d = openDlg('<h3>แก้ไขข้อมูลของฉัน</h3><p class="muted">ต้องกรอกทุกช่อง <em class="req">*</em></p><form id="pfForm" class="form" autocomplete="off">'
-    + '<p class="pfsec">ชื่อ</p>' + f('pfName', 'ชื่อ-นามสกุล (ไทย)', 'maxlength="200"') + f('pfNameEn', 'ชื่อ-สกุล (อังกฤษ)', 'maxlength="200" pattern="[A-Za-z][A-Za-z .\'\\-]*" title="ตัวอักษรภาษาอังกฤษเท่านั้น" placeholder="Somchai Jaidee" autocapitalize="words"')
-    + f('pfNick', 'ชื่อเล่น', 'maxlength="30"' + (akaOpen ? '' : ' disabled'), akaOpen) + f('pfAka', 'ชื่อ AKA', 'maxlength="40"' + (akaOpen ? '' : ' disabled'), akaOpen)
-    + '<p class="pfsec">ข้อมูลส่วนตัว</p>' + f('pfBirth', 'วันเกิด', 'type="date" min="1900-01-01" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก"')
-    + '<p class="pfsec">ติดต่อ</p>' + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"')
-    + f('pfSid', 'รหัสนักศึกษา', 'disabled', false)
-    + '<p class="muted">รหัสนักศึกษา ชั้นปี เพศ และฝ่าย แก้ไม่ได้ที่นี่ (ฝ่ายเลือกได้ที่เมนู "เลือกฝ่าย")' + (akaOpen ? '' : ' · ปิดรับการแก้ชื่อเล่น/AKA แล้ว') + ' · ติดต่อแอดมินหากต้องแก้</p><div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
+  const f = (id, label, attrs, req, span) => '<label class="' + (span ? 'span2' : '') + '" for="' + id + '"><span>' + label + (req === false ? '' : ' <em class="req" aria-hidden="true">*</em>') + '</span><input id="' + id + '" ' + (req === false ? '' : 'required aria-required="true" ') + attrs + '><span class="pferr" id="' + id + 'E" role="alert"></span></label>';
+  const bloodOpts = [['', 'ไม่ระบุ']].concat(BLOODS.map((x) => [x, x === 'unknown' ? 'ไม่ทราบ' : x]));
+  const dietOpts = [['', 'ยังไม่ระบุ'], ['ไม่มีข้อจำกัด', 'ไม่มีข้อจำกัด กินได้ทุกอย่าง']].concat(DIETS.map((x) => [x, x])).concat([['__other', 'อื่น ๆ (ระบุเอง)']]);
+  const dietVal = st.diet && (DIETS.includes(st.diet) || st.diet === 'ไม่มีข้อจำกัด') ? st.diet : st.diet ? '__other' : '';
+  const d = openDlg('<div class="pfdh"><h3>แก้ไขข้อมูลของฉัน</h3><p class="pfreq"><em class="req" aria-hidden="true">*</em> = ต้องกรอก' + (akaOpen ? '' : ' · ปิดรับการแก้ชื่อเล่น/AKA แล้ว') + '</p></div>'
+    + '<form id="pfForm" class="pfform" autocomplete="off" novalidate><div class="pfdb">'
+    + '<p class="pfsec">ข้อมูลที่แก้ไม่ได้ <span class="pfopt">ติดต่อแอดมินหากต้องแก้</span></p><div class="pfg pflock">' + [['รหัสนักศึกษา', st.student_id], ['ชั้นปี', 'ปี ' + st.year], ['เพศ', GL[st.gender]], ['ฝ่าย', (me.selection && me.selection.department_name) || 'ยังไม่ได้เลือก']].map((x) => '<label><span>' + x[0] + '</span><input value="' + esc(x[1]) + '" disabled aria-disabled="true"></label>').join('') + '</div>'
+    + '<p class="pfsec">ชื่อ</p><div class="pfg">' + f('pfName', 'ชื่อ-นามสกุล (ไทย)', 'maxlength="200"', true, true) + f('pfNameEn', 'ชื่อ-สกุล (อังกฤษ)', 'maxlength="200" pattern="[A-Za-z][A-Za-z .\'\\-]*" title="ตัวอักษรภาษาอังกฤษเท่านั้น" placeholder="Somchai Jaidee" autocapitalize="words"', true, true)
+    + f('pfNick', 'ชื่อเล่น', 'maxlength="30"' + (akaOpen ? '' : ' disabled'), akaOpen) + f('pfAka', 'ชื่อ AKA', 'maxlength="40"' + (akaOpen ? '' : ' disabled'), akaOpen) + '</div>'
+    + '<p class="pfsec">ข้อมูลส่วนตัว</p><div class="pfg">' + f('pfBirth', 'วันเกิด', 'type="date" min="1900-01-01" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก" placeholder="x-xxxx-xxxxx-xx-x"')
+    + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + '</div>'
+    + '<p class="pfsec">สุขภาพและอาหาร <span class="pfopt">ไม่บังคับกรอก</span></p><p class="pfnote">ใช้ดูแลเรื่องอาหารและความปลอดภัยในค่ายเท่านั้น เห็นได้เฉพาะคุณและแอดมิน ทุกครั้งที่แอดมินเปิดดูจะมีบันทึกไว้</p><div class="pfg">'
+    + selHTML('pfBlood', 'กรุ๊ปเลือด', bloodOpts, st.blood_type || '') + selHTML('pfDiet', 'วิธีการกิน', dietOpts, dietVal)
+    + '<div id="pfDietOW" class="span2 ' + (dietVal === '__other' ? '' : 'hidden') + '">' + f('pfDietO', 'ระบุวิธีการกิน', 'maxlength="100"', false) + '</div>'
+    + f('pfAllergy', 'แพ้อาหาร', 'maxlength="300" placeholder="เช่น กุ้ง ถั่วลิสง นมวัว"', false, true) + f('pfMedical', 'โรคประจำตัว / ยาที่ใช้ประจำ', 'maxlength="300" placeholder="เช่น หอบหืด ภูมิแพ้"', false, true)
+    + '<div class="span2 pfcons"><label class="shok"><input type="checkbox" id="pfConsent"> <span>ฉันยินยอมให้เก็บและใช้ข้อมูลสุขภาพและอาหารข้างบนตาม <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> (ล้างทุกช่องเพื่อถอนความยินยอม)</span></label><span class="pferr" id="pfConsentE" role="alert"></span></div></div>'
+    + '</div><div class="pfdf"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
+  d.firstElementChild.classList.add('pfbox');
   $('pfName').value = st.name || ''; $('pfNameEn').value = st.name_en || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfBirth').value = st.birth_date || '';
-  $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfPhone').value = st.phone || ''; $('pfGPhone').value = st.guardian_phone || ''; $('pfSid').value = st.student_id;
-  d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
+  $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfPhone').value = fmtPhone(st.phone) || ''; $('pfGPhone').value = fmtPhone(st.guardian_phone) || '';
+  $('pfAllergy').value = st.food_allergy || ''; $('pfMedical').value = st.medical || ''; $('pfConsent').checked = !!st.health_consent_at; if (dietVal === '__other') $('pfDietO').value = st.diet;
+  selBind(d, (id, v) => { dirty = true; if (id === 'pfDiet') { $('pfDietOW').classList.toggle('hidden', v !== '__other'); if (v === '__other') $('pfDietO').focus(); } });
+  // type-ahead formatting for the id card and phone numbers
+  const fmtOn = (id, fn) => { $(id).addEventListener('input', () => { const v = $(id).value, o = fn(v); if (o !== v) $(id).value = o; }); };
+  fmtOn('pfNid', fmtTyped.nid); fmtOn('pfPhone', fmtTyped.phone); fmtOn('pfGPhone', fmtTyped.phone);
+  let dirty = false; d.querySelector('form').addEventListener('input', () => { dirty = true; });
+  // a tap on the backdrop must not throw away typed changes
+  d.addEventListener('mousedown', (e) => { if (e.target === d && dirty) e.stopImmediatePropagation(); }, true);
+  d.addEventListener('click', async (e) => { if (e.target.closest('[data-x]')) { if (dirty && !(await confirmDlg('ทิ้งการแก้ไข?', 'ข้อมูลที่แก้ไว้จะไม่ถูกบันทึก', 'ทิ้ง'))) return; d.remove(); } });
+  const FIELD = { name: 'pfName', nameEn: 'pfNameEn', nickname: 'pfNick', aka: 'pfAka', birthDate: 'pfBirth', nationalId: 'pfNid', phone: 'pfPhone', guardianPhone: 'pfGPhone', bloodType: 'pfBlood', healthConsent: 'pfConsent' };
+  const clearErr = () => d.querySelectorAll('.pferr').forEach((x) => { x.textContent = ''; x.parentElement.classList.remove('bad'); }); 
+  const showErr = (id, msg) => { const inp = $(id); if (!inp) return false; const e = $(id + 'E'); if (e) { e.textContent = msg; inp.parentElement.classList.add('bad'); } inp.setAttribute('aria-invalid', 'true'); inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (inp.focus) inp.focus({ preventScroll: true }); return true; };
   $('pfForm').addEventListener('submit', async (e) => {
-    e.preventDefault(); const btn = e.submitter; if (btn) btn.disabled = true;
+    e.preventDefault(); clearErr();
+    const bad = [...d.querySelectorAll('#pfForm input[required]')].find((i) => !i.disabled && !i.validity.valid);
+    if (bad) { showErr(bad.id, bad.validity.valueMissing ? 'กรุณากรอกช่องนี้' : (bad.title || 'รูปแบบไม่ถูกต้อง')); return; }
+    const anyH = $('pfBlood').value || $('pfDiet').value || $('pfAllergy').value.trim() || $('pfMedical').value.trim();
+    if (anyH && !$('pfConsent').checked) { showErr('pfConsent', 'ติ๊กยินยอมก่อน หากกรอกข้อมูลสุขภาพและอาหาร'); return; }
+    const btn = e.submitter; if (btn) btn.disabled = true;
     try {
-      const r = await post('/camps/me/profile', { name: $('pfName').value, nameEn: $('pfNameEn').value, nickname: $('pfNick').value, aka: $('pfAka').value, birthDate: $('pfBirth').value, nationalId: $('pfNid').value, phone: $('pfPhone').value, guardianPhone: $('pfGPhone').value });
-      if (!r.ok) { toast(await errMsg(r), true); return; }
-      d.remove(); toast('บันทึกแล้ว'); await loadMe();
+      const r = await post('/camps/me/profile', { name: $('pfName').value, nameEn: $('pfNameEn').value, nickname: $('pfNick').value, aka: $('pfAka').value, birthDate: $('pfBirth').value, nationalId: $('pfNid').value, phone: $('pfPhone').value, guardianPhone: $('pfGPhone').value, bloodType: $('pfBlood').value, diet: $('pfDiet').value === '__other' ? $('pfDietO').value.trim() : $('pfDiet').value, foodAllergy: $('pfAllergy').value, medical: $('pfMedical').value, healthConsent: $('pfConsent').checked });
+      if (!r.ok) { let j = {}; try { j = await r.json(); } catch (x) { /* keep empty */ } const msg = j.error || ('เกิดข้อผิดพลาด (' + r.status + ')'); if (!(j.field && FIELD[j.field] && showErr(FIELD[j.field], msg))) toast(msg, true); return; }
+      dirty = false; d.remove(); toast('บันทึกแล้ว'); await loadMe();
     } catch (x) { toast(sessionGone(x) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); }
     finally { if (btn) btn.disabled = false; }
   });
@@ -200,17 +252,34 @@ function renderProfile() {
   }
   const init = esc((st.name || '?').replace(/^(นางสาว|นาย|นาง)\s*/, '').trim()[0] || '?');
   const dep = me.selection && me.selection.department_name;
-  const row = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + (v ? esc(v) : '<i class="none">ยังไม่มีข้อมูล</i>') + '</b></div>';
+  document.body.classList.add('pf-in');   // the account chip and back link are redundant here (the menu bar and the card say the same)
+  // sensitive values start hidden (last digits only); the eye button shows them for a short while
+  const hide = (str, keep) => { let n = 0; return String(str).split('').reverse().map((c) => (/\d/.test(c) ? (n++ < keep ? c : '•') : c)).reverse().join(''); };
+  const sec = (k, v, keep, cls) => v ? '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b data-full="' + esc(v) + '" data-mask="' + esc(hide(v, keep)) + '">' + esc(hide(v, keep)) + '</b></div>' : '';
+  const secText = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b data-full="' + esc(v) + '" data-mask="••••••">••••••</b></div>';
+  const row = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + esc(v) + '</b></div>';
+  const add = (k, label, href, wide) => (href ? '<a class="pf pfadd' + (wide ? ' wide' : '') + '" href="' + href + '">' : '<button type="button" class="pf pfadd' + (wide ? ' wide' : '') + '" onclick="editProfile()">') + '<span>' + k + '</span><b>+ ' + label + '</b>' + (href ? '</a>' : '</button>');
+  const phone = fmtPhone(st.phone), gphone = fmtPhone(st.guardian_phone), nid = fmtNid(st.national_id);
+  const penIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
+  const eyeIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   box.innerHTML = '<div class="card idcard">'
     + '<div class="pfhead">' + (authPicture ? '<img class="pfimg" src="' + esc(authPicture) + '" alt="รูปโปรไฟล์ของ ' + esc(st.name) + '" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pfimg ph\',textContent:\'' + init + '\'}))">' : '<span class="pfimg ph" aria-hidden="true">' + init + '</span>')
     + '<div class="pfwho"><h2>' + esc(st.name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</h2>' + (st.name_en ? '<div class="pfen">' + esc(st.name_en) + '</div>' : '')
-    + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span><span class="chip dep' + (dep ? '' : ' none') + '">' + (dep ? esc(dep) : 'ยังไม่ได้เลือกฝ่าย') + '</span></div></div>'
-    + '<button class="btn primary sm pfedit" type="button" onclick="editProfile()">✎ แก้ไข</button></div>'
-    + '<h3 class="pfh">ข้อมูลส่วนตัว</h3><div class="pfgrid">' + row('ชื่อเล่น', st.nickname) + row('ชื่อ AKA', st.aka) + row('วันเกิด', fmtBirth(st.birth_date), 'wide') + row('เบอร์โทรศัพท์', fmtPhone(st.phone)) + row('เบอร์ผู้ปกครอง', fmtPhone(st.guardian_phone)) + '</div>'
-    + '<h3 class="pfh">ข้อมูลประจำตัว</h3><div class="pfgrid">' + row('รหัสนักศึกษา', st.student_id) + row('ฝ่าย', dep) + row('รหัสบัตรประชาชน 13 หลัก', fmtNid(st.national_id), 'wide nid') + '</div>'
-    + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><b>QR รหัสนักศึกษา</b><span>' + esc(st.student_id) + '</span><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
-    + '<p class="muted pfhint">ชื่อเล่น / AKA ตั้งได้ที่เมนู <a href="/hr/aka">ตั้งชื่อ AKA</a> · ฝ่ายเปลี่ยนได้ที่เมนู <a href="/hr/choose">เลือกฝ่าย</a></p>'
+    + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span>' + (dep ? '<span class="chip dep">' + esc(dep) + '</span>' : '') + '</div></div></div>'
+    + '<button class="btn pfeditbtn" type="button" onclick="editProfile()">' + penIc + '<span>แก้ไขข้อมูล</span></button>'
+    + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><span class="qrlbl">QR รหัสนักศึกษา</span><b class="qrid">' + esc(st.student_id) + '</b><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
+    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลส่วนตัว</h3><button type="button" class="pfeye" id="pfEye" aria-pressed="false" aria-label="แสดงข้อมูลที่ซ่อนไว้" title="แสดง / ซ่อนข้อมูลสำคัญ">' + eyeIc + '</button></div><div class="pfgrid">'
+    + (st.nickname ? row('ชื่อเล่น', st.nickname) : add('ชื่อเล่น', 'เพิ่มชื่อเล่น')) + (st.aka ? row('ชื่อ AKA', st.aka) : add('ชื่อ AKA', 'ตั้งชื่อ AKA', '/hr/aka'))
+    + row('วันเกิด', fmtBirth(st.birth_date) || '—', 'wide') + (phone ? sec('เบอร์โทรศัพท์', phone, 4) : add('เบอร์โทรศัพท์', 'เพิ่มเบอร์')) + (gphone ? sec('เบอร์ผู้ปกครอง', gphone, 4) : add('เบอร์ผู้ปกครอง', 'เพิ่มเบอร์'))
+    + (nid ? sec('รหัสบัตรประชาชน 13 หลัก', nid, 3, 'wide nid') : '') + '</div>'
+    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลประจำตัว</h3></div><div class="pfgrid">'
+    + (dep ? row('ฝ่าย', dep, 'wide') : add('ฝ่าย', 'เลือกฝ่าย', '/hr/choose', true))
+    + (st.blood_type ? row('กรุ๊ปเลือด', st.blood_type === 'unknown' ? 'ไม่ทราบ' : st.blood_type) : add('กรุ๊ปเลือด', 'เพิ่ม')) + (st.diet ? row('วิธีการกิน', st.diet) : add('วิธีการกิน', 'เพิ่ม'))
+    + (st.food_allergy ? row('แพ้อาหาร', st.food_allergy, 'wide') : add('แพ้อาหาร', 'เพิ่ม', '', true)) + (st.medical ? secText('โรคประจำตัว', st.medical, 'wide') : add('โรคประจำตัว', 'เพิ่ม', '', true)) + '</div>'
     + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
+  let eyeT = 0; const eye = $('pfEye');
+  const setEye = (on) => { clearTimeout(eyeT); eye.setAttribute('aria-pressed', on ? 'true' : 'false'); eye.classList.toggle('on', on); box.querySelectorAll('[data-full]').forEach((el) => { el.textContent = on ? el.dataset.full : el.dataset.mask; }); if (on) eyeT = setTimeout(() => setEye(false), 20000); };
+  eye.onclick = () => setEye(eye.getAttribute('aria-pressed') !== 'true');
   drawQR($('qrSmall'), st.student_id, 168);
 }
 
@@ -269,10 +338,10 @@ function renderUserChip(x) {
 function renderAcct(x) {
   renderUserChip(x);
   const box = $('acct');
-  if (!box) { if (PROFILE || AKA || SHIRT) { const pb = $(PROFILE ? 'profile' : AKA ? 'akaBox' : 'shirtBox'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()')) + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
+  if (!box) { if (PROFILE || AKA || SHIRT) { const pb = $(PROFILE ? 'profile' : AKA ? 'akaBox' : 'shirtBox'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p>') + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
   if (!me) {
-    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p>';
     return;
   }
   const adminPill = me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '';
@@ -468,12 +537,31 @@ async function loadMe() {
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
   try { const u = await auth0Client.getUser(); authPicture = (u && /^https:\/\//.test(u.picture || '')) ? u.picture : ''; } catch (e) { authPicture = ''; }
   loadMe.tries = 0; const wasAdmin = !!(me && me.isAdmin); me = await r.json(); if (me.adminDeferred && wasAdmin) me.isAdmin = true; state = me.registration || state; renderState(); renderAcct(); renderNav();
+  if (PAGE === 'student' && me.student && me.legalVersion && me.student.terms_ver !== me.legalVersion) askTerms();
   if (PROFILE) { ungate(); renderProfile(); checkAdminLater(); return; }
   if (AKA) { ungate(); loadAka(); checkAdminLater(); return; }
   if (SHIRT) { ungate(); loadShirt(); checkAdminLater(); return; }
   if (PAGE === 'student' && TAB === 'survey') { ungate(); loadSurveyMe(); return; }   // hr/survey.js
   if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); checkAdminLater(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
+}
+// first sign-in (and every time the terms / privacy policy change): the student must accept them before using the pages; the acceptance is stored with the version
+function askTerms() {
+  if ($('termsAsk')) return;
+  const d = document.createElement('div'); d.className = 'dlg'; d.id = 'termsAsk';
+  d.innerHTML = '<div class="box wide" role="dialog" aria-modal="true" aria-labelledby="taT"><h3 id="taT">ข้อกำหนดและนโยบาย</h3><p>ก่อนใช้งาน กรุณาอ่านเอกสารต่อไปนี้ (เปิดอ่านในแท็บใหม่)</p>'
+    + '<ul class="talinks"><li><a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a></li><li><a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></li><li><a href="/legal/third-party" target="_blank" rel="noopener">บริการของบุคคลที่สาม</a></li></ul>'
+    + '<label class="shok"><input type="checkbox" id="taOk"> <span>ฉันได้อ่านและยอมรับข้อกำหนดการใช้งานและนโยบายความเป็นส่วนตัว</span></label>'
+    + '<div class="btns"><button class="btn" type="button" id="taOut">ออกจากระบบ</button><button class="btn primary" type="button" id="taGo" disabled>ยอมรับและใช้งานต่อ</button></div></div>';
+  document.body.appendChild(d);
+  const ok = $('taOk'), go = $('taGo'); ok.onchange = () => { go.disabled = !ok.checked; };
+  $('taOut').onclick = () => logout();
+  go.onclick = async () => {
+    go.disabled = true;
+    try { const r = await post('/camps/me/accept-terms'); if (!r.ok) { toast(await errMsg(r), true); go.disabled = !ok.checked; return; } me.student.terms_ver = me.legalVersion; d.remove(); toast('บันทึกการยอมรับแล้ว'); }
+    catch (e) { toast(sessionGone(e) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); go.disabled = !ok.checked; }
+  };
+  ok.focus();
 }
 // student pages show nothing until the visitor has signed in with Google
 function renderGate(x) {
@@ -482,7 +570,7 @@ function renderGate(x) {
   let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
   if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
   if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
-  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : SHIRT ? 'ส่งผลงานและโหวตเสื้อค่าย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : SHIRT ? 'ส่งผลงานและโหวตเสื้อค่าย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p>';
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;
@@ -536,7 +624,7 @@ const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธ�
 function renderAdmin(x) {
   const box = $('adminBox'); if (!box) return;
   if (x && x.error) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button></div>'; return; }
-  if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบ</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลที่มีสิทธิ์แอดมิน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '</div>'; return; }
+  if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบ</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลที่มีสิทธิ์แอดมิน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p></div>'; return; }
   if (!me.isAdmin) { box.innerHTML = NO_PERM(me); return; }
   box.innerHTML = '<h2 class="sr">เมนูแอดมิน</h2><div id="adminBody"><div class="skeleton"></div></div>';
   loadAdminPage();

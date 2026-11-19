@@ -1,6 +1,7 @@
 // ระบบเช็ค QR (/qrcheck/): scanning looks the student up in the HR registration data and records "ตรวจแล้ว" for an admin-defined check
 // ("ตรวจครั้งที่ 1", "ตรวจสอบป้ายกับ AKA", …); the result can then be refined (badge code, note, or marked ไม่ผ่าน). The student data is read from camp_students / camp_selections / camp_departments.
 import { json } from "../lib/cors.js";
+import { permDenied } from "./camps.js";
 import { getAuth0UserFromRequest, getAuth0Roles, getAuth0PictureByEmail } from "../lib/auth0.js";
 
 const fail = (req, env, error, status = 400, extra = {}) => json(req, env, { error, ...extra }, status);
@@ -21,7 +22,7 @@ async function actor(req, env, { adminOnly = false } = {}) {
   let isAdmin = false;
   try { isAdmin = (await getAuth0Roles(env, a.user.sub)).some((r) => ADMIN_ROLES.includes(r)); }
   catch (e) { console.error("[qrcheck] role lookup:", e?.message || e); if (adminOnly) return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
-  if (isAdmin) return { user: a.user, email: email || "unknown", isAdmin: true };
+  if (isAdmin) { const d = await permDenied(req, env, { user: a.user, email }, "qr"); if (!d) return { user: a.user, email: email || "unknown", isAdmin: true }; if (adminOnly) return { response: d }; }
   if (adminOnly) return { response: fail(req, env, "ต้องเป็นแอดมิน", 403) };
   if (!email || a.user.email_verified !== true) return { response: fail(req, env, "บัญชีต้องยืนยันอีเมลก่อนใช้งาน", 403) };
   const o = await env.DB.prepare("SELECT email FROM camp_qr_officers WHERE email=?").bind(email).first();

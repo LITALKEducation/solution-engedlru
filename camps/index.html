@@ -3,44 +3,67 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script src="/assets/inapp-guard.js?v=470846cf"></script>
-<meta name="theme-color" content="#ffffff">
+<script src="/assets/inapp-guard.js?v=a7e798bf"></script>
+<meta name="theme-color" content="#18181b">
 <meta name="robots" content="noindex,nofollow">
-<title>Camps · กิจกรรมค่าย</title>
+<title>English Camp On Tour · กิจกรรมค่าย</title>
 <link rel="icon" type="image/png" href="/icons/branch-64.png">
 <link rel="apple-touch-icon" href="/icons/branch-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=ea3a40f2">
-<link rel="stylesheet" href="/assets/theme.css?v=d1e38210">
-<style>footer{max-width:1040px;margin:0 auto;width:100%;text-align:left;padding:32px 24px calc(env(safe-area-inset-bottom,0px) + 32px);color:var(--mute)}footer a{color:var(--mute);text-decoration:underline}</style>
-<script src="/assets/brand-bar.js?v=af0b0b06" defer></script>
+<link rel="preload" as="image" href="/assets/hero-hills.jpg">
+<link rel="preload" href="/assets/fonts/noto-sans-thai-thai-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="/assets/site.css?v=ea3a40f2">
+<link rel="stylesheet" href="/assets/theme.css?v=934a1793">
+<style>footer{max-width:1040px;margin:0 auto;width:100%;text-align:left;padding:32px 24px calc(env(safe-area-inset-bottom,0px) + 32px);color:var(--mute)}footer a{color:var(--mute);text-decoration:underline}
+.cxhero{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:min(82vh,680px);color:#fff;background:#222 url(/assets/hero-hills.jpg) center 40%/cover no-repeat;overflow:hidden;isolation:isolate}
+.cxhero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,.08) 38%,rgba(0,0,0,.55) 100%)}
+.cxhero-in{margin:auto;text-align:center;padding:104px 24px 32px;max-width:760px}
+.cxhero h1{margin:0;line-height:0}.cxhero h1 img{display:block;margin:0 auto;width:min(78vw,520px);height:auto;filter:drop-shadow(0 4px 28px rgba(0,0,0,.35))}
+.cxhero p{margin:12px auto 0;max-width:30em;color:#ffffffe6!important;font-size:clamp(1rem,2.6vw,1.2rem)!important;text-shadow:0 1px 12px rgba(0,0,0,.4)}
+.cxbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:rgba(20,20,22,.42);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);border-top:1px solid rgba(255,255,255,.18)}
+.cxbar a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;color:#fff;text-decoration:none;border-right:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14);min-height:64px;justify-content:center;transition:background-color .25s var(--ease-smooth-out)}
+.cxbar a:hover{background:rgba(255,255,255,.14)}
+.cxbar small{color:#ffffffb3!important;font-size:.6875rem;font-weight:500}.cxbar b{font-weight:600;font-size:.9375rem}
+.cxbar .go{background:#fff;color:#18181b;grid-column:1/-1;align-items:center;flex-direction:row;justify-content:center;gap:10px;font-weight:700;border:0;min-height:56px}
+.cxbar .go:hover{background:#ececee}
+@media(min-width:760px){.cxbar{grid-template-columns:repeat(3,1fr) 190px}.cxbar a{border-bottom:0;padding:14px 20px}.cxbar .go{grid-column:auto}}
+.cxintro{max-width:1040px;margin:0 auto;padding:56px 24px 8px;text-align:center}
+.cxpill{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.8125rem;font-weight:600;box-shadow:var(--shadow)}.cxpill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.cxintro h2{margin:18px auto 0;max-width:15em;font-size:clamp(2rem,6vw,3.5rem);font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.cxintro p{margin:14px auto 0;max-width:34em;color:var(--mute)}
+main{padding-top:8px!important}
+.cxsect h2{display:flex;align-items:center;gap:8px;font-size:.8125rem}.cxsect h2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+@media(min-width:900px){.cxsect:first-child .cxtiles{grid-template-columns:repeat(3,minmax(0,1fr))}.cxsect:first-child .cxtile{flex-direction:column;align-items:flex-start;min-height:150px;padding:20px}.cxsect:first-child .cxtile::after{margin-top:auto;align-self:flex-end}.cxsect:first-child .cxnm{font-size:1.25rem}}
+</style>
+<script src="/assets/brand-bar.js?v=fce5e3ec" defer></script>
+<script src="/assets/footer.js" defer></script>
 <!-- og:start -->
-<meta name="description" content="ระบบกิจกรรมค่ายของคณะครุศาสตร์ สาขาวิชาภาษาอังกฤษ เลือกฝ่าย ตั้งชื่อ AKA และอื่น ๆ ในที่เดียว">
+<meta name="description" content="ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Camps · English Education LRU">
 <meta property="og:locale" content="th_TH">
 <meta property="og:title" content="Camps · กิจกรรมค่าย | English Education LRU">
-<meta property="og:description" content="ระบบกิจกรรมค่ายของคณะครุศาสตร์ สาขาวิชาภาษาอังกฤษ เลือกฝ่าย ตั้งชื่อ AKA และอื่น ๆ ในที่เดียว">
+<meta property="og:description" content="ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9">
 <meta property="og:url" content="https://enged.sorasukt.com/">
 <meta property="og:image" content="https://enged.sorasukt.com/assets/og/home.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Camps · กิจกรรมค่าย | English Education LRU">
-<meta name="twitter:description" content="ระบบกิจกรรมค่ายของคณะครุศาสตร์ สาขาวิชาภาษาอังกฤษ เลือกฝ่าย ตั้งชื่อ AKA และอื่น ๆ ในที่เดียว">
+<meta name="twitter:description" content="ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9">
 <meta name="twitter:image" content="https://enged.sorasukt.com/assets/og/home.png">
 <!-- og:end -->
-<script src="/assets/maintenance.js?v=fe03789f" defer></script>
+<script src="/assets/maintenance.js?v=3925e640" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
 <div class="shell">
-<header class="cxhd"><p class="cxkick">กิจกรรมค่าย</p><h1>Camps</h1></header>
+<header class="cxhero"><div class="cxhero-in"><h1><img src="/assets/english-camp-logo.png" width="1000" height="399" alt="English Camp On Tour"></h1><p>ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9</p></div>
+<nav class="cxbar" aria-label="ทางลัด"><a href="/hr/"><small>01 · นักศึกษา</small><b>ข้อมูลส่วนตัว</b></a><a href="/hr/aka"><small>02 · นักศึกษา</small><b>ตั้งชื่อ AKA</b></a><a href="/shirt/"><small>06 · นักศึกษา</small><b>แบบเสื้อค่าย</b></a><a class="go" href="#main">ดูทั้งหมด <span aria-hidden="true">↓</span></a></nav></header>
+<section class="cxintro" aria-labelledby="intro"><span class="cxpill">English Education · LRU</span><h2 id="intro">ทุกอย่างของค่าย รวมไว้ที่เดียว</h2><p>เลือกเมนูที่ต้องใช้ได้เลย ทั้งสำหรับนักศึกษา เจ้าหน้าที่ และงานการเงิน</p></section>
 <main id="main" tabindex="-1">
 <section class="cxsect" aria-labelledby="g1"><h2 id="g1">นักศึกษา</h2>
 <ul class="cxtiles">
-<li><a class="cxtile" href="/hr/"><span class="cxno" aria-hidden="true">01</span><span class="cxnm">เลือกฝ่าย <span class="badge" id="hrBadge">เร็วๆ นี้</span></span></a></li>
+<li><a class="cxtile" href="/hr/"><span class="cxno" aria-hidden="true">01</span><span class="cxnm">ข้อมูลส่วนตัว <span class="badge" id="hrBadge">เร็วๆ นี้</span></span></a></li>
 <li><a class="cxtile" href="/hr/aka"><span class="cxno" aria-hidden="true">02</span><span class="cxnm">ตั้งชื่อ AKA</span></a></li>
 <li><a class="cxtile" href="/shirt/"><span class="cxno" aria-hidden="true">06</span><span class="cxnm">แบบเสื้อค่าย</span></a></li>
 </ul></section>
@@ -54,7 +77,7 @@
 <li><a class="cxtile" href="/budget/"><span class="cxno" aria-hidden="true">05</span><span class="cxnm">งบประมาณ</span></a></li>
 </ul></section>
 </main>
-<footer>© 2026-2027 sorasukt.com. Powered by STNET World Solutions · <a href="/admin/" style="text-decoration:underline">แอดมิน</a></footer>
+<footer>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</footer>
 </div>
 <script>
 // Registration status badge for "เลือกฝ่าย". Failure keeps the static text.

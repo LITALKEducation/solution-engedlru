@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script src="/assets/inapp-guard.js?v=470846cf"></script>
-<meta name="theme-color" content="#d32f2f">
+<script src="/assets/inapp-guard.js?v=a7e798bf"></script>
+<meta name="theme-color" content="#18181b">
 <title>แบบเสื้อค่าย · Camps</title>
 <link rel="icon" type="image/png" href="/icons/branch-64.png">
 <link rel="apple-touch-icon" href="/icons/branch-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=ea3a40f2">
-<link rel="stylesheet" href="/shirt/gallery.css?v=5396b1ae">
-<link rel="stylesheet" href="/assets/theme.css?v=d1e38210">
-<script src="/assets/brand-bar.js?v=af0b0b06" defer></script>
-<script src="/shirt/gallery.js?v=e031e4d5" defer></script>
-<script src="/assets/maintenance.js?v=fe03789f" defer></script>
+<link rel="preload" href="/assets/fonts/noto-sans-thai-thai-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="/assets/site.css?v=ea3a40f2">
+<link rel="stylesheet" href="/shirt/gallery.css?v=b77038c9">
+<link rel="stylesheet" href="/assets/theme.css?v=934a1793">
+<script src="/assets/brand-bar.js?v=fce5e3ec" defer></script>
+<script src="/assets/footer.js" defer></script>
+<script src="/shirt/gallery.js?v=479307cc" defer></script>
+<script src="/assets/maintenance.js?v=3925e640" defer></script>
 <!-- og:start -->
 <meta name="description" content="ดูแบบเสื้อค่ายที่นักศึกษาส่งเข้าประกวด พร้อมชื่อผู้ออกแบบและหมู่เรียน">
 <meta property="og:type" content="website">
@@ -35,17 +35,17 @@
 </head>
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
-<header class="cxhd"><p class="cxkick"><a class="back" href="/">&larr; กิจกรรมค่าย</a></p><h1>แบบเสื้อค่าย</h1></header>
-<main id="main" tabindex="-1">
-<section class="cxsect pub hidden" id="gSampleSec" aria-labelledby="gs"><h2 id="gs">เสื้อตัวอย่าง</h2><div class="gsample"><img id="gSampleImg" class="shsamplepic" alt="เสื้อตัวอย่าง"></div></section>
-<section class="cxsect pub" aria-labelledby="gh">
-<h2 id="gh">ผลงานที่ส่งเข้าประกวด <span id="gCount" class="gcount"></span></h2>
-<div id="gInfo" class="ginfo" aria-live="polite"></div>
-<div id="gGrid" class="shgrid"><div class="skeleton"></div></div>
-<p class="gcta"><a class="btn primary" href="/hr/shirt">เข้าสู่ระบบเพื่อส่งผลงาน / โหวต</a></p>
+<main id="main" class="gal" tabindex="-1">
+<section class="ghero" aria-labelledby="gt">
+<div class="gsamp hidden" id="gSampleSec"><span class="gtag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/></svg>เสื้อตัวอย่าง</span><img id="gSampleImg" class="gsimg" alt="เสื้อตัวอย่าง"></div>
+<div class="gside"><h1 id="gt">แบบเสื้อค่าย</h1><div id="gInfo" class="gflow" aria-live="polite"></div><a class="btn primary gcta" href="/hr/shirt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg><span>ส่งผลงาน / โหวต</span></a></div>
+</section>
+<section class="gsec" aria-labelledby="gh">
+<h2 id="gh" class="gh">ผลงานที่ส่งเข้าประกวด <span id="gCount" class="gcount"></span></h2>
+<div id="gGrid" class="ggrid"><div class="skeleton" style="height:240px"></div></div>
 </section>
 </main>
-<footer>© 2026-2027 sorasukt.com. Powered by STNET World Solutions</footer>
-<div id="gBox" class="gbox hidden" role="dialog" aria-modal="true" aria-labelledby="gBoxT"><div class="gboxin"><h3 id="gBoxT"></h3><p id="gBoxW"></p><div id="gBoxM" class="shbig"></div><button type="button" class="btn primary" id="gBoxX">ปิด</button></div></div>
+<footer>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</footer>
+<div id="gBox" class="gbox hidden" role="dialog" aria-modal="true" aria-labelledby="gBoxT"><div class="gboxin"><div class="gbh"><div class="gbt"><h3 id="gBoxT"></h3><p id="gBoxW"></p></div><button type="button" class="gbx" id="gBoxX" aria-label="ปิด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="gbm"><button type="button" class="gnav prev" id="gPrev" aria-label="ผลงานก่อนหน้า"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><div id="gBoxM" class="shbig"></div><button type="button" class="gnav next" id="gNext" aria-label="ผลงานถัดไป"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div><p class="gbc" id="gBoxN" aria-live="polite"></p></div></div>
 </body>
 </html>

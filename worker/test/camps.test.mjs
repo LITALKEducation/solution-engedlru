@@ -34,6 +34,38 @@ r=await call('s1','GET','/camps/me');const st=r.d.student;ok(st.name==='Student 
 for(const k of ['name','nameEn','birthDate','nationalId','phone','guardianPhone','nickname','aka']){r=await call('s1','POST','/camps/me/profile',P({[k]:''}));ok(r.s===400,'required: '+k+' empty rejected');r=await call('s1','POST','/camps/me/profile',P({[k]:undefined}));ok(r.s===400,'required: '+k+' missing rejected')}
 for(const [k,v] of [['nameEn','สมชาย'],['nameEn','A1'],['birthDate','2005-02-30'],['birthDate','2999-01-01'],['birthDate','09/03/2005'],['phone','12345'],['guardianPhone','abcdefghij'],['nationalId','12']]){r=await call('s1','POST','/camps/me/profile',P({[k]:v}));ok(r.s===400,'rejected '+k+'='+v)}
 r=await call('s1','POST','/camps/me/profile',P({birthDate:'2548-03-09'}));r=await call('s1','GET','/camps/me');ok(r.d.student.birth_date==='2005-03-09','Buddhist-era year converted');
+r=await call('s1','GET','/camps/me');ok(!r.d.student.food_allergy&&!r.d.student.diet&&!r.d.student.health_consent_at,'health fields and consent start empty');
+r=await call('s1','POST','/camps/me/profile',P({foodAllergy:'  กุ้ง ถั่ว ',diet:'halal',bloodType:'O+',medical:'หอบหืด'}));ok(r.s===400&&r.d.field==='healthConsent','health details are refused without the consent tick');
+r=await call('s1','POST','/camps/me/profile',P({foodAllergy:'  กุ้ง ถั่ว ',diet:'halal',bloodType:'O+',medical:'หอบหืด',healthConsent:true}));ok(r.s===200,'optional health fields saved with consent');
+r=await call('s1','GET','/camps/me');ok(r.d.student.food_allergy==='กุ้ง ถั่ว'&&r.d.student.diet==='halal'&&r.d.student.blood_type==='O+'&&r.d.student.medical==='หอบหืด'&&!!r.d.student.health_consent_at&&r.d.legalVersion==='2026-11-19','health fields stored (trimmed) with consent time; me tells the policy version');
+r=await call('s1','POST','/camps/me/profile',P());r=await call('s1','GET','/camps/me');ok(r.d.student.diet==='halal'&&r.d.student.blood_type==='O+'&&!!r.d.student.health_consent_at,'health fields and consent kept when not resent');
+r=await call('s1','POST','/camps/me/profile',P({bloodType:'Z+'}));ok(r.s===400,'bad blood group rejected');
+r=await call('admin','GET','/camps/admin/students?q=uno');ok(r.d.students.length===1&&r.d.students[0].has_health&&r.d.students[0].has_allergy&&r.d.students[0].has_medical&&!('medical' in r.d.students[0])&&!('food_allergy' in r.d.students[0])&&!('diet' in r.d.students[0])&&!('blood_type' in r.d.students[0]),'admin list carries health FLAGS only, never the details');
+r=await call('s1','GET','/camps/admin/student-health?id=6740102220');ok(r.s===403,'a student cannot open health details');
+r=await call('admin','GET','/camps/admin/student-health?id=6740102220');ok(r.s===200&&r.d.health.medical==='หอบหืด'&&r.d.health.foodAllergy==='กุ้ง ถั่ว'&&r.d.health.bloodType==='O+'&&!!r.d.health.consentAt,'admin opens one student health details');
+r=await call('admin','GET','/camps/admin/health-export');ok(r.s===200&&r.d.students.length>=1&&r.d.students.some(x=>x.student_id==='6740102220'&&x.medical==='หอบหืด'),'admin health export lists students with details');
+r=await call('s1','GET','/camps/admin/health-export');ok(r.s===403,'a student cannot export health details');
+{const lg=await env.DB.prepare("SELECT action FROM budget_audit_logs WHERE action IN ('CAMP_HEALTH_VIEW','CAMP_HEALTH_EXPORT')").all();const acts=(lg.results||[]).map(x=>x.action);ok(acts.includes('CAMP_HEALTH_VIEW')&&acts.includes('CAMP_HEALTH_EXPORT'),'opening and exporting health details is audited');}
+r=await call('s1','POST','/camps/me/profile',P({foodAllergy:'',diet:'',bloodType:'',medical:''}));r=await call('s1','GET','/camps/me');ok(!r.d.student.food_allergy&&!r.d.student.diet&&!r.d.student.blood_type&&!r.d.student.medical&&!r.d.student.health_consent_at,'clearing every health field withdraws the consent');
+r=await call('s1','POST','/camps/me/accept-terms',{});ok(r.s===200&&r.d.version==='2026-11-19','student accepts terms');
+r=await call('s1','GET','/camps/me');ok(r.d.student.terms_ver==='2026-11-19'&&!!r.d.student.terms_accepted_at,'acceptance stored with version and time');
+// deleting a student erases everything about them, not just the roster row
+r=await call('admin','POST','/camps/admin/students',{studentId:'6740108888',name:'Delete Me',year:2,gender:'M'});
+await env.DB.prepare("INSERT INTO camp_aka (student_id,nickname,aka,updated_by) VALUES ('6740108888','Del','Gone','t')").run().catch(async()=>{await env.DB.prepare("INSERT INTO camp_aka (student_id,nickname,aka) VALUES ('6740108888','Del','Gone')").run()});
+await env.DB.prepare("INSERT INTO camp_shirt_blocks (student_id,until,reason) VALUES ('6740108888',9999999999999,'t')").run().catch(()=>{});
+r=await call('admin','POST','/camps/admin/students/delete',{studentId:'6740108888'});ok(r.s===200,'admin deletes a student');
+{const c1=await env.DB.prepare("SELECT (SELECT COUNT(*) FROM camp_students WHERE student_id='6740108888')+(SELECT COUNT(*) FROM camp_aka WHERE student_id='6740108888')+(SELECT COUNT(*) FROM camp_shirt_blocks WHERE student_id='6740108888') c").first();ok(c1.c===0,'delete erased the roster row, AKA and shirt block (full erasure)');}
+r=await call('admin','POST','/camps/admin/students',{studentId:'6740109999',name:'Old Timer',year:4,gender:'F'});ok(r.s===200,'throwaway student for the retention tests');
+r=await call('admin','POST','/camps/admin/students/status',{studentId:'6740109999',endDate:'2020-01-15',reason:'graduated'});ok(r.s===200,'admin sets the end-of-status date');
+r=await call('admin','POST','/camps/admin/students/status',{studentId:'6740109999',endDate:'2020-13-45',reason:'graduated'});ok(r.s===400,'bad end date rejected');
+r=await call('admin','POST','/camps/admin/students/status',{studentId:'6740109999',endDate:'2020-01-15',reason:'nope'});ok(r.s===400,'bad end reason rejected');
+r=await call('s1','GET','/camps/admin/retention');ok(r.s===403,'retention list is admin only');
+r=await call('admin','GET','/camps/admin/retention');ok(r.s===200&&r.d.years===2&&r.d.due.some(x=>x.student_id==='6740109999'&&x.status_end_reason==='graduated')&&r.d.finance.years===10,'retention list shows the student whose status ended more than 2 years ago');
+r=await call('admin','POST','/camps/admin/students/status',{studentId:'6740109999',endDate:new Date().toISOString().slice(0,10),reason:'left'});r=await call('admin','GET','/camps/admin/retention');ok(!r.d.due.some(x=>x.student_id==='6740109999')&&r.d.pending>=1,'a recent end date is pending, not due');
+r=await call('admin','POST','/camps/admin/retention/purge',{studentIds:['6740109999']});ok(r.s===200&&r.d.erased===0&&r.d.skipped===1,'purge refuses a student whose retention period has not passed');
+r=await call('admin','POST','/camps/admin/students/status',{studentId:'6740109999',endDate:'2020-01-15',reason:'graduated'});
+r=await call('admin','POST','/camps/admin/retention/purge',{studentIds:['6740109999','9999999999']});ok(r.s===200&&r.d.erased===1,'purge erases the student whose period has passed');
+{const g=await env.DB.prepare("SELECT COUNT(*) c FROM camp_students WHERE student_id='6740109999'").first();ok(g.c===0,'student row erased');}
 r=await call('s1','GET','/camps/me');ok(r.d.student.name_en==='Student Uno','failed saves changed nothing');
 r=await call('admin','GET','/camps/admin/students?q=uno');const sx=(r.d.students||[]).find(x=>x.student_id==='6740102220');ok(sx&&sx.name_en==='Student Uno'&&sx.nickname==='Uno'&&sx.aka==='Ace'&&sx.birth_date==='2005-03-09'&&sx.phone==='0812345678'&&sx.guardian_phone==='0891234567'&&sx.national_id==='1234567890124','admin student list has every field, searchable by nickname');
 r=await call('s1','GET','/camps/admin/students');ok(r.s===403,'students list stays admin-only');

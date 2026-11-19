@@ -176,7 +176,7 @@ async function sampleImage(request, env) {
   return new Response(obj.body, { headers: h });
 }
 async function adminSample(request, env, url) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const buf = new Uint8Array(await request.arrayBuffer());
   if (!buf.length) return fail(request, env, "เลือกรูปเสื้อตัวอย่าง");
   if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 10 MB)", 413);
@@ -189,7 +189,7 @@ async function adminSample(request, env, url) {
   return json(request, env, { ok: true, sample: sampleInfo(url, await loadSettings(env)) });
 }
 async function adminSampleReset(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const st = await loadSettings(env);
   await env.DB.batch([setting(env, "shirt_sample_key", ""), setting(env, "shirt_sample_mime", ""), setting(env, "shirt_sample_v", "")]);
   if (st._sample.key) { try { await env.FILES.delete(st._sample.key); } catch (e) { /* ignore */ } }
@@ -199,7 +199,7 @@ async function adminSampleReset(request, env) {
 
 // ---------- admin ----------
 async function adminOverview(request, env, url) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const st = await loadSettings(env), now = Date.now(), ph = phases(st, now);
   const rows = (await env.DB.prepare(
     `SELECT d.*,s.name student_name,(SELECT COUNT(*) FROM camp_shirt_votes v WHERE v.design_id=d.id) votes FROM camp_shirt_designs d LEFT JOIN camp_students s ON s.student_id=d.student_id ORDER BY votes DESC,d.created_at`).all()).results || [];
@@ -211,7 +211,7 @@ async function adminOverview(request, env, url) {
 }
 // both ends of a window or none; the vote window cannot start before submissions end (a design could otherwise be swapped after it gathered votes)
 async function adminSettings(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   if (!b) return fail(request, env, "ข้อมูลไม่ถูกต้อง");
   const v = {}; for (const k of Object.keys(KEYS)) { v[k] = num(b[k]); if (Number.isNaN(v[k]) || (v[k] != null && (v[k] < 1e12 || v[k] > 4.2e12))) return fail(request, env, "วันเวลาไม่ถูกต้อง"); }
@@ -226,7 +226,7 @@ async function adminSettings(request, env) {
   return json(request, env, { ok: true, settings: publicSettings(await loadSettings(env)) });
 }
 async function adminHide(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const b = await request.json().catch(() => null), id = clean(b?.id, 40);
   const d = await env.DB.prepare("SELECT id FROM camp_shirt_designs WHERE id=?").bind(id).first(); if (!d) return fail(request, env, "ไม่พบผลงาน", 404);
   const hidden = b?.hidden === true ? 1 : 0;
@@ -236,7 +236,7 @@ async function adminHide(request, env) {
   return json(request, env, { ok: true });
 }
 async function adminRecheck(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const b = await request.json().catch(() => null), id = clean(b?.id, 40);
   const d = await env.DB.prepare("SELECT id,image_key,image_mime,ai_signals FROM camp_shirt_designs WHERE id=?").bind(id).first(); if (!d) return fail(request, env, "ไม่พบผลงาน", 404);
   const obj = await env.FILES.get(d.image_key); if (!obj) return fail(request, env, "ไม่พบไฟล์รูป", 404);
@@ -254,7 +254,7 @@ async function rejectDesign(env, id, note) {
   await env.DB.prepare("DELETE FROM camp_shirt_votes WHERE design_id=?").bind(id).run();
 }
 async function adminReject(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const b = await request.json().catch(() => null), id = clean(b?.id, 40);
   const d = await env.DB.prepare("SELECT id FROM camp_shirt_designs WHERE id=?").bind(id).first(); if (!d) return fail(request, env, "ไม่พบผลงาน", 404);
   if (b?.rejected === false) { await env.DB.prepare("UPDATE camp_shirt_designs SET hidden=0,ai_rejected=0,reject_note='',rejected_at=NULL WHERE id=?").bind(id).run(); await audit(env, a, "SHIRT_AI_REJECT_LIFT", id); return json(request, env, { ok: true }); }
@@ -263,14 +263,14 @@ async function adminReject(request, env) {
   return json(request, env, { ok: true });
 }
 async function adminUnblock(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const b = await request.json().catch(() => null), id = clean(b?.studentId, 20);
   await env.DB.prepare("DELETE FROM camp_shirt_blocks WHERE student_id=?").bind(id).run();
   await audit(env, a, "SHIRT_AI_UNBLOCK", id);
   return json(request, env, { ok: true });
 }
 async function adminDelete(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "shirt"); if (a.response) return a.response;
   const b = await request.json().catch(() => null), id = clean(b?.id, 40);
   const d = await env.DB.prepare("SELECT * FROM camp_shirt_designs WHERE id=?").bind(id).first(); if (!d) return fail(request, env, "ไม่พบผลงาน", 404);
   await removeDesign(env, d); await audit(env, a, "SHIRT_DELETE", id, { studentId: d.student_id });

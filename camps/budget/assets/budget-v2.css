@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 :root{--brand:#d32f2f;--brand-d:#b71c1c;--brand-l:#fde8e8;--panel:#faf3f2;--ink:#171212;--mute:#6b6163;--line:#efe6e5;--page:#e8eaea;--in:#15803d;--don:#6d28d9;--r:24px;--nav-h:68px;--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px);--col:520px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
@@ -576,3 +575,5 @@ body{-webkit-font-smoothing:antialiased}
 .install{border-radius:8px;border:1px solid var(--line)}
 .pn.out::before{background:#b42318}
 .badge{background:var(--ink)}
+
+.gatelegal{margin:12px 0 0;font-size:13px;line-height:1.7;text-align:center;color:#6b6163}.gatelegal a{color:inherit;text-decoration:underline;text-underline-offset:3px}

@@ -2,6 +2,7 @@
 // Admins can also assign a student, who then signs in with their @lru.ac.th account on the public page /hr/survey and fills in their own form.
 // Students and departments come from the HR tables (camp_students / camp_selections / camp_departments).
 import { json } from "../lib/cors.js";
+import { permDenied } from "./camps.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 import { SURVEY_FORMS, SURVEY_TITLE, SURVEY_SUBTITLE, SURVEY_INSTRUCTION } from "../lib/survey-forms.js";
 
@@ -10,14 +11,16 @@ const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[​-‍⁠﻿]/g,
 const ADMIN_ROLES = ["camp_admin", "budget_admin"];
 export const LIMITS = { school: 150, coordinator: 120, phone: 30, surveyor: 120, note: 300, summary: 2000 };
 
-async function requireAdmin(req, env) {
+async function requireAdmin(req, env, perm = "survey") {
   const a = await getAuth0UserFromRequest(req, env);
   if (!a.user) return { response: fail(req, env, a.unavailable ? "ยังเข้าสู่ระบบไม่ได้ในขณะนี้ ลองใหม่อีกครั้ง" : "กรุณาเข้าสู่ระบบ", a.unavailable ? 503 : 401) };
   let ok = false;
   try { ok = (await getAuth0Roles(env, a.user.sub)).some((r) => ADMIN_ROLES.includes(r)); }
   catch (e) { return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
   if (!ok) return { response: fail(req, env, "ต้องเป็นแอดมิน", 403) };
-  return { user: a.user, email: tidy(a.user.email || "").toLowerCase() };
+  const w = { user: a.user, email: tidy(a.user.email || "").toLowerCase() };
+  const d = await permDenied(req, env, w, perm); if (d) return { response: d };
+  return w;
 }
 export function parseStudentEmail(email) {
   const m = /^([a-z]{2})(\d{6,12})@lru\.ac\.th$/i.exec(String(email || "").trim());
