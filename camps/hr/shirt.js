@@ -77,8 +77,9 @@ function renderShirtSubmit() {
   const host = $('shSubmit'), x = shirtX, my = x.myDesign; if (!host) return;
   const editable = x.submit === 'open' && x.vote !== 'open';
   let h = '<div class="card shsec"><h2>ผลงานของฉัน</h2>';
+  if (my && my.rejected) h += '<div class="notice" role="alert"><b>ผลงานนี้เข้าร่วมไม่ได้</b><br>ตรวจพบว่าผลงานนี้เป็นภาพที่สร้างด้วย AI หรือมีส่วนที่สร้างด้วย AI จึงไม่สามารถให้ผลงานนี้เข้าร่วมได้' + (my.rejected.note ? '<br>หมายเหตุจากแอดมิน: ' + esc(my.rejected.note) : '') + (editable ? '<br>ส่งรูปใหม่ที่ออกแบบเองเพื่อกลับเข้าร่วมได้จนถึง ' + esc(shWhen(x.schedule.submitTo)) : '') + '</div>';
   if (!editable) {
-    h += my ? '<div class="shmine"><button type="button" class="shimg shthumb" id="shMineBig" aria-label="ขยายรูป">' + shMock(my.image, 'white') + '</button><div><b>' + esc(shName(my)) + '</b>' + shWho(my) + (my.description ? '<p class="muted">' + esc(my.description) + '</p>' : '') + (my.hidden ? '<p class="warn">แอดมินซ่อนผลงานนี้</p>' : '') + '</div></div>'
+    h += my ? '<div class="shmine"><button type="button" class="shimg shthumb" id="shMineBig" aria-label="ขยายรูป">' + shMock(my.image, 'white') + '</button><div><b>' + esc(shName(my)) + '</b>' + shWho(my) + (my.description ? '<p class="muted">' + esc(my.description) + '</p>' : '') + (my.hidden && !my.rejected ? '<p class="warn">แอดมินซ่อนผลงานนี้</p>' : '') + '</div></div>'
       : '<p class="muted">' + (x.submit === 'before' ? 'ยังไม่ถึงเวลารับผลงาน เปิดรับ ' + esc(shWhen(x.schedule.submitFrom)) : x.submit === 'unset' ? 'ยังไม่กำหนดวันรับผลงาน' : 'ปิดรับผลงานแล้ว คุณไม่ได้ส่งผลงาน') + '</p>';
     host.innerHTML = h + '</div>'; if ($('shMineBig')) $('shMineBig').onclick = () => shLightbox(my.image, shName(my), shWho(my)); return;
   }

@@ -10,7 +10,7 @@
 //             GET  /camps/shirt/gallery                   the designs with designer + class group, for the public page /shirt/ (no sign-in; admins can switch it off)
 //   Admin:    GET  /camps/shirt/admin/overview            POST /camps/shirt/admin/settings
 //             POST /camps/shirt/admin/sample   body = picture   |  POST /camps/shirt/admin/sample/reset
-//             POST /camps/shirt/admin/design/hide | delete | recheck (run the AI check again on the stored picture)
+//             POST /camps/shirt/admin/design/hide | delete | reject | recheck (run the AI check again on the stored picture)
 import { json } from "../lib/cors.js";
 import { who, requireAdmin, clean, fail } from "./camps.js";
 import { assess } from "../lib/aicheck.js";
@@ -74,7 +74,7 @@ async function me(request, env, url) {
     gallery = rows.map((d) => shapeDesign(url, d, { mine: d.student_id === s.student_id, ...(st.resultsPublic ? { votes: d.votes } : {}) }));
   }
   return json(request, env, { student: { studentId: s.student_id, name: s.name }, schedule: { submitFrom: st.submitFrom, submitTo: st.submitTo, voteFrom: st.voteFrom, voteTo: st.voteTo }, submit: ph.submit, vote: ph.vote, now,
-    resultsPublic: st.resultsPublic, sample: sampleInfo(url, st), myDesign: my ? shapeDesign(url, my, { hidden: !!my.hidden }) : null, myVote: vote?.design_id || null, blockedUntil: (await activeBlock(env, s.student_id))?.until || null, designs: gallery });
+    resultsPublic: st.resultsPublic, sample: sampleInfo(url, st), myDesign: my ? shapeDesign(url, my, { hidden: !!my.hidden, rejected: my.ai_rejected ? { note: my.reject_note || "", at: my.rejected_at || null } : null }) : null, myVote: vote?.design_id || null, blockedUntil: (await activeBlock(env, s.student_id))?.until || null, designs: gallery });
 }
 async function saveDesign(request, env, url) {
   const r = await student(request, env); if (r.response) return r.response;
@@ -110,6 +110,7 @@ async function saveDesign(request, env, url) {
   await env.DB.prepare(`INSERT INTO camp_shirt_designs (id,student_id,designer_name,class_group,title,description,image_key,image_mime,ai_level,ai_score,ai_signals) VALUES (?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(student_id) DO UPDATE SET designer_name=excluded.designer_name,class_group=excluded.class_group,title=excluded.title,description=excluded.description,image_key=excluded.image_key,image_mime=excluded.image_mime,ai_level=excluded.ai_level,ai_score=excluded.ai_score,ai_signals=excluded.ai_signals,updated_at=datetime('now')`)
     .bind(id, s.student_id, designer, group, title, description, imageKey, mime, ai ? ai.level : old?.ai_level || "", ai ? ai.score : old?.ai_score ?? null, ai ? JSON.stringify(ai.signals) : old?.ai_signals || "[]").run();
+  if (kind && old?.ai_rejected) await env.DB.prepare("UPDATE camp_shirt_designs SET hidden=0,ai_rejected=0,reject_note='',rejected_at=NULL WHERE student_id=?").bind(s.student_id).run();   // a new picture is a new chance
   if (kind && old?.image_key && old.image_key !== imageKey) { try { await env.FILES.delete(old.image_key); } catch (e) { /* orphan file is harmless */ } }
   await audit(env, w, "SHIRT_DESIGN", s.student_id, { created: !old, newImage: !!kind, ...(ai && ai.level !== "none" ? { ai: ai.level } : {}) });
   return json(request, env, { ok: true, design: shapeDesign(url, await mine(env, s.student_id)) });
@@ -206,7 +207,7 @@ async function adminOverview(request, env, url) {
   const blocks = ((await env.DB.prepare("SELECT b.student_id,b.until,s.name FROM camp_shirt_blocks b LEFT JOIN camp_students s ON s.student_id=b.student_id WHERE b.until>? ORDER BY b.until").bind(now).all()).results || [])
     .map((b) => ({ studentId: b.student_id, studentName: b.name || "", until: b.until }));
   return json(request, env, { now, settings: publicSettings(st), sample: sampleInfo(url, st), submit: ph.submit, vote: ph.vote, totals: { designs: rows.length, votes: voters }, blocks,
-    designs: rows.map((d) => shapeDesign(url, d, { studentId: d.student_id, studentName: d.student_name || "", hidden: !!d.hidden, votes: d.votes, createdAt: d.created_at, ai: { level: d.ai_level || "", score: d.ai_score, signals: JSON.parse(d.ai_signals || "[]") } })) });
+    designs: rows.map((d) => shapeDesign(url, d, { studentId: d.student_id, studentName: d.student_name || "", hidden: !!d.hidden, rejected: !!d.ai_rejected, rejectNote: d.reject_note || "", votes: d.votes, createdAt: d.created_at, ai: { level: d.ai_level || "", score: d.ai_score, signals: JSON.parse(d.ai_signals || "[]") } })) });
 }
 // both ends of a window or none; the vote window cannot start before submissions end (a design could otherwise be swapped after it gathered votes)
 async function adminSettings(request, env) {
@@ -229,7 +230,7 @@ async function adminHide(request, env) {
   const b = await request.json().catch(() => null), id = clean(b?.id, 40);
   const d = await env.DB.prepare("SELECT id FROM camp_shirt_designs WHERE id=?").bind(id).first(); if (!d) return fail(request, env, "ไม่พบผลงาน", 404);
   const hidden = b?.hidden === true ? 1 : 0;
-  await env.DB.prepare("UPDATE camp_shirt_designs SET hidden=? WHERE id=?").bind(hidden, id).run();
+  await env.DB.prepare("UPDATE camp_shirt_designs SET hidden=?" + (hidden ? "" : ",ai_rejected=0,reject_note='',rejected_at=NULL") + " WHERE id=?").bind(hidden, id).run();   // showing a design again also lifts an AI rejection
   if (hidden) await env.DB.prepare("DELETE FROM camp_shirt_votes WHERE design_id=?").bind(id).run();   // votes for a pulled design are returned
   await audit(env, a, hidden ? "SHIRT_HIDE" : "SHIRT_UNHIDE", id);
   return json(request, env, { ok: true });
@@ -243,7 +244,23 @@ async function adminRecheck(request, env) {
   const ai = await assess(env, new Uint8Array(await obj.arrayBuffer()), d.image_mime, Array.isArray(old) ? old.join(",") : "");   // keeps the tags the browser read from the original file
   await env.DB.prepare("UPDATE camp_shirt_designs SET ai_level=?,ai_score=?,ai_signals=? WHERE id=?").bind(ai.level, ai.score, JSON.stringify(ai.signals), id).run();
   await audit(env, a, "SHIRT_AI_RECHECK", id, { level: ai.level, score: ai.score });
-  return json(request, env, { ok: true, ai: { level: ai.level, score: ai.score, signals: ai.signals }, scored: ai.score != null });
+  const rejected = ai.level === "likely";
+  if (rejected) { await rejectDesign(env, id, "ระบบตรวจพบว่ารูปน่าจะสร้างด้วย AI"); await audit(env, a, "SHIRT_AI_REJECT", id, { auto: true, score: ai.score }); }
+  return json(request, env, { ok: true, ai: { level: ai.level, score: ai.score, signals: ai.signals }, scored: ai.score != null, rejected });
+}
+// reject (or lift the rejection of) a design as AI-generated: it leaves the gallery, its votes are returned and the student sees why
+async function rejectDesign(env, id, note) {
+  await env.DB.prepare("UPDATE camp_shirt_designs SET hidden=1,ai_rejected=1,reject_note=?,rejected_at=? WHERE id=?").bind(note, Date.now(), id).run();
+  await env.DB.prepare("DELETE FROM camp_shirt_votes WHERE design_id=?").bind(id).run();
+}
+async function adminReject(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null), id = clean(b?.id, 40);
+  const d = await env.DB.prepare("SELECT id FROM camp_shirt_designs WHERE id=?").bind(id).first(); if (!d) return fail(request, env, "ไม่พบผลงาน", 404);
+  if (b?.rejected === false) { await env.DB.prepare("UPDATE camp_shirt_designs SET hidden=0,ai_rejected=0,reject_note='',rejected_at=NULL WHERE id=?").bind(id).run(); await audit(env, a, "SHIRT_AI_REJECT_LIFT", id); return json(request, env, { ok: true }); }
+  await rejectDesign(env, id, clean(b?.note, 300));
+  await audit(env, a, "SHIRT_AI_REJECT", id, { note: clean(b?.note, 300) });
+  return json(request, env, { ok: true });
 }
 async function adminUnblock(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
@@ -277,6 +294,7 @@ export async function shirt(request, env, url) {
     if (m === "POST" && p === "/camps/shirt/admin/settings") return await adminSettings(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/hide") return await adminHide(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/block/clear") return await adminUnblock(request, env);
+    if (m === "POST" && p === "/camps/shirt/admin/design/reject") return await adminReject(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/recheck") return await adminRecheck(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/delete") return await adminDelete(request, env);
     return fail(request, env, "Not Found", 404);

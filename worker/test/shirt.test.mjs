@@ -165,5 +165,16 @@ console.log('9. AI-generated image check (blocks 24 h when likely)');
  r=await call('admin','POST','/camps/shirt/admin/design/recheck',{id:did});a=await ai();ok(r.s===200&&r.d.scored&&a.level==='review'&&a.score===0.7,'recheck stores the new score (0.7 -> review)');
  globalThis.fetch=async(u,o)=>{if(String(u).includes('sightengine'))return new Response(JSON.stringify({type:{ai_generated:0.02}}),{headers:{'content-type':'application/json'}});return realFetch(u,o)};
  r=await call('admin','POST','/camps/shirt/admin/design/recheck',{id:did});a=await ai();ok(r.s===200&&a.level==='none'&&a.score===0.02,'recheck can clear a flag');}
+ {const did=db.prepare("SELECT id FROM camp_shirt_designs WHERE student_id='6740102222'").get().id;
+ r=await call('s3','POST','/camps/shirt/admin/design/reject',{id:did,note:'x'});ok(r.s===403,'students cannot reject');
+ r=await call('admin','POST','/camps/shirt/admin/design/reject',{id:'f'.repeat(24)});ok(r.s===404,'reject unknown 404');
+ r=await call('admin','POST','/camps/shirt/admin/design/reject',{id:did,note:'ลายน้ำ AI'});ok(r.s===200,'admin rejects a design as AI');
+ r=await call('s3','GET','/camps/shirt/me');ok(r.d.myDesign.rejected&&r.d.myDesign.rejected.note==='ลายน้ำ AI'&&r.d.myDesign.hidden,'student sees the rejection and its note');
+ ok(!(r.d.gallery||[]).some(x=>x.id===did),'rejected design leaves the gallery');
+ r=await call('admin','GET','/camps/shirt/admin/overview');ok(r.d.designs.find(x=>x.id===did).rejected===true,'admin overview marks it rejected');
+ r=await call('admin','POST','/camps/shirt/admin/design/reject',{id:did,rejected:false});r=await call('s3','GET','/camps/shirt/me');ok(!r.d.myDesign.rejected&&!r.d.myDesign.hidden,'admin can lift the rejection');
+ r=await call('admin','POST','/camps/shirt/admin/design/reject',{id:did});r=await call('s3','POST',base+'&meta=',null,PNG);r=await call('s3','GET','/camps/shirt/me');ok(r.d.myDesign&&!r.d.myDesign.rejected&&!r.d.myDesign.hidden,'a new picture clears the rejection');
+ env.SIGHTENGINE_USER='u';env.SIGHTENGINE_SECRET='k';globalThis.fetch=async(u,o)=>{if(String(u).includes('sightengine'))return new Response(JSON.stringify({type:{ai_generated:0.95}}),{headers:{'content-type':'application/json'}});return realFetch(u,o)};
+ r=await call('admin','POST','/camps/shirt/admin/design/recheck',{id:did});ok(r.d.rejected===true,'recheck that finds AI rejects the design automatically');r=await call('s3','GET','/camps/shirt/me');ok(r.d.myDesign.rejected,'student sees the automatic rejection');}
  globalThis.fetch=realFetch;delete env.SIGHTENGINE_USER;delete env.SIGHTENGINE_SECRET}
 console.log(failn?`shirt: ${pass} passed, ${failn} FAILED`:`shirt: ${pass} passed, 0 failed`);process.exit(failn?1:0);
