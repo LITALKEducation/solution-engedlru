@@ -205,7 +205,7 @@ function editProfile() {
     + f('pfNick', 'ชื่อเล่น', 'maxlength="30"' + (akaOpen ? '' : ' disabled'), akaOpen) + f('pfAka', 'ชื่อ AKA', 'maxlength="40"' + (akaOpen ? '' : ' disabled'), akaOpen) + '</div>'
     + '<p class="pfsec">ข้อมูลส่วนตัว</p><div class="pfg">' + f('pfBirth', 'วันเกิด', 'type="date" min="1900-01-01" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก" placeholder="x-xxxx-xxxxx-xx-x"')
     + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + '</div>'
-    + '<p class="pfsec">สุขภาพและอาหาร <span class="pfopt">ไม่บังคับกรอก</span></p><p class="pfnote">ใช้ดูแลเรื่องอาหารและความปลอดภัยในค่ายเท่านั้น เห็นได้เฉพาะคุณและแอดมิน</p><div class="pfg">'
+    + '<p class="pfsec">สุขภาพและอาหาร <span class="pfopt">ไม่บังคับกรอก</span></p><p class="pfnote">ใช้ดูแลเรื่องอาหารและความปลอดภัยในค่ายเท่านั้น เห็นได้เฉพาะคุณและแอดมิน การกรอกข้อมูลในหมวดนี้ถือเป็นการยินยอมตาม <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> ล้างช่องเพื่อถอนความยินยอมได้</p><div class="pfg">'
     + selHTML('pfBlood', 'กรุ๊ปเลือด', bloodOpts, st.blood_type || '') + selHTML('pfDiet', 'วิธีการกิน', dietOpts, dietVal)
     + '<div id="pfDietOW" class="span2 ' + (dietVal === '__other' ? '' : 'hidden') + '">' + f('pfDietO', 'ระบุวิธีการกิน', 'maxlength="100"', false) + '</div>'
     + f('pfAllergy', 'แพ้อาหาร', 'maxlength="300" placeholder="เช่น กุ้ง ถั่วลิสง นมวัว"', false, true) + f('pfMedical', 'โรคประจำตัว / ยาที่ใช้ประจำ', 'maxlength="300" placeholder="เช่น หอบหืด ภูมิแพ้"', false, true) + '</div>'
@@ -548,7 +548,7 @@ function renderGate(x) {
   let g = $('gate'); if (!g) { g = document.createElement('div'); g.id = 'gate'; g.className = 'card acct gate'; const m = document.querySelector('main'); m.insertBefore(g, m.firstChild); }
   if (x && x.loading) { g.innerHTML = '<div class="skeleton" style="height:90px"></div>'; return; }
   if (x && x.error) { g.innerHTML = '<h2>เข้าใช้งานไม่ได้ชั่วคราว</h2><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
-  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : SHIRT ? 'ส่งผลงานและโหวตเสื้อค่าย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+  g.innerHTML = '<h2>เข้าสู่ระบบก่อน</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลมหาวิทยาลัย (@lru.ac.th) เพื่อ' + (TAB === 'survey' ? 'กรอกแบบสำรวจโรงเรียนที่ได้รับมอบหมาย' : PROFILE ? 'ดูบัตรและ QR Code ของคุณ' : AKA ? 'ตั้งชื่อเล่นและ AKA' : SHIRT ? 'ส่งผลงานและโหวตเสื้อค่าย' : 'ดูฝ่ายและลงทะเบียน') + '</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p>';
 }
 function ungate() { document.body.classList.remove('gated'); const g = $('gate'); if (g) g.remove(); }
 let polling = false;

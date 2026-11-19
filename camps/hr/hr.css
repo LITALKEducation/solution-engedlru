@@ -581,3 +581,5 @@ nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-li
 .shcap b{font-size:.9375rem;text-shadow:0 1px 5px rgba(0,0,0,.6)}.shcap span{font-size:.8125rem;opacity:.9}.shcap i{font-style:normal;opacity:.6}
 .shrules{grid-template-columns:1fr!important;gap:6px}
 .shrules li{background:none!important;padding:4px 2px!important;font-weight:500}.shrules li.no{background:none!important;font-weight:700}
+
+.gatelegal{margin:12px 0 0;font-size:.8125rem;color:var(--mute)!important;text-align:center}.gatelegal a{color:var(--ink)!important;text-decoration:underline;text-underline-offset:3px}
