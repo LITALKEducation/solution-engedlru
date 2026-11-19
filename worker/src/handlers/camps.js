@@ -251,7 +251,7 @@ async function me(request, env, url) {
   if (!w.parsed) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
   else {
-    student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,s.name_en,s.birth_date,s.phone,s.guardian_phone,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
+    student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,s.name_en,s.birth_date,s.phone,s.guardian_phone,s.food_allergy,s.diet,s.blood_type,s.medical,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
     if (!student) reason = "not_in_roster";
     else if (!student.gender) reason = "no_gender";
     if (student) selection = await env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(student.student_id).first();
@@ -278,7 +278,7 @@ const normalizeNameEn = (v) => { const s = clean(v, 200).replace(/\s+/g, " "); i
 async function updateProfile(request, env) {
   const w = await who(request, env); if (w.response) return w.response;
   if (!w.parsed || !w.verified) return fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403);
-  const cur = await env.DB.prepare("SELECT s.student_id,s.name,s.national_id,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
+  const cur = await env.DB.prepare("SELECT s.student_id,s.name,s.national_id,s.food_allergy,s.diet,s.blood_type,s.medical,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
   if (!cur) return fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403);
   const b = await request.json().catch(() => null);
   const name = clean(b?.name, 200); if (!name) return fail(request, env, "กรุณาระบุชื่อ-นามสกุล");
@@ -287,8 +287,14 @@ async function updateProfile(request, env) {
   const birth = normalizeBirth(b?.birthDate); if (!birth) return fail(request, env, birth === null ? "วันเกิดไม่ถูกต้อง" : "กรอกวันเกิด", 400, { field: "birthDate" });
   const phone = normalizePhone(b?.phone); if (!phone) return fail(request, env, phone === null ? "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" : "กรอกเบอร์โทรศัพท์", 400, { field: "phone" });
   const gphone = normalizePhone(b?.guardianPhone); if (!gphone) return fail(request, env, gphone === null ? "เบอร์ผู้ปกครองต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" : "กรอกเบอร์ผู้ปกครอง", 400, { field: "guardianPhone" });
+  // optional health / food details: absent = keep what is stored, "" = clear
+  const BLOOD = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "unknown"];
+  const opt = (v, keep, max) => (v === undefined ? (keep || "") : clean(v, max));
+  const allergy = opt(b?.foodAllergy, cur.food_allergy, 300), diet = opt(b?.diet, cur.diet, 100), medical = opt(b?.medical, cur.medical, 300);
+  let blood = b?.bloodType === undefined ? (cur.blood_type || "") : clean(b.bloodType, 10);
+  if (blood && !BLOOD.includes(blood)) return fail(request, env, "กรุ๊ปเลือดไม่ถูกต้อง", 400, { field: "bloodType" });
   const open = (await akaState(env)) === "open";
-  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,name_en=?,birth_date=?,phone=?,guardian_phone=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid, nameEn, birth, phone, gphone, cur.student_id)];
+  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,name_en=?,birth_date=?,phone=?,guardian_phone=?,food_allergy=?,diet=?,blood_type=?,medical=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid, nameEn, birth, phone, gphone, allergy, diet, blood, medical, cur.student_id)];
   // nickname + AKA are required while naming is open; once an admin closes naming they stay as they are
   if (open) {
     const names = readNames(b); if (names.error) return fail(request, env, names.error, 400, { field: "nickname" });
@@ -486,7 +492,7 @@ async function adminStudents(request, env, url) {
   if (GENDERS.includes(gender)) { where.push("s.gender=?"); p.push(gender); }
   // everything stored about a student (admins only): names, nickname / AKA, birth date, phones, national ID, department
   const rows = await env.DB.prepare(
-    `SELECT s.student_id,s.name,s.name_en,s.year,s.gender,s.national_id,s.birth_date,s.phone,s.guardian_phone,a.nickname,a.aka,sel.department_code,d.name department_name
+    `SELECT s.student_id,s.name,s.name_en,s.year,s.gender,s.national_id,s.birth_date,s.phone,s.guardian_phone,s.food_allergy,s.diet,s.blood_type,s.medical,a.nickname,a.aka,sel.department_code,d.name department_name
      FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code LEFT JOIN camp_aka a ON a.student_id=s.student_id
      WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 2000`).bind(...p).all();
   return json(request, env, { students: rows.results || [] });

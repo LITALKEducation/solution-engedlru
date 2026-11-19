@@ -34,6 +34,12 @@ r=await call('s1','GET','/camps/me');const st=r.d.student;ok(st.name==='Student 
 for(const k of ['name','nameEn','birthDate','nationalId','phone','guardianPhone','nickname','aka']){r=await call('s1','POST','/camps/me/profile',P({[k]:''}));ok(r.s===400,'required: '+k+' empty rejected');r=await call('s1','POST','/camps/me/profile',P({[k]:undefined}));ok(r.s===400,'required: '+k+' missing rejected')}
 for(const [k,v] of [['nameEn','สมชาย'],['nameEn','A1'],['birthDate','2005-02-30'],['birthDate','2999-01-01'],['birthDate','09/03/2005'],['phone','12345'],['guardianPhone','abcdefghij'],['nationalId','12']]){r=await call('s1','POST','/camps/me/profile',P({[k]:v}));ok(r.s===400,'rejected '+k+'='+v)}
 r=await call('s1','POST','/camps/me/profile',P({birthDate:'2548-03-09'}));r=await call('s1','GET','/camps/me');ok(r.d.student.birth_date==='2005-03-09','Buddhist-era year converted');
+r=await call('s1','GET','/camps/me');ok(r.d.student.food_allergy===''||r.d.student.food_allergy===null,'health fields start empty');
+r=await call('s1','POST','/camps/me/profile',P({foodAllergy:'  กุ้ง ถั่ว ',diet:'halal',bloodType:'O+',medical:'หอบหืด'}));ok(r.s===200,'optional health fields saved');
+r=await call('s1','GET','/camps/me');ok(r.d.student.food_allergy==='กุ้ง ถั่ว'&&r.d.student.diet==='halal'&&r.d.student.blood_type==='O+'&&r.d.student.medical==='หอบหืด','health fields stored (trimmed)');
+r=await call('s1','POST','/camps/me/profile',P());r=await call('s1','GET','/camps/me');ok(r.d.student.diet==='halal'&&r.d.student.blood_type==='O+','health fields kept when not resent');
+r=await call('s1','POST','/camps/me/profile',P({bloodType:'Z+'}));ok(r.s===400,'bad blood group rejected');
+r=await call('s1','POST','/camps/me/profile',P({foodAllergy:'',diet:'',bloodType:'',medical:''}));r=await call('s1','GET','/camps/me');ok(!r.d.student.food_allergy&&!r.d.student.diet&&!r.d.student.blood_type&&!r.d.student.medical,'health fields cleared with empty strings');
 r=await call('s1','GET','/camps/me');ok(r.d.student.name_en==='Student Uno','failed saves changed nothing');
 r=await call('admin','GET','/camps/admin/students?q=uno');const sx=(r.d.students||[]).find(x=>x.student_id==='6740102220');ok(sx&&sx.name_en==='Student Uno'&&sx.nickname==='Uno'&&sx.aka==='Ace'&&sx.birth_date==='2005-03-09'&&sx.phone==='0812345678'&&sx.guardian_phone==='0891234567'&&sx.national_id==='1234567890124','admin student list has every field, searchable by nickname');
 r=await call('s1','GET','/camps/admin/students');ok(r.s===403,'students list stays admin-only');

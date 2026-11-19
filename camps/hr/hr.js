@@ -172,6 +172,7 @@ function expandQr() {
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
   drawQR($('qrBig'), st.student_id, Math.min(360, Math.max(220, window.innerWidth - 80)));
 }
+const BLOODS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'], DIETS = ['ฮาลาล', 'มังสวิรัติ', 'วีแกน', 'ไม่ทานหมู', 'ไม่ทานเนื้อวัว', 'ไม่ทานอาหารทะเล'];
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 // 2005-03-09 -> "9 มีนาคม 2548"
 const fmtBirth = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? (+m[3]) + ' ' + TH_MONTHS[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; };
@@ -186,14 +187,22 @@ function editProfile() {
     + '<p class="pfsec">ข้อมูลส่วนตัว</p>' + f('pfBirth', 'วันเกิด', 'type="date" min="1900-01-01" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก"')
     + '<p class="pfsec">ติดต่อ</p>' + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"')
     + f('pfSid', 'รหัสนักศึกษา', 'disabled', false)
+    + '<p class="pfsec">สุขภาพและอาหาร <span class="pfopt">ไม่บังคับกรอก</span></p>'
+    + '<label><span>กรุ๊ปเลือด</span><select id="pfBlood"><option value="">ไม่ระบุ</option>' + BLOODS.map((x) => '<option value="' + x + '">' + (x === 'unknown' ? 'ไม่ทราบ' : x) + '</option>').join('') + '</select></label>'
+    + '<label><span>วิธีการกิน</span><select id="pfDiet"><option value="">ไม่ระบุ / กินได้ทุกอย่าง</option>' + DIETS.map((x) => '<option>' + x + '</option>').join('') + '<option value="__other">อื่น ๆ (ระบุ)</option></select></label><label id="pfDietOW" class="hidden"><span>ระบุวิธีการกิน</span><input id="pfDietO" maxlength="100"></label>'
+    + f('pfAllergy', 'แพ้อาหาร', 'maxlength="300" placeholder="เช่น กุ้ง ถั่วลิสง นมวัว" ', false) + f('pfMedical', 'โรคประจำตัว / ยาที่ใช้ประจำ', 'maxlength="300" placeholder="เช่น หอบหืด ภูมิแพ้" ', false)
     + '<p class="muted">รหัสนักศึกษา ชั้นปี เพศ และฝ่าย แก้ไม่ได้ที่นี่ (ฝ่ายเลือกได้ที่เมนู "เลือกฝ่าย")' + (akaOpen ? '' : ' · ปิดรับการแก้ชื่อเล่น/AKA แล้ว') + ' · ติดต่อแอดมินหากต้องแก้</p><div class="btns"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
   $('pfName').value = st.name || ''; $('pfNameEn').value = st.name_en || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfBirth').value = st.birth_date || '';
   $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfPhone').value = st.phone || ''; $('pfGPhone').value = st.guardian_phone || ''; $('pfSid').value = st.student_id;
+  $('pfBlood').value = st.blood_type || ''; $('pfAllergy').value = st.food_allergy || ''; $('pfMedical').value = st.medical || '';
+  const dietOther = () => { $('pfDietOW').classList.toggle('hidden', $('pfDiet').value !== '__other'); };
+  if (st.diet && DIETS.includes(st.diet)) $('pfDiet').value = st.diet; else if (st.diet) { $('pfDiet').value = '__other'; $('pfDietO').value = st.diet; }
+  dietOther(); $('pfDiet').onchange = () => { dietOther(); if ($('pfDiet').value === '__other') $('pfDietO').focus(); };
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
   $('pfForm').addEventListener('submit', async (e) => {
     e.preventDefault(); const btn = e.submitter; if (btn) btn.disabled = true;
     try {
-      const r = await post('/camps/me/profile', { name: $('pfName').value, nameEn: $('pfNameEn').value, nickname: $('pfNick').value, aka: $('pfAka').value, birthDate: $('pfBirth').value, nationalId: $('pfNid').value, phone: $('pfPhone').value, guardianPhone: $('pfGPhone').value });
+      const r = await post('/camps/me/profile', { name: $('pfName').value, nameEn: $('pfNameEn').value, nickname: $('pfNick').value, aka: $('pfAka').value, birthDate: $('pfBirth').value, nationalId: $('pfNid').value, phone: $('pfPhone').value, guardianPhone: $('pfGPhone').value, bloodType: $('pfBlood').value, diet: $('pfDiet').value === '__other' ? $('pfDietO').value.trim() : $('pfDiet').value, foodAllergy: $('pfAllergy').value, medical: $('pfMedical').value });
       if (!r.ok) { toast(await errMsg(r), true); return; }
       d.remove(); toast('บันทึกแล้ว'); await loadMe();
     } catch (x) { toast(sessionGone(x) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); }
@@ -215,21 +224,26 @@ function renderProfile() {
   // sensitive values start hidden (last digits only); the eye button shows them for a short while
   const hide = (str, keep) => { let n = 0; return String(str).split('').reverse().map((c) => (/\d/.test(c) ? (n++ < keep ? c : '•') : c)).reverse().join(''); };
   const sec = (k, v, keep, cls) => v ? '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b data-full="' + esc(v) + '" data-mask="' + esc(hide(v, keep)) + '">' + esc(hide(v, keep)) + '</b></div>' : '';
+  const secText = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b data-full="' + esc(v) + '" data-mask="••••••">••••••</b></div>';
   const row = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + esc(v) + '</b></div>';
-  const add = (k, label, href, wide) => (href ? '<a class="pf pfadd' + (wide ? ' wide' : '') + '" href="' + href + '">' : '<button type="button" class="pf pfadd" onclick="editProfile()">') + '<span>' + k + '</span><b>+ ' + label + '</b>' + (href ? '</a>' : '</button>');
+  const add = (k, label, href, wide) => (href ? '<a class="pf pfadd' + (wide ? ' wide' : '') + '" href="' + href + '">' : '<button type="button" class="pf pfadd' + (wide ? ' wide' : '') + '" onclick="editProfile()">') + '<span>' + k + '</span><b>+ ' + label + '</b>' + (href ? '</a>' : '</button>');
   const phone = fmtPhone(st.phone), gphone = fmtPhone(st.guardian_phone), nid = fmtNid(st.national_id);
   const penIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
   const eyeIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   box.innerHTML = '<div class="card idcard">'
     + '<div class="pfhead">' + (authPicture ? '<img class="pfimg" src="' + esc(authPicture) + '" alt="รูปโปรไฟล์ของ ' + esc(st.name) + '" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pfimg ph\',textContent:\'' + init + '\'}))">' : '<span class="pfimg ph" aria-hidden="true">' + init + '</span>')
     + '<div class="pfwho"><h2>' + esc(st.name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</h2>' + (st.name_en ? '<div class="pfen">' + esc(st.name_en) + '</div>' : '')
-    + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span>' + (dep ? '<span class="chip dep">' + esc(dep) + '</span>' : '') + '</div></div>'
-    + '<button class="pfedit" type="button" onclick="editProfile()" aria-label="แก้ไขข้อมูล" title="แก้ไขข้อมูล">' + penIc + '</button></div>'
+    + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span>' + (dep ? '<span class="chip dep">' + esc(dep) + '</span>' : '') + '</div></div></div>'
+    + '<button class="btn pfeditbtn" type="button" onclick="editProfile()">' + penIc + '<span>แก้ไขข้อมูล</span></button>'
     + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><span class="qrlbl">QR รหัสนักศึกษา</span><b class="qrid">' + esc(st.student_id) + '</b><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
-    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลส่วนตัว</h3><button type="button" class="pfeye" id="pfEye" aria-pressed="false" aria-label="แสดงข้อมูลที่ซ่อนไว้" title="แสดง / ซ่อนเบอร์และเลขบัตร">' + eyeIc + '</button></div><div class="pfgrid">'
+    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลส่วนตัว</h3><button type="button" class="pfeye" id="pfEye" aria-pressed="false" aria-label="แสดงข้อมูลที่ซ่อนไว้" title="แสดง / ซ่อนข้อมูลสำคัญ">' + eyeIc + '</button></div><div class="pfgrid">'
     + (st.nickname ? row('ชื่อเล่น', st.nickname) : add('ชื่อเล่น', 'เพิ่มชื่อเล่น')) + (st.aka ? row('ชื่อ AKA', st.aka) : add('ชื่อ AKA', 'ตั้งชื่อ AKA', '/hr/aka'))
-    + row('วันเกิด', fmtBirth(st.birth_date) || '—', 'wide') + (phone ? sec('เบอร์โทรศัพท์', phone, 4) : add('เบอร์โทรศัพท์', 'เพิ่มเบอร์')) + (gphone ? sec('เบอร์ผู้ปกครอง', gphone, 4) : add('เบอร์ผู้ปกครอง', 'เพิ่มเบอร์')) + '</div>'
-    + '<h3 class="pfh">ข้อมูลประจำตัว</h3><div class="pfgrid">' + (dep ? row('ฝ่าย', dep) : add('ฝ่าย', 'เลือกฝ่าย', '/hr/choose', true)) + (nid ? sec('รหัสบัตรประชาชน 13 หลัก', nid, 3, 'wide nid') : '') + '</div>'
+    + row('วันเกิด', fmtBirth(st.birth_date) || '—', 'wide') + (phone ? sec('เบอร์โทรศัพท์', phone, 4) : add('เบอร์โทรศัพท์', 'เพิ่มเบอร์')) + (gphone ? sec('เบอร์ผู้ปกครอง', gphone, 4) : add('เบอร์ผู้ปกครอง', 'เพิ่มเบอร์'))
+    + (nid ? sec('รหัสบัตรประชาชน 13 หลัก', nid, 3, 'wide nid') : '') + '</div>'
+    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลประจำตัว <span class="pfopt">สุขภาพและอาหารไม่บังคับกรอก</span></h3></div><div class="pfgrid">'
+    + (dep ? row('ฝ่าย', dep, 'wide') : add('ฝ่าย', 'เลือกฝ่าย', '/hr/choose', true))
+    + (st.blood_type ? row('กรุ๊ปเลือด', st.blood_type === 'unknown' ? 'ไม่ทราบ' : st.blood_type) : add('กรุ๊ปเลือด', 'เพิ่ม')) + (st.diet ? row('วิธีการกิน', st.diet) : add('วิธีการกิน', 'เพิ่ม'))
+    + (st.food_allergy ? row('แพ้อาหาร', st.food_allergy, 'wide') : add('แพ้อาหาร', 'เพิ่ม', '', true)) + (st.medical ? secText('โรคประจำตัว', st.medical, 'wide') : add('โรคประจำตัว', 'เพิ่ม', '', true)) + '</div>'
     + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
   let eyeT = 0; const eye = $('pfEye');
   const setEye = (on) => { clearTimeout(eyeT); eye.setAttribute('aria-pressed', on ? 'true' : 'false'); eye.classList.toggle('on', on); box.querySelectorAll('[data-full]').forEach((el) => { el.textContent = on ? el.dataset.full : el.dataset.mask; }); if (on) eyeT = setTimeout(() => setEye(false), 20000); };
