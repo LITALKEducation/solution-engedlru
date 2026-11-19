@@ -11,6 +11,17 @@ const shName = (d) => d.title || d.designer;   // the title is optional (old des
 const shWho = (d) => '<p class="shwho">ออกแบบโดย <b>' + esc(d.designer) + '</b> · ' + esc(d.classGroup) + '</p>';
 const shErr = async (r) => { try { const d = await r.json(); return d.error || 'เกิดข้อผิดพลาด (' + r.status + ')'; } catch (e) { return 'เกิดข้อผิดพลาด (' + r.status + ')'; } };
 
+// AI-generation tags embedded in the ORIGINAL file (resizing strips them): returns short keys the Worker whitelists (see worker/src/lib/aicheck.js)
+async function shMeta(file) {
+  try {
+    const n = file.size, parts = [file.slice(0, 262144), n > 393216 ? file.slice(n - 131072) : null].filter(Boolean);
+    const t = (await Promise.all(parts.map(async (p) => new TextDecoder('latin1').decode(await p.arrayBuffer())))).join('\n');
+    const rules = [['iptc_ai', /trainedAlgorithmicMedia|compositeSynthetic|algorithmicMedia/], ['sd_params', /Steps: \d+, Sampler:|Negative prompt:|"class_type"\s*:/], ['midjourney', /Midjourney/i],
+      ['dalle', /DALL[-\u00b7. ]?E/i], ['openai', /OpenAI|ChatGPT/], ['firefly', /Adobe Firefly/i], ['gemini', /Made with Google AI|Imagen \d|SynthID/], ['c2pa', /c2pa|jumbf/i]];
+    return rules.filter((r) => r[1].test(t)).map((r) => r[0]);
+  } catch (e) { return []; }
+}
+
 // downscale in the browser: longest side 1080 px; the server still checks the type and size
 function shResize(file) {
   return new Promise((res, rej) => {
@@ -31,6 +42,10 @@ function shResize(file) {
   });
 }
 // designs are shown as the pictures they are: no mock-up, no layout
+const AI_KEYS = { iptc_ai: 'แท็ก AI ในไฟล์', sd_params: 'พารามิเตอร์ Stable Diffusion', midjourney: 'Midjourney', dalle: 'DALL·E', openai: 'OpenAI', firefly: 'Adobe Firefly', gemini: 'Google AI', c2pa: 'Content Credentials' };
+const shAi = (a) => !a || !a.level ? '<p class="muted">ตรวจ AI: ยังไม่ได้ตรวจ</p>' : a.level === 'none' ? '<p class="muted">ตรวจ AI: ไม่พบสัญญาณ</p>'
+  : '<p><span class="tag' + (a.level === 'likely' ? ' bad' : '') + '">' + (a.level === 'likely' ? 'น่าจะสร้างด้วย AI' : 'อาจสร้างด้วย AI ควรตรวจสอบ') + '</span></p><p class="muted">'
+    + (a.score != null ? 'คะแนน ' + Math.round(a.score * 100) + '%' + (a.signals.length ? ' · ' : '') : '') + a.signals.map((k) => esc(AI_KEYS[k] || k)).join(', ') + '</p>';
 const shMock = (src) => '<img class="shpic" loading="lazy" src="' + esc(src) + '" alt="">';
 function shLightbox(src, title, whoHtml) {
   const d = openDlg('<h3>' + esc(title) + '</h3>' + (whoHtml || '') + '<div class="shbig"><img src="' + esc(src) + '" alt="' + esc(title) + '"></div><div class="btns"><button class="btn primary" data-x>ปิด</button></div>');
@@ -74,13 +89,13 @@ function renderShirtSubmit() {
     + '<div class="shlive" id="shLive" aria-live="polite"></div></div>';
   host.innerHTML = h + '</div>';
   $('shDesigner').value = my ? my.designer : (x.student && x.student.name) || ''; $('shGroup').value = my ? my.classGroup : '';
-  let blob = null, blobUrl = null;
+  let meta = [], blob = null, blobUrl = null;
   const live = () => { $('shLive').innerHTML = shLive(blobUrl || (my && my.image) || '', $('shDesigner').value.trim(), $('shGroup').value.trim()); };
   ['shDesigner', 'shGroup'].forEach((id) => { $(id).oninput = live; }); live();
   $('shFile').onchange = async (e) => {
-    const f = e.target.files[0]; blob = null; if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; } if (!f) return live();
+    const f = e.target.files[0]; blob = null; meta = []; if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; } if (!f) return live();
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { e.target.value = ''; live(); return toast('ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น', true); }
-    try { blob = await shResize(f); blobUrl = URL.createObjectURL(blob); live(); } catch (err) { e.target.value = ''; live(); toast('เปิดไฟล์รูปไม่ได้', true); }
+    try { meta = await shMeta(f); blob = await shResize(f); blobUrl = URL.createObjectURL(blob); live(); } catch (err) { e.target.value = ''; live(); toast('เปิดไฟล์รูปไม่ได้', true); }
   };
   $('shForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -90,7 +105,7 @@ function renderShirtSubmit() {
     if (!my && !blob) { $('shFile').focus(); return toast('เลือกรูปลายเสื้อ', true); }
     $('shSave').disabled = true;
     try {
-      const q = new URLSearchParams({ designer, group, title: my ? my.title : '', description: my ? my.description : '' });   // no title / description fields any more: keep what an old design has
+      const q = new URLSearchParams({ designer, group, title: my ? my.title : '', description: my ? my.description : '', meta: blob ? meta.join(',') : '' });   // no title / description fields any more: keep what an old design has
       const r = await api('/camps/shirt/design?' + q, { method: 'POST', headers: blob ? { 'Content-Type': blob.type } : {}, body: blob || undefined });
       if (!r.ok) { toast(await shErr(r), true); await loadShirt(); return; }
       toast('บันทึกผลงานแล้ว'); await loadShirt();
@@ -153,7 +168,7 @@ function renderShirtAdmin() {
     + '<div class="filerow"><button class="btn primary" type="button" id="shUpSample">' + (smp.image ? 'เปลี่ยนรูป' : 'อัปโหลดรูป') + '</button>' + (smp.image ? '<button class="btn danger" type="button" id="shResetSample">ลบรูปเสื้อตัวอย่าง</button>' : '') + '</div></div></div>'
     + '<div class="panel"><h3>ผลงานทั้งหมด <span class="muted">(' + a.totals.designs + ' ผลงาน · ' + a.totals.votes + ' โหวต)</span></h3>'
     + (a.designs.length ? '<div class="shgrid">' + a.designs.map((d) => '<figure class="shcard' + (d.hidden ? ' off' : '') + '"><button type="button" class="shimg" data-big="' + d.id + '" aria-label="ขยายรูป">' + shMock(d.image, 'white') + '</button><figcaption><b>' + esc(shName(d)) + '</b>' + shWho(d)
-      + '<p class="muted">ส่งโดย ' + esc(d.studentName) + ' · ' + esc(d.studentId) + '</p><p class="shvotes"><b>' + d.votes + '</b> โหวต' + (d.hidden ? ' · <span class="tag">ซ่อนอยู่</span>' : '') + '</p><div class="shact"><button class="btn sm" data-hide="' + d.id + '" data-to="' + (d.hidden ? 0 : 1) + '">' + (d.hidden ? 'แสดง' : 'ซ่อน') + '</button><button class="btn sm danger" data-del="' + d.id + '">ลบ</button></div></figcaption></figure>').join('') + '</div>' : '<p class="muted">ยังไม่มีใครส่งผลงาน</p>') + '</div>'
+      + '<p class="muted">ส่งโดย ' + esc(d.studentName) + ' · ' + esc(d.studentId) + '</p><p class="shvotes"><b>' + d.votes + '</b> โหวต' + (d.hidden ? ' · <span class="tag">ซ่อนอยู่</span>' : '') + '</p>' + shAi(d.ai) + '<div class="shact"><button class="btn sm" data-hide="' + d.id + '" data-to="' + (d.hidden ? 0 : 1) + '">' + (d.hidden ? 'แสดง' : 'ซ่อน') + '</button><button class="btn sm danger" data-del="' + d.id + '">ลบ</button></div></figcaption></figure>').join('') + '</div>' : '<p class="muted">ยังไม่มีใครส่งผลงาน</p>') + '</div>'
     + '<div class="panel"><h3>กำหนดวัน</h3><p class="muted">นักศึกษาส่งผลงานได้ในช่วง “รับผลงาน” และโหวตได้ในช่วง “โหวต” ช่วงโหวตต้องเริ่มหลังปิดรับผลงาน เว้นว่างทั้งสองช่องถ้ายังไม่กำหนด (ใช้เวลาตามเครื่องของคุณ)</p>'
     + win('sub', 'รับผลงาน', 'ช่วงที่นักศึกษาอัปโหลดและแก้ไขผลงาน', s.submitFrom, s.submitTo) + win('vote', 'โหวต', 'ช่วงที่นักศึกษาดูผลงานทั้งหมดและโหวต', s.voteFrom, s.voteTo)
     + '<label class="chk"><input type="checkbox" id="shGal"' + (s.galleryPublic !== false ? ' checked' : '') + '> แสดงผลงานที่ส่งมาแล้วในหน้าสาธารณะ <a href="/shirt/" target="_blank" rel="noopener">/shirt/</a> (ทุกคนดูได้โดยไม่ต้องเข้าสู่ระบบ เห็นชื่อผู้ออกแบบและหมู่เรียน)</label>'

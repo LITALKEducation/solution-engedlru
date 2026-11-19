@@ -138,4 +138,18 @@ const worker=(await import('../src/index.js')).default;
 const pg=await worker.fetch(new Request('https://api.x/camps/shirt/gallery',{headers:{Origin:'https://enged.sorasukt.com'}}),env,{waitUntil(){}});ok(pg.status===200&&pg.headers.get('access-control-allow-origin')==='https://enged.sorasukt.com','/camps/shirt/gallery through the router with CORS, no Authorization');
 const nav=await worker.fetch(new Request('https://api.x/camps/shirt/sample'),env,{waitUntil(){}});ok(nav.status===404,'/camps/shirt/* reaches the shirt handler (not the generic camps router)');
 const me=await worker.fetch(new Request('https://api.x/camps/shirt/me',{headers:{Origin:'https://enged.sorasukt.com',Authorization:'Bearer s1'}}),env,{waitUntil(){}});ok(me.status===200&&me.headers.get('access-control-allow-origin')==='https://enged.sorasukt.com','me through the router with CORS');
+console.log('9. AI-generated image check (flag only)');
+{const base='/camps/shirt/design?designer=D&group=G&title=A';
+ await setWin({submitFrom:now-H,submitTo:now+H});db.exec("DELETE FROM camp_shirt_votes");
+ const ai=async()=>{const o=await call('admin','GET','/camps/shirt/admin/overview');return o.d.designs.find((d)=>d.studentId==='6740102222')?.ai};
+ r=await call('s3','POST',base+'&meta=',null,PNG);ok(r.s===200,'clean upload accepted');let a=await ai();ok(a&&a.level==='none'&&a.signals.length===0,'no signals -> none');
+ r=await call('s3','POST',base+'&meta=sd_params,bogus',null,PNG);ok(r.s===200,'flagged upload is still accepted (flag only)');a=await ai();ok(a.level==='likely'&&a.signals.length===1&&a.signals[0]==='sd_params','strong tag -> likely, unknown keys dropped');
+ r=await call('s3','POST',base+'&meta=c2pa',null,PNG);a=await ai();ok(a.level==='review'&&a.signals[0]==='c2pa','C2PA alone -> review');
+ r=await call('s3','POST',base,null,new Uint8Array(0));a=await ai();ok(a.level==='review','text-only edit keeps the earlier check');
+ const realFetch=globalThis.fetch;env.SIGHTENGINE_USER='u';env.SIGHTENGINE_SECRET='k';let hit=0;
+ globalThis.fetch=async(u,o)=>{if(String(u).includes('sightengine')){hit++;return new Response(JSON.stringify({type:{ai_generated:0.93}}),{headers:{'content-type':'application/json'}})}return realFetch(u,o)};
+ r=await call('s3','POST',base+'&meta=',null,PNG);a=await ai();ok(hit===1&&a.level==='likely'&&Math.abs(a.score-0.93)<1e-9,'detection service score 0.93 -> likely');
+ globalThis.fetch=async(u,o)=>{if(String(u).includes('sightengine'))return new Response('x',{status:500});return realFetch(u,o)};
+ r=await call('s3','POST',base+'&meta=',null,JPG);a=await ai();ok(r.s===200&&a.level==='none'&&a.score===null,'service down -> fail open, upload accepted');
+ globalThis.fetch=realFetch;delete env.SIGHTENGINE_USER;delete env.SIGHTENGINE_SECRET}
 console.log(failn?`shirt: ${pass} passed, ${failn} FAILED`:`shirt: ${pass} passed, 0 failed`);process.exit(failn?1:0);
