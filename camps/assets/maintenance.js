@@ -14,8 +14,8 @@
     + '#maintOv .mart{width:min(78vw,300px);height:auto;display:block;margin:0 auto 8px}'
     + '#maintOv h1{margin:0;font-size:clamp(1.6rem,6vw,2.25rem);font-weight:600;line-height:1.4}'
     + '#maintOv .mm{white-space:pre-line;font-size:1.0625rem;line-height:1.7;color:#4a4a52;max-width:30em}'
-    + '#maintOv .mu{display:inline-flex;align-items:center;gap:8px;background:#f1f1f3;border-radius:999px;padding:8px 18px;font-weight:600;font-size:.9375rem;color:#18181b}'
-    + '#maintOv .mu::before{content:"";width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:mpulse 1.6s ease-in-out infinite}'
+    + '#maintOv .mu{display:grid;justify-items:center;gap:2px;background:#f1f1f3;border-radius:22px;padding:10px 22px;font-size:.9375rem;color:#4a4a52;text-align:center}#maintOv .mu b{font-size:1.0625rem;color:#18181b;font-weight:600}'
+    + '#maintOv .mu span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#f59e0b;animation:mpulse 1.6s ease-in-out infinite}'
     + '#maintOv .mact{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:10px}'
     + '#maintOv .mb{font:inherit;display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 26px;border-radius:999px;background:#18181b;color:#fff;border:0;font-weight:600;cursor:pointer;text-decoration:none;transition:transform .15s,background-color .2s}'
     + '#maintOv .mb:hover{background:#000}#maintOv .mb:active{transform:scale(.97)}#maintOv .mb[disabled]{opacity:.6}'
@@ -24,7 +24,7 @@
     + '#maintOv .z{animation:mz 3.2s ease-in-out infinite;opacity:0;transform-box:fill-box;transform-origin:center}#maintOv .z2{animation-delay:.9s}#maintOv .z3{animation-delay:1.8s}'
     + '@keyframes mz{0%{opacity:0;transform:translate(0,8px) scale(.7)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-18px) scale(1.15)}}'
     + '@keyframes mpulse{50%{opacity:.35}}'
-    + '@media(prefers-reduced-motion:reduce){#maintOv .z,#maintOv .mu::before{animation:none}#maintOv .z{opacity:1}}'
+    + '@media(prefers-reduced-motion:reduce){#maintOv .z,#maintOv .mu span::before{animation:none}#maintOv .z{opacity:1}}'
     + '#maintBn{position:relative;z-index:2147482000;background:#fff7d6;color:#6b4e00;border-bottom:2px solid #f0c000;padding:10px 16px;font:15px/1.6 "Noto Sans Thai",system-ui,sans-serif;text-align:center;white-space:pre-line}#maintBn b{color:#161616}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var ART = '<svg class="mart" viewBox="0 0 320 220" role="img" aria-label="กำลังปิดปรับปรุงระบบ" xmlns="http://www.w3.org/2000/svg">'
@@ -49,7 +49,7 @@
       Array.prototype.forEach.call(document.body.children, function (c) { if (c !== el && c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE') { c.setAttribute('inert', ''); c.setAttribute('aria-hidden', 'true'); } });
     }
     el.innerHTML = '<div class="mc">' + ART + '<h1 id="maintT">ปิดปรับปรุงระบบชั่วคราว</h1><div class="mm">' + esc(d.message) + '</div>'
-      + (d.until ? '<div class="mu">คาดว่าจะเปิดใช้งานอีกครั้ง ' + esc(when(d.until)) + '</div>' : '')
+      + (d.until ? '<div class="mu"><span>คาดว่าจะเปิดใช้งานอีกครั้ง</span><b>' + esc(when(d.until)) + '</b></div>' : '')
       + '<div class="mact"><button type="button" class="mb" id="maintRe">ตรวจสอบอีกครั้ง</button><a class="ml" href="/admin/">สำหรับแอดมิน</a></div>'
       + '<img class="mlogo" src="/assets/logo-english-education.png" alt="English Education"></div>';
     document.getElementById('maintRe').onclick = function () { check(true); };
