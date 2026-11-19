@@ -32,13 +32,6 @@ button,input,select,textarea{font-family:inherit}
 .state-chip.open,.badge.open{background:var(--ok-l)!important;color:var(--ok)!important}
 .state-chip.closed,.badge.closed{background:var(--bad-l)!important;color:var(--bad)!important}
 
-/* ---- brand bar (shared script) ---- */
-#brandBar{background:#ffffffe6!important;backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)!important;margin:0!important;border-radius:0;box-shadow:0 1px 0 rgba(0,0,0,.03)!important}
-#brandBar .bb{min-height:56px}
-#brandBar .bn{border:1px solid var(--line)!important;border-radius:0 0 var(--r) var(--r);box-shadow:var(--shadow)!important}
-#brandBar .bm{border-radius:var(--r)!important;background:var(--soft)!important;color:var(--ink)!important;border:0!important}
-#brandBar .badm{background:var(--accent)!important;color:#fff!important;border-radius:999px!important}
-#brandBar a[aria-current]{background:var(--soft)!important;color:var(--accent-d)!important;font-weight:600}
 
 /* ---- content ---- */
 main{margin-top:0!important;padding:16px 24px 32px!important;max-width:1040px}
