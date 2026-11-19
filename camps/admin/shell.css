@@ -124,3 +124,4 @@ body.admin-shell th{border-bottom:1px solid var(--line)!important;font-weight:50
 @media(max-width:860px){.side{box-shadow:none;border-right:1px solid var(--line)}}
 .search input,.search input:focus{border:0!important;box-shadow:none!important;outline:0!important}
 body.admin-shell .search input,body.admin-shell .search input:focus{border:0!important;box-shadow:none!important;outline:0!important}
+body.admin-shell .tag.bad{background:#fdf2f1!important;color:#b42318!important}

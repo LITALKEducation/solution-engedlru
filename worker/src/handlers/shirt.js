@@ -2,7 +2,8 @@
 // submissions are open, then vote for one design (not their own) while voting is open. The ADMINS upload the sample shirt the designs are shown on.
 // Admins also set both date windows, hide / delete designs, see live counts and announce the results.
 //   Student:  GET  /camps/shirt/me                       dates, sample shirt, my design, my vote, the gallery (from the day voting opens)
-//             POST /camps/shirt/design?designer=&group=&title=&description=   body = image (PNG / JPG / WebP, <= 3 MB; optional when only the text changes)
+//             POST /camps/shirt/design?designer=&group=&title=&description=&meta=   (meta = generator tags the browser found in the original file; the upload is checked for AI generation and only FLAGGED)
+//               body = image (PNG / JPG / WebP, <= 10 MB; optional when only the text changes)
 //             POST /camps/shirt/design/delete             POST /camps/shirt/vote {designId}      POST /camps/shirt/unvote
 //   Public:   GET  /camps/shirt/image/<id>                the picture of a visible design (random ids, so URLs cannot be guessed)
 //             GET  /camps/shirt/sample                    the sample shirt picture
@@ -12,8 +13,10 @@
 //             POST /camps/shirt/admin/design/hide | delete
 import { json } from "../lib/cors.js";
 import { who, requireAdmin, clean, fail } from "./camps.js";
+import { assess } from "../lib/aicheck.js";
 
-const MAX_IMAGE = 3 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300, NAME_MAX = 80, GROUP_MAX = 40;
+const BLOCK_MS = 24 * 3600 * 1000;   // an upload judged AI-generated locks the student out for a day
+const MAX_IMAGE = 10 * 1024 * 1024, TITLE_MAX = 60, DESC_MAX = 300, NAME_MAX = 80, GROUP_MAX = 40;
 const KEYS = { submitFrom: "shirt_submit_from", submitTo: "shirt_submit_to", voteFrom: "shirt_vote_from", voteTo: "shirt_vote_to" };
 const sniff = (u8) => (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47 ? ["image/png", "png"]
   : u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff ? ["image/jpeg", "jpg"]
@@ -49,6 +52,7 @@ async function student(request, env) {
   if (!s) return { response: fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403, { reason: "not_in_roster" }) };
   return { w, s };
 }
+const activeBlock = (env, id) => env.DB.prepare("SELECT until,reason FROM camp_shirt_blocks WHERE student_id=? AND until>?").bind(id, Date.now()).first();
 const mine = (env, id) => env.DB.prepare("SELECT * FROM camp_shirt_designs WHERE student_id=?").bind(id).first();
 const shapeDesign = (url, d, extra = {}) => ({ id: d.id, title: d.title, description: d.description, designer: d.designer_name, classGroup: d.class_group, image: imageUrl(url, d), ...extra });
 
@@ -70,13 +74,15 @@ async function me(request, env, url) {
     gallery = rows.map((d) => shapeDesign(url, d, { mine: d.student_id === s.student_id, ...(st.resultsPublic ? { votes: d.votes } : {}) }));
   }
   return json(request, env, { student: { studentId: s.student_id, name: s.name }, schedule: { submitFrom: st.submitFrom, submitTo: st.submitTo, voteFrom: st.voteFrom, voteTo: st.voteTo }, submit: ph.submit, vote: ph.vote, now,
-    resultsPublic: st.resultsPublic, sample: sampleInfo(url, st), myDesign: my ? shapeDesign(url, my, { hidden: !!my.hidden }) : null, myVote: vote?.design_id || null, designs: gallery });
+    resultsPublic: st.resultsPublic, sample: sampleInfo(url, st), myDesign: my ? shapeDesign(url, my, { hidden: !!my.hidden }) : null, myVote: vote?.design_id || null, blockedUntil: (await activeBlock(env, s.student_id))?.until || null, designs: gallery });
 }
 async function saveDesign(request, env, url) {
   const r = await student(request, env); if (r.response) return r.response;
   const { w, s } = r, st = await loadSettings(env);
   if (phases(st).submit !== "open") return fail(request, env, "ไม่อยู่ในช่วงรับผลงาน", 403, { code: "SUBMIT_CLOSED" });
   if (phases(st).vote === "open") return fail(request, env, "เปิดโหวตแล้ว แก้ผลงานไม่ได้", 403, { code: "VOTE_OPEN" });
+  const blk = await activeBlock(env, s.student_id);
+  if (blk) return fail(request, env, "ระงับการส่งผลงานชั่วคราว เพราะรูปก่อนหน้าน่าจะสร้างด้วย AI ส่งใหม่ได้เมื่อครบ 24 ชั่วโมง", 403, { code: "AI_BLOCKED", until: blk.until });
   const designer = clean(url.searchParams.get("designer"), NAME_MAX), group = clean(url.searchParams.get("group"), GROUP_MAX);
   const title = clean(url.searchParams.get("title"), TITLE_MAX), description = clean(url.searchParams.get("description"), DESC_MAX);
   if (!designer) return fail(request, env, "กรอกชื่อผู้ออกแบบ", 400, { field: "designer" });
@@ -85,16 +91,27 @@ async function saveDesign(request, env, url) {
   const buf = new Uint8Array(await request.arrayBuffer());
   let kind = null;
   if (buf.length) {
-    if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 3 MB)", 413);
+    if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 10 MB)", 413);
     kind = sniff(buf); if (!kind) return fail(request, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
   } else if (!old) return fail(request, env, "เลือกรูปผลงาน", 400, { field: "image" });
-  let imageKey = old?.image_key, mime = old?.image_mime;
+  let imageKey = old?.image_key, mime = old?.image_mime, ai = null;
+  if (kind) {
+    ai = await assess(env, buf, kind[0], url.searchParams.get("meta"));
+    if (ai.level === "likely") {   // AI-generated: nothing is saved, the student can try again after 24 hours
+      const until = Date.now() + BLOCK_MS;
+      await env.DB.prepare("INSERT INTO camp_shirt_blocks (student_id,until,reason) VALUES (?,?,?) ON CONFLICT(student_id) DO UPDATE SET until=excluded.until,reason=excluded.reason")
+        .bind(s.student_id, until, JSON.stringify({ score: ai.score, signals: ai.signals })).run();
+      await audit(env, w, "SHIRT_AI_BLOCK", s.student_id, { score: ai.score, signals: ai.signals, until });
+      return fail(request, env, "ตรวจพบว่ารูปน่าจะสร้างด้วย AI จึงระงับการส่งผลงาน 24 ชั่วโมง ส่งใหม่ได้ในวันถัดไป", 422, { code: "AI_DETECTED", until });
+    }
+  }
   if (kind) { imageKey = `camps/shirt/${s.student_id}-${Date.now()}.${kind[1]}`; mime = kind[0]; await env.FILES.put(imageKey, buf, { httpMetadata: { contentType: mime } }); }
   const id = old?.id || rid();
-  await env.DB.prepare(`INSERT INTO camp_shirt_designs (id,student_id,designer_name,class_group,title,description,image_key,image_mime) VALUES (?,?,?,?,?,?,?,?)
-    ON CONFLICT(student_id) DO UPDATE SET designer_name=excluded.designer_name,class_group=excluded.class_group,title=excluded.title,description=excluded.description,image_key=excluded.image_key,image_mime=excluded.image_mime,updated_at=datetime('now')`).bind(id, s.student_id, designer, group, title, description, imageKey, mime).run();
+  await env.DB.prepare(`INSERT INTO camp_shirt_designs (id,student_id,designer_name,class_group,title,description,image_key,image_mime,ai_level,ai_score,ai_signals) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(student_id) DO UPDATE SET designer_name=excluded.designer_name,class_group=excluded.class_group,title=excluded.title,description=excluded.description,image_key=excluded.image_key,image_mime=excluded.image_mime,ai_level=excluded.ai_level,ai_score=excluded.ai_score,ai_signals=excluded.ai_signals,updated_at=datetime('now')`)
+    .bind(id, s.student_id, designer, group, title, description, imageKey, mime, ai ? ai.level : old?.ai_level || "", ai ? ai.score : old?.ai_score ?? null, ai ? JSON.stringify(ai.signals) : old?.ai_signals || "[]").run();
   if (kind && old?.image_key && old.image_key !== imageKey) { try { await env.FILES.delete(old.image_key); } catch (e) { /* orphan file is harmless */ } }
-  await audit(env, w, "SHIRT_DESIGN", s.student_id, { created: !old, newImage: !!kind });
+  await audit(env, w, "SHIRT_DESIGN", s.student_id, { created: !old, newImage: !!kind, ...(ai && ai.level !== "none" ? { ai: ai.level } : {}) });
   return json(request, env, { ok: true, design: shapeDesign(url, await mine(env, s.student_id)) });
 }
 async function deleteMine(request, env) {
@@ -161,7 +178,7 @@ async function adminSample(request, env, url) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const buf = new Uint8Array(await request.arrayBuffer());
   if (!buf.length) return fail(request, env, "เลือกรูปเสื้อตัวอย่าง");
-  if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 3 MB)", 413);
+  if (buf.length > MAX_IMAGE) return fail(request, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 10 MB)", 413);
   const kind = sniff(buf); if (!kind) return fail(request, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
   const old = await loadSettings(env), key = `camps/shirt/sample-${Date.now()}.${kind[1]}`;
   await env.FILES.put(key, buf, { httpMetadata: { contentType: kind[0] } });
@@ -186,8 +203,10 @@ async function adminOverview(request, env, url) {
   const rows = (await env.DB.prepare(
     `SELECT d.*,s.name student_name,(SELECT COUNT(*) FROM camp_shirt_votes v WHERE v.design_id=d.id) votes FROM camp_shirt_designs d LEFT JOIN camp_students s ON s.student_id=d.student_id ORDER BY votes DESC,d.created_at`).all()).results || [];
   const voters = (await env.DB.prepare("SELECT COUNT(*) c FROM camp_shirt_votes").first())?.c || 0;
-  return json(request, env, { now, settings: publicSettings(st), sample: sampleInfo(url, st), submit: ph.submit, vote: ph.vote, totals: { designs: rows.length, votes: voters },
-    designs: rows.map((d) => shapeDesign(url, d, { studentId: d.student_id, studentName: d.student_name || "", hidden: !!d.hidden, votes: d.votes, createdAt: d.created_at })) });
+  const blocks = ((await env.DB.prepare("SELECT b.student_id,b.until,s.name FROM camp_shirt_blocks b LEFT JOIN camp_students s ON s.student_id=b.student_id WHERE b.until>? ORDER BY b.until").bind(now).all()).results || [])
+    .map((b) => ({ studentId: b.student_id, studentName: b.name || "", until: b.until }));
+  return json(request, env, { now, settings: publicSettings(st), sample: sampleInfo(url, st), submit: ph.submit, vote: ph.vote, totals: { designs: rows.length, votes: voters }, blocks,
+    designs: rows.map((d) => shapeDesign(url, d, { studentId: d.student_id, studentName: d.student_name || "", hidden: !!d.hidden, votes: d.votes, createdAt: d.created_at, ai: { level: d.ai_level || "", score: d.ai_score, signals: JSON.parse(d.ai_signals || "[]") } })) });
 }
 // both ends of a window or none; the vote window cannot start before submissions end (a design could otherwise be swapped after it gathered votes)
 async function adminSettings(request, env) {
@@ -215,6 +234,13 @@ async function adminHide(request, env) {
   await audit(env, a, hidden ? "SHIRT_HIDE" : "SHIRT_UNHIDE", id);
   return json(request, env, { ok: true });
 }
+async function adminUnblock(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null), id = clean(b?.studentId, 20);
+  await env.DB.prepare("DELETE FROM camp_shirt_blocks WHERE student_id=?").bind(id).run();
+  await audit(env, a, "SHIRT_AI_UNBLOCK", id);
+  return json(request, env, { ok: true });
+}
 async function adminDelete(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null), id = clean(b?.id, 40);
@@ -239,6 +265,7 @@ export async function shirt(request, env, url) {
     if (m === "GET" && p === "/camps/shirt/admin/overview") return await adminOverview(request, env, url);
     if (m === "POST" && p === "/camps/shirt/admin/settings") return await adminSettings(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/hide") return await adminHide(request, env);
+    if (m === "POST" && p === "/camps/shirt/admin/block/clear") return await adminUnblock(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/delete") return await adminDelete(request, env);
     return fail(request, env, "Not Found", 404);
   } catch (e) {

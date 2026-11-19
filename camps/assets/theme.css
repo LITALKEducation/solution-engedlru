@@ -125,3 +125,4 @@ h1,h2,h3,h4,.hero h1,.hero p,.cxhd h1{line-height:1.45!important}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--ink)!important;outline-offset:2px!important}
 .skip{background:var(--ink)!important;color:#fff!important}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.tag.bad{background:var(--bad-l)!important;color:var(--bad)!important}
