@@ -6,7 +6,7 @@
   // the admin section has its own menu and no links into the student pages
   var ADMIN_RE = /^\/admin(\/|$)/;
   var isAdmin = ADMIN_RE.test(location.pathname.replace(/\/+$/, '') + '/') || ADMIN_RE.test(location.pathname);
-  var ADMIN = [['/admin/', 'ศูนย์แอดมิน'], ['/admin/hr/overview', 'ฝ่ายบุคคล'], ['/admin/lotto/', 'จับสลาก'], ['/admin/qrcheck/', 'เช็ก QR'], ['/admin/aka/', 'AKA'], ['/', 'ออกจากแอดมิน']];
+  var ADMIN = [['/admin/', 'ศูนย์แอดมิน'], ['/admin/#depts', 'ฝ่ายบุคคล'], ['/admin/#lotto', 'จับสลาก'], ['/admin/#qr', 'เช็ก QR'], ['/admin/#aka', 'AKA'], ['/', 'ออกจากแอดมิน']];
   var LINKS = isAdmin ? ADMIN : STUDENT;
   var css = '#brandBar{position:sticky;top:0;z-index:40;background:#fff;border-bottom:1px solid #efe6e5;font-family:"Noto Sans Thai",system-ui,sans-serif}'
     + '#brandBar .bb{max-width:1200px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 0px) 20px 0;min-height:64px;display:flex;align-items:center;gap:14px}'
@@ -24,7 +24,7 @@
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var path = location.pathname.replace(/\/+$/, '') + '/';
   var items = LINKS.map(function (l) {
-    var on = isAdmin ? (l[0] === '/admin/' ? path === '/admin/' : l[0] === '/admin/hr/overview' ? path.indexOf('/admin/hr/') === 0 : l[0] !== '/' && path.indexOf(l[0]) === 0) : (path === l[0] || path.indexOf(l[0]) === 0);
+    var on = isAdmin ? (l[0] === '/admin/' ? path === '/admin/' : l[0] === '/admin/#depts' ? path.indexOf('/admin/hr/') === 0 : l[0] !== '/' && path.indexOf(l[0]) === 0) : (path === l[0] || path.indexOf(l[0]) === 0);
     return '<a href="' + l[0] + '"' + (on ? ' aria-current="page"' : '') + '>' + l[1] + '</a>';
   }).join('');
   var bar = document.createElement('nav');

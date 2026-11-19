@@ -31,7 +31,7 @@ const STATE_TEXT = {
   open: ['เปิดลงทะเบียน', 'แตะฝ่ายที่สนใจ ดูที่ว่างของแต่ละชั้นปี แล้วกดลงทะเบียน'],
   closed: ['ปิดลงทะเบียนแล้ว', 'ปิดลงทะเบียนแล้ว ยังดูรายละเอียดของแต่ละฝ่ายได้']
 };
-const ADMIN_PAGES = [['overview', 'ภาพรวม', '/admin/hr/overview'], ['quota', 'โควตา', '/admin/hr/quota'], ['live', 'สด', '/admin/hr/live'], ['students', 'นักศึกษา', '/admin/hr/students'], ['survey', 'แบบสำรวจ', '/admin/hr/survey'], ['shirt', 'เสื้อค่าย', '/admin/hr/shirt'], ['og', 'ตัวอย่างลิงก์', '/admin/hr/og'], ['maintenance', 'ปิดปรับปรุง', '/admin/hr/maintenance'], ['settings', 'ตั้งค่า', '/admin/hr/settings']];
+const ADMIN_PAGES = [['overview', 'ภาพรวม', '/admin/#depts'], ['quota', 'โควตา', '/admin/#depts'], ['live', 'สด', '/admin/#dash'], ['students', 'นักศึกษา', '/admin/#students'], ['survey', 'แบบสำรวจ', '/admin/#survey'], ['shirt', 'เสื้อค่าย', '/admin/#shirt'], ['og', 'ตัวอย่างลิงก์', '/admin/#og'], ['maintenance', 'ปิดปรับปรุง', '/admin/#maint'], ['settings', 'ตั้งค่า', '/admin/#reg']];
 
 let auth0Client = null, me = null, deps = [], state = 'pending', authReady = false, adminData = null;
 let schedule = null, geo = { enabled: false }, srvOff = 0;   // automatic open/close schedule, location rule, server-clock offset (ms)
