@@ -81,8 +81,8 @@ const shSpan = (a, b) => (a == null || b == null ? '—' : shShort(a) + '\n→ '
 const shHead = (icon, label) => '<h2 class="shh">' + shIc(icon) + '<span class="vh">' + label + '</span></h2>';
 // two steps, each an icon + a state dot + its dates
 function shFlow(x) {
-  const sc = x.schedule || {}, step = (icon, st, label, from, to) => '<div class="shstep ' + (st === 'open' ? 'on' : st === 'after' ? 'done' : '') + '" role="group" aria-label="' + label + ' ' + (SH_STATE[st] || SH_STATE.unset)[0] + '"><span class="shbub">' + shIc(icon) + '<i class="shdot ' + ((SH_STATE[st] || SH_STATE.unset)[1] || '') + '"></i></span><span class="shdates">' + esc(shSpan(from, to)) + '</span></div>';
-  return '<div class="card shflow">' + step('up', x.submit, 'รับผลงาน', sc.submitFrom, sc.submitTo) + '<span class="shbar" aria-hidden="true"></span>' + step('vote', x.vote, 'โหวต', sc.voteFrom, sc.voteTo) + '</div>';
+  const sc = x.schedule || {}, step = (icon, st, label, from, to) => '<div class="shstep ' + (st === 'open' ? 'on' : st === 'after' ? 'done' : '') + '" role="group" aria-label="' + label + ' ' + (SH_STATE[st] || SH_STATE.unset)[0] + '"><span class="shbub">' + shIc(icon) + '<i class="shdot ' + ((SH_STATE[st] || SH_STATE.unset)[1] || '') + '"></i></span><b class="shlbl">' + label + '</b><span class="shst2 ' + ((SH_STATE[st] || SH_STATE.unset)[1] || '') + '">' + (SH_STATE[st] || SH_STATE.unset)[0] + '</span><span class="shdates">' + esc(shSpan(from, to)) + '</span></div>';
+  return '<div class="card shflow">' + step('up', x.submit, 'ส่งผลงาน', sc.submitFrom, sc.submitTo) + '<span class="shbar" aria-hidden="true"></span>' + step('vote', x.vote, 'โหวต', sc.voteFrom, sc.voteTo) + '</div>';
 }
 function renderShirt() {
   const box = $('shirtBox'), x = shirtX; if (!box || !x) return;
