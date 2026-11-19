@@ -34,7 +34,7 @@
   f.id = 'siteFoot';
   f.innerHTML = '<div class="sf-in"><div class="sf-brand"><a href="/" aria-label="English Camp On Tour"><img src="/assets/logo-english-education.png" alt="English Education · Faculty of Education"></a>'
     + '<p>ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9</p></div><nav aria-label="ลิงก์ท้ายหน้า">' + nav + '</nav></div>'
-    + '<div class="sf-legal"><p>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>Logo, Name of English Education is owned by English Education Program, Faculty of Education, Loei Rajabhat University</p></div>'
+    + '<div class="sf-legal"><p>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</p></div>'
     + '<div class="sf-photo" aria-hidden="true"><img class="sf-mark" src="/assets/english-camp-logo.png" alt="" width="1000" height="399" loading="lazy"></div>';
   Array.prototype.forEach.call(document.querySelectorAll('footer'), function (o) { o.parentNode.removeChild(o); });
   (document.querySelector('.shell') || document.body).appendChild(f);
