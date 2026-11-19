@@ -106,6 +106,7 @@ function renderShirtSubmit() {
   h += '<form id="shForm" class="shform" novalidate autocomplete="off">'
     + '<label class="shdrop" id="shDrop" for="shFile" aria-label="เลือกรูปลายเสื้อ"><span class="shdropin" id="shLive">' + shIc('img', 'big') + '</span><span class="shdropcta">' + shIc('up') + '<span class="vh">เลือกรูป</span></span></label>'
     + '<input id="shFile" class="vh" type="file" accept="image/png,image/jpeg,image/webp">'
+    + '<p class="shfmt">' + shIc('img') + '<span>PNG · JPG · WebP · ไม่เกิน 10 MB</span></p>'
     + '<div class="shfields"><label class="shfield">' + shIc('user') + '<input id="shDesigner" maxlength="80" required aria-label="ชื่อผู้ออกแบบ" placeholder="ชื่อผู้ออกแบบ *"></label>'
     + '<label class="shfield">' + shIc('users') + '<input id="shGroup" maxlength="40" required aria-label="หมู่เรียน" placeholder="หมู่เรียน *"></label></div>'
     + '<ul class="shrules" aria-label="ข้อควรรู้ก่อนส่ง"><li>' + shIc('pen') + '<span>ออกแบบเอง</span></li><li class="no">' + shIc('noai') + '<span>ห้ามใช้ AI</span></li><li>' + shIc('clock') + '<span>พบ AI ระงับ 24 ชม.</span></li><li>' + shIc('one') + '<span>ส่งได้ 1 ผลงาน</span></li></ul>'

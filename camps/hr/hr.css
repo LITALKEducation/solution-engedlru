@@ -484,10 +484,10 @@ body[data-page] .uc{border-radius:18px}
 .shbtns{display:flex;gap:10px}.shbtns .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}.shbtns .primary{flex:1}.shbtns .danger{min-width:48px;padding:0 12px}
 .shgrid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr))!important}
 .shcard{position:relative;background:#fff!important;box-shadow:var(--shadow)}
-.shcard figcaption{position:absolute;left:0;right:0;bottom:0;padding:26px 12px 10px!important;background:linear-gradient(180deg,transparent,rgba(0,0,0,.62));pointer-events:none}
+.shcard figcaption{position:absolute;left:0;right:0;bottom:0;padding:26px 12px 10px!important;background:linear-gradient(180deg,transparent,rgba(0,0,0,.78));pointer-events:none}.shcard figcaption b,.shcard figcaption .shcls{text-shadow:0 1px 5px rgba(0,0,0,.6)}
 .shcard figcaption b{color:#fff!important;font-size:.875rem!important}.shcard .shcls{color:#ffffffd0!important}
 .shcard .shimg{border-radius:0}
-.shheart,.shflag{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:#ffffffe6;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;transition:transform .2s var(--ease-bounce),background-color .2s,color .2s}
+.shheart,.shflag{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:0;background:#ffffffe6;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;transition:transform .2s var(--ease-bounce),background-color .2s,color .2s}
 .shflag{cursor:default}.shflag.ok{background:var(--ok);color:#fff}
 .shheart:hover{transform:scale(1.1)}.shheart:active{transform:scale(.92)}
 .shheart.on{background:#e11d48;color:#fff}.shheart.on .shi{fill:currentColor}
@@ -563,3 +563,5 @@ nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-li
 .sel-opt{display:flex;align-items:center;min-height:44px;padding:0 12px;border:0;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:1rem;text-align:left;cursor:pointer}
 .sel-opt:hover{background:#fff}.sel-opt.on{background:#fff;font-weight:700;box-shadow:inset 3px 0 0 var(--accent)}
 .pflock{grid-template-columns:1fr 1fr!important;gap:10px!important}.pflock input{min-height:42px!important}
+
+.shfmt{display:flex;align-items:center;justify-content:center;gap:8px;margin:-6px 0 0;font-size:.8125rem;color:var(--mute)!important}.shfmt .shi{width:16px;height:16px}
