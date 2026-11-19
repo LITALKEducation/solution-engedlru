@@ -125,3 +125,41 @@ body.admin-shell th{border-bottom:1px solid var(--line)!important;font-weight:50
 .search input,.search input:focus{border:0!important;box-shadow:none!important;outline:0!important}
 body.admin-shell .search input,body.admin-shell .search input:focus{border:0!important;box-shadow:none!important;outline:0!important}
 body.admin-shell .tag.bad{background:#fdf2f1!important;color:#b42318!important}
+
+/* ---- phone pass (admin works from a phone) ---- */
+html{overflow-x:hidden}
+body.admin-shell,.main,.page{max-width:100vw}
+.main,.page,.page>*{min-width:0}
+body.menu{overflow:hidden}
+.side{overscroll-behavior:contain;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px)}
+img,svg,canvas,video{max-width:100%}
+.page :is(p,li,td,th,h1,h2,h3,b,span,a,label){overflow-wrap:anywhere}
+.tbl-wrap,.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+@media(max-width:860px){
+ .main{padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 16px)}
+ .adtop{position:sticky;top:0;z-index:15;background:#fff;margin:0 -12px 14px;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:nowrap;gap:10px}
+ .adtop h1{font-size:19px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .adtop .acc{flex:none;max-width:46%;overflow:hidden}
+ .adtop .acc :is(.ut,.uc small){display:none!important}
+ .search{order:0;min-width:0;width:auto;flex:1}
+ .burger,.who{width:44px;height:44px;flex:none}
+ /* bare tables scroll sideways inside their card instead of stretching the page */
+ .page table{display:block;max-width:100%;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .page table th,.page table td{white-space:nowrap}
+ .page table td:first-child,.page table th:first-child{position:sticky;left:0;background:#fff}
+ /* forms and toolbars stack */
+ .page :is(.form,.form.cols,.form.cols5,.form.fl,.filerow,.shact,.toolbar,.actions,.tabs,.seg,.pills,.chead,.row2){flex-wrap:wrap}
+ .page :is(.form.cols,.form.cols5,.form.fl,.sumgrid,.yrs,.qgrid,.depinfo){grid-template-columns:minmax(0,1fr)!important}
+ .page :is(.btn,button,select,input[type=date],input[type=datetime-local]){min-height:44px}
+ .page :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px!important;width:100%;max-width:100%}   /* 16px: iOS does not zoom the page on focus */
+ .filerow>.btn,.shact>.btn{flex:1 1 auto}
+ .stats{gap:10px}.stat b{font-size:26px}
+ .chart{height:200px}.plot{gap:6px}
+ .shgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+ /* dialogs: bottom sheets that scroll */
+ :is(.modal,.dlg){padding:0!important;align-items:flex-end!important}
+ :is(.modal-card,.dlg .box,.scanpop-card){width:100%!important;max-width:none!important;max-height:92dvh;overflow-y:auto;border-radius:12px 12px 0 0!important;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px)}
+ .modal-actions,.dlg .acts{flex-wrap:wrap;gap:8px}.modal-actions>*,.dlg .acts>*{flex:1 1 140px}
+ #toast{left:12px!important;right:12px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 12px)!important;max-width:none!important;transform:none!important}
+}
+@media(max-width:420px){.adtop .acc{display:none}.page h2{font-size:17px}}
