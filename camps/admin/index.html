@@ -3,22 +3,399 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script src="/assets/inapp-guard.js?v=470846cf"></script>
-<meta name="theme-color" content="#ecebed">
+<meta name="theme-color" content="#1f1f21">
 <meta name="robots" content="noindex,nofollow">
 <title>แอดมิน · กิจกรรมค่าย</title>
 <link rel="icon" type="image/png" href="/icons/branch-64.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/admin/shell.css?v=db92d853">
-<link rel="stylesheet" href="/admin/dash.css?v=b546be56">
-<script src="/assets/worker-auth.js?v=54da5084" defer></script>
-<script src="/admin/shell.js?v=69989875" defer></script>
-<script src="/admin/dash.js?v=4ce40ab8" defer></script>
+<link rel="apple-touch-icon" href="/icons/branch-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap">
+<script src="/assets/worker-auth.js" defer></script>
+<style>
+:root{--bg:#f3f2f4;--card:#fff;--ink:#161616;--mute:#77737a;--line:#e6e4e8;--dark:#1f1f21;--soft:#f5f4f6;--ok:#1f9d55;--bad:#c0392b;--warn:#b7791f;--r:14px}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 'Noto Sans Thai',system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+.hidden{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{margin:0;line-height:1.35}
+.app{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh;min-height:100dvh}
+.side{background:#fff;padding:20px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto}
+.brand{padding:0 10px 14px;font-weight:700;font-size:17px}.brand small{display:block;font-size:11px;color:var(--mute);letter-spacing:.1em;font-weight:600}
+.grp{margin:14px 10px 4px;font-size:12px;font-weight:700;color:var(--mute);letter-spacing:.06em}
+.side a,.side .lk{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;color:#5c585f;text-decoration:none;font-weight:500;min-height:44px;border:0;background:none;width:100%;text-align:left}
+.side a:hover{background:var(--soft)}.side a.on{background:var(--dark);color:#fff;font-weight:700}
+.side svg,.top svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.side .badge{margin-left:auto;background:var(--bad);color:#fff;border-radius:99px;font-size:12px;padding:0 7px;min-width:20px;text-align:center;line-height:20px}
+.side .on .badge{background:#fff;color:var(--dark)}
+.sidefoot{margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+.main{padding:20px 28px;min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.top h1{flex:1;font-size:26px;font-weight:600}
+.burger{display:none;width:44px;height:44px;border:0;border-radius:50%;background:#fff;place-items:center}
+.who{width:40px;height:40px;border-radius:50%;background:var(--dark);color:#fff;display:grid;place-items:center;font-weight:700;overflow:hidden}.who img{width:100%;height:100%;object-fit:cover}
+.scrim{display:none}
+.foot{text-align:center;color:var(--mute);font-size:13px;padding:22px 0 4px}
+.card{background:var(--card);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.card h2{font-size:18px;font-weight:600;margin-bottom:4px}
+.mute{color:var(--mute);font-size:14px;margin:0 0 12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+.stat{background:#fff;border-radius:var(--r);padding:16px}.stat span{color:var(--mute);font-size:13px}.stat b{display:block;font-size:30px;line-height:1.2}.stat small{color:var(--mute)}
+.stat.dark{background:var(--dark);color:#fff}.stat.dark span,.stat.dark small{color:#cfcdd2}
+.bar{height:6px;background:rgba(127,127,127,.2);border-radius:9px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+.pill{display:inline-block;padding:2px 12px;border-radius:99px;background:var(--soft);font-size:13px;font-weight:600}.pill.open{background:#dff5e8;color:#136b3a}.pill.closed{background:#fde4e1;color:#9b2a1d}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;color:var(--mute);font-weight:500;padding:8px;white-space:nowrap}td{padding:10px 8px;border-top:1px solid var(--line)}
+/* forms: 16px text stops iOS zooming into a field, 44px min height = a real touch target */
+label.f{display:block;font-weight:600;font-size:14px;margin-bottom:12px}
+label.f>span{display:block;margin-bottom:4px}
+input[type=text],input[type=search],input[type=number],input[type=email],select,textarea,.dtd{width:100%;min-height:46px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-size:16px;-webkit-appearance:none;appearance:none}
+textarea{resize:vertical}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2377737a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:18px;padding-right:34px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--dark);outline-offset:1px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 14px}
+.btn{min-height:44px;padding:8px 18px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-weight:600}
+.btn.primary{background:var(--dark);border-color:var(--dark);color:#fff}.btn.danger{color:var(--bad)}.btn.sm{min-height:36px;padding:4px 12px;font-size:14px}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:8px 0;font-weight:500}.chk input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--dark)}
+.seg{display:inline-flex;background:var(--soft);border-radius:12px;padding:3px;gap:3px}.seg button{border:0;background:none;border-radius:9px;min-height:38px;padding:4px 14px;font-weight:600;color:var(--mute)}.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+/* ---- date + time picker (iOS-friendly) ---- */
+.dt{border:1.5px solid var(--line);border-radius:14px;padding:10px;background:#fff}
+.dt.empty .dtshow{color:var(--mute)}
+.dtshow{text-align:left;font-weight:600;margin:0 0 8px;min-height:24px}
+.dtrow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:8px}
+.dtd{display:block;text-align:left}
+input[type=date].dtd{min-width:0;max-width:100%;line-height:1.2}
+input[type=date].dtd::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
+input[type=date].dtd::-webkit-calendar-picker-indicator{opacity:.6}
+.tm{display:flex;align-items:center;gap:4px;min-width:0}.tm select{min-width:0;flex:1}.tm select{padding-left:10px;padding-right:26px;background-position:right 6px center;background-size:16px}.tm b{font-size:18px}
+.dtq{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.dtq button{border:0;background:var(--soft);border-radius:99px;min-height:34px;padding:2px 12px;font-size:13px;font-weight:600}
+.dtq .clr{color:var(--bad)}
+/* work board */
+.wk{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.wk:first-child{border-top:0}
+.wk input[type=checkbox]{width:24px;height:24px;margin-top:2px;accent-color:var(--ok);flex:none}
+.wk .t{flex:1;min-width:0}.wk .t b{display:block;word-break:break-word}.wk.done .t b{text-decoration:line-through;color:var(--mute)}
+.wk small{color:var(--mute)}.wk small.late{color:var(--bad);font-weight:600}
+.tag{display:inline-block;font-size:12px;padding:0 8px;border-radius:99px;background:var(--soft);margin-left:6px}.tag.doing{background:#fff1cc;color:#8a5a00}
+.empty{color:var(--mute);text-align:center;padding:22px 0}
+.links{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.links a{display:block;background:var(--soft);border-radius:12px;padding:14px;text-decoration:none;color:var(--ink);font-weight:600}.links a small{display:block;font-weight:400;color:var(--mute)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 18px;border-radius:12px;z-index:90;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s}#toast.show{opacity:1}#toast.err{background:var(--bad)}
+dialog{border:0;border-radius:16px;padding:20px;max-width:min(420px,92vw)}dialog::backdrop{background:rgba(0,0,0,.45)}
+@media(max-width:860px){
+ .app{display:block}
+ .side{position:fixed;inset:0 auto 0 0;width:260px;z-index:60;transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 30px rgba(0,0,0,.2)}
+ body.menu .side{transform:none}
+ body.menu .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50}
+ .burger{display:grid}.main{padding:14px 16px calc(14px + env(safe-area-inset-bottom))}.top h1{font-size:21px}
+ .dtrow{grid-template-columns:1fr}
+}
+</style>
 </head>
-<body data-admin-search="ค้นหาชื่อ / รหัส / ฝ่าย">
-<a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
-<header><h1>แดชบอร์ด</h1></header>
-<main id="main" tabindex="-1" aria-live="polite"><div id="dash"><div class="card"><p class="mute">กำลังโหลด…</p></div></div></main>
+<body>
+<div class="app">
+ <aside class="side" id="side" aria-label="เมนูแอดมิน">
+  <div class="brand">แอดมิน<small>กิจกรรมค่าย · ENGLISH EDUCATION</small></div>
+  <nav id="nav"></nav>
+  <div class="sidefoot"><a href="/"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>หน้าแรกกิจกรรมค่าย</a><button class="lk hidden" id="logout" type="button"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-7M21 12H9"/></svg>ออกจากระบบ</button></div>
+ </aside>
+ <div class="main">
+  <header class="top"><button class="burger" id="burger" type="button" aria-label="เมนู" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><h1 id="ttl">แดชบอร์ด</h1><span class="who hidden" id="who"></span></header>
+  <main id="view" tabindex="-1" aria-live="polite"><div class="card"><p class="mute">กำลังโหลด…</p></div></main>
+  <footer class="foot">© 2026-2027 sorasukt.com. Powered by STNET World Solutions</footer>
+ </div>
+ <div class="scrim" id="scrim"></div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="dlg"><h2 id="dlgT"></h2><p class="mute" id="dlgB" style="margin-top:6px"></p><div class="row" style="justify-content:flex-end"><button class="btn" id="dlgNo" type="button">ยกเลิก</button><button class="btn primary" id="dlgYes" type="button">ตกลง</button></div></dialog>
+
+<script>
+(() => {
+'use strict';
+const API = window.CAMPS_API || 'https://engedlru-api.stnetworld.workers.dev';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const I = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+const fmtN = (n) => Number(n || 0).toLocaleString('th-TH');
+const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const DOWF = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+// "พฤ 19 พ.ย. 2569 · 08:30 น."  (24-hour clock, Buddhist year, same on every device)
+const pad = (n) => String(n).padStart(2, '0');
+const fmtWhen = (ms) => { const d = new Date(ms); return DOWF[d.getDay()].slice(0, 3) + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + (d.getFullYear() + 543) + ' · ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ' น.'; };
+
+// ---------- UI helpers ----------
+let tt; const toast = (m, bad) => { const t = $('toast'); t.textContent = m; t.className = 'show' + (bad ? ' err' : ''); clearTimeout(tt); tt = setTimeout(() => { t.className = ''; }, 3200); };
+const confirmDlg = (title, body, yes) => new Promise((res) => {
+  const d = $('dlg'); $('dlgT').textContent = title; $('dlgB').textContent = body || ''; $('dlgYes').textContent = yes || 'ตกลง';
+  const done = (v) => { d.close(); res(v); }; $('dlgYes').onclick = () => done(true); $('dlgNo').onclick = () => done(false); d.oncancel = () => res(false);
+  if (d.showModal) d.showModal(); else res(window.confirm(title));
+});
+
+// ---------- date + time picker ----------
+// Why: iOS shows <input type="datetime-local"> as one narrow, clipped field with a 12-hour AM/PM wheel that is hard to hit. Here the date is a
+// native date field (big, 16px so Safari does not zoom) and the time is two 24-hour selects (HH : MM, native wheels on iOS), plus quick chips.
+// The value is epoch ms (or null); one picker = one object with .get() / .set(ms).
+const pickers = {};
+function dtHTML(id, label) {
+  const H = Array.from({ length: 24 }, (_, i) => '<option value="' + i + '">' + pad(i) + '</option>').join('');
+  const M = Array.from({ length: 60 }, (_, i) => '<option value="' + i + '">' + pad(i) + '</option>').join('');
+  return '<div class="f"><span style="display:block;font-weight:600;font-size:14px;margin-bottom:4px">' + label + '</span><div class="dt empty" id="' + id + '">'
+    + '<p class="dtshow" id="' + id + 'S">ยังไม่ได้ตั้ง</p>'
+    + '<div class="dtrow"><input class="dtd" type="date" id="' + id + 'D" aria-label="' + label + ' วันที่" min="2020-01-01" max="2100-12-31">'
+    + '<div class="tm"><select id="' + id + 'H" aria-label="' + label + ' ชั่วโมง">' + H + '</select><b>:</b><select id="' + id + 'M" aria-label="' + label + ' นาที">' + M + '</select></div></div>'
+    + '<div class="dtq"><button type="button" data-q="now">ตอนนี้</button><button type="button" data-q="h1">+1 ชม.</button><button type="button" data-q="d1">พรุ่งนี้ 08:00</button><button type="button" data-q="clr" class="clr">ล้าง</button></div></div></div>';
+}
+function dtInit(id, ms) {
+  const box = $(id), D = $(id + 'D'), H = $(id + 'H'), Mi = $(id + 'M'), S = $(id + 'S');
+  const draw = () => { const v = get(); box.classList.toggle('empty', v == null); S.textContent = v == null ? 'ยังไม่ได้ตั้ง' : fmtWhen(v); };
+  const get = () => { if (!D.value) return null; const [y, m, d] = D.value.split('-').map(Number); return new Date(y, m - 1, d, Number(H.value), Number(Mi.value)).getTime(); };
+  const set = (v) => { if (v == null) { D.value = ''; H.value = '8'; Mi.value = '0'; } else { const d = new Date(v); D.value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); H.value = String(d.getHours()); Mi.value = String(d.getMinutes()); } draw(); };
+  [D, H, Mi].forEach((e) => e.addEventListener('change', () => { if (!D.value && e !== D) { const n = new Date(); D.value = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()); } draw(); }));
+  box.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => {
+    const q = b.dataset.q, n = new Date();
+    if (q === 'clr') return set(null);
+    if (q === 'now') n.setSeconds(0, 0); else if (q === 'h1') { n.setHours(n.getHours() + 1); n.setSeconds(0, 0); } else { n.setDate(n.getDate() + 1); n.setHours(8, 0, 0, 0); }
+    set(n.getTime());
+  }));
+  set(ms); pickers[id] = { get, set };
+}
+
+// ---------- API ----------
+let auth = null;
+async function api(path, opt) {
+  const go = async (fresh) => { const t = await auth.getTokenSilently(fresh ? { cacheMode: 'off' } : undefined); return fetch(API + path, { ...(opt || {}), headers: { ...((opt && opt.headers) || {}), Authorization: 'Bearer ' + t } }); };
+  let r = await go(false); if (r.status === 401) r = await go(true); return r;
+}
+const post = (p, b) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) });
+const errMsg = async (r) => { try { const d = await r.json(); return d.error || ('เกิดข้อผิดพลาด (' + r.status + ')'); } catch (e) { return 'เกิดข้อผิดพลาด (' + r.status + ')'; } };
+const getJ = async (p) => { const r = await api(p); if (r.status === 403) throw Object.assign(new Error('บัญชีนี้ไม่ใช่แอดมิน'), { forbidden: true }); if (!r.ok) throw new Error(await errMsg(r)); return r.json(); };
+
+// ---------- pages ----------
+const NAV = [
+  ['dash', 'แดชบอร์ด', '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
+  ['work', 'งานของฉัน', '<path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>'],
+  ['', 'ฝ่ายบุคคล'],
+  ['students', 'นักศึกษา', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M17 11a3 3 0 1 0 0-6M21.5 20c0-2.6-1.6-4.6-4-5.5"/>'],
+  ['reg', 'เปิด–ปิดลงทะเบียน', '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>'],
+  ['', 'ระบบ'],
+  ['maint', 'ปิดปรับปรุงระบบ', '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'],
+  ['more', 'ระบบอื่น ๆ', '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>']
+];
+const TITLES = Object.fromEntries(NAV.filter((n) => n[2]).map((n) => [n[0], n[1]]));
+let page = 'dash', gen = 0, timer = null;
+const view = () => $('view');
+const failBox = (m, retry) => '<div class="card"><p class="mute">' + esc(m) + '</p><button class="btn" type="button" data-retry="1">ลองใหม่</button></div>';
+function drawNav() {
+  const open = tasks().filter((t) => !t.done).length;
+  $('nav').innerHTML = NAV.map(([k, l, ic]) => !ic ? '<p class="grp">' + l + '</p>' : '<a href="#' + k + '"' + (k === page ? ' class="on" aria-current="page"' : '') + '>' + I(ic) + l + (k === 'work' && open ? '<span class="badge">' + open + '</span>' : '') + '</a>').join('');
+}
+function go() {
+  clearTimeout(timer); Object.keys(pickers).forEach((k) => delete pickers[k]);
+  const k = (location.hash || '#dash').slice(1); page = TITLES[k] ? k : 'dash'; gen++;
+  $('ttl').textContent = TITLES[page]; document.title = TITLES[page] + ' · แอดมินกิจกรรมค่าย'; drawNav();
+  document.body.classList.remove('menu'); $('burger').setAttribute('aria-expanded', 'false');
+  if (!auth) return; if (!signedIn) return signin();
+  ({ dash: pDash, work: pWork, students: pStudents, reg: pReg, maint: pMaint, more: pMore })[page]();
+  window.scrollTo(0, 0);
+}
+const retryable = (fn) => (e) => { view().innerHTML = failBox(e.message || 'เชื่อมต่อไม่ได้'); const b = view().querySelector('[data-retry]'); if (b) b.onclick = fn; };
+
+// --- dashboard
+async function pDash() {
+  const my = gen; const draw = async () => {
+    try {
+      const [live, ov, aka] = await Promise.all([getJ('/camps/admin/live'), getJ('/camps/admin/overview'), getJ('/camps/aka/admin/overview').catch(() => null)]);
+      if (my !== gen) return;
+      const total = ['M', 'F'].reduce((n, g) => n + [1, 2, 3, 4].reduce((m, y) => m + ((ov.students[g] || {})[y] || 0), 0), 0);
+      const pc = (a, b) => (b > 0 ? Math.min(100, Math.round(a * 100 / b)) : 0);
+      const st = { pending: ['เร็วๆ นี้', ''], open: ['เปิดลงทะเบียน', 'open'], closed: ['ปิดลงทะเบียน', 'closed'] }[live.registration] || ['-', ''];
+      const stat = (l, b, s, p, d) => '<div class="stat' + (d ? ' dark' : '') + '"><span>' + l + '</span><b>' + b + '</b><small>' + s + '</small>' + (p == null ? '' : '<div class="bar"><i style="width:' + p + '%"></i></div>') + '</div>';
+      const open = tasks().filter((t) => !t.done), late = open.filter((t) => t.due && t.due < Date.now()).length;
+      view().innerHTML = '<div class="pills"><span class="pill ' + st[1] + '">' + st[0] + '</span>' + (aka ? '<span class="pill">AKA: ' + ({ pending: 'ยังไม่เปิด', open: 'เปิดรับ', closed: 'ปิดรับ' }[aka.state] || '-') + '</span>' : '') + '<span class="pill">อัปเดต ' + new Date().toLocaleTimeString('th-TH', { hour12: false }) + '</span></div>'
+        + '<div class="stats">' + stat('ลงทะเบียนฝ่ายแล้ว', fmtN(live.filled), 'จากโควตา ' + fmtN(live.quota), pc(live.filled, live.quota), true)
+        + stat('ที่ว่างที่เหลือ', fmtN(Math.max(0, live.quota - live.filled)), 'ทุกฝ่ายรวมกัน', null)
+        + stat('นักศึกษาในรายชื่อ', fmtN(total), 'ยังไม่เลือกฝ่าย ' + fmtN(Math.max(0, total - ov.selectedTotal)) + ' คน', pc(ov.selectedTotal, total))
+        + (aka ? stat('ตั้งชื่อ AKA แล้ว', fmtN(aka.named), 'จาก ' + fmtN(aka.total) + ' คน', pc(aka.named, aka.total)) : '')
+        + stat('งานค้าง', fmtN(open.length), late ? '<span style="color:var(--bad)">เลยกำหนด ' + late + ' งาน</span>' : 'ไม่มีงานเลยกำหนด', null) + '</div>'
+        + '<div class="card"><h2>ผู้ลงทะเบียนแต่ละฝ่าย</h2><div class="tw"><table><thead><tr><th>ฝ่าย</th><th>ลงทะเบียน</th><th>โควตา</th><th style="width:40%"></th></tr></thead><tbody>'
+        + live.departments.map((d) => '<tr><td>' + esc(d.name) + '</td><td>' + fmtN(d.filled) + '</td><td>' + fmtN(d.quota) + '</td><td><div class="bar" style="margin:0"><i style="width:' + pc(d.filled, d.quota) + '%;background:' + (d.quota > 0 && d.filled >= d.quota ? 'var(--warn)' : 'var(--ok)') + '"></i></div></td></tr>').join('') + '</tbody></table></div></div>'
+        + '<div class="card"><div class="row" style="justify-content:space-between"><h2>ลงทะเบียนล่าสุด</h2><button class="btn sm" type="button" id="rl">รีเฟรช</button></div><div class="tw"><table><thead><tr><th>ชื่อ-สกุล</th><th>รหัส</th><th>ฝ่าย</th><th>ปี</th><th>เวลา</th></tr></thead><tbody>'
+        + (live.recent.length ? live.recent.map((x) => { const d = new Date(String(x.selected_at).replace(' ', 'T') + 'Z'); return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.student_id) + '</td><td>' + esc(x.department_name) + '</td><td>' + esc(x.year) + '</td><td>' + esc(fmtWhen(d.getTime())) + '</td></tr>'; }).join('') : '<tr><td colspan="5" class="empty">ยังไม่มีใครลงทะเบียน</td></tr>') + '</tbody></table></div></div>';
+      $('rl').onclick = draw;
+    } catch (e) { if (my !== gen) return; if (e.forbidden) return noAdmin(); retryable(pDash)(e); return; }
+    timer = setTimeout(() => { if (!document.hidden) draw(); else timer = setTimeout(draw, 3000); }, 10000);
+  };
+  draw();
+}
+
+// --- mini work manager (stored on this device)
+const WK = 'camps.admin.work.v1';
+function tasks() { try { const a = JSON.parse(localStorage.getItem(WK) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function saveTasks(a) { try { localStorage.setItem(WK, JSON.stringify(a)); } catch (e) { toast('เก็บข้อมูลบนเครื่องไม่ได้', true); } drawNav(); }
+let wkFilter = 'open';
+function pWork() {
+  const all = tasks(), now = Date.now();
+  const list = all.filter((t) => wkFilter === 'all' || (wkFilter === 'open' ? !t.done : t.done))
+    .sort((a, b) => (a.done - b.done) || ((a.due || 9e15) - (b.due || 9e15)) || (b.id - a.id));
+  const row = (t) => '<div class="wk' + (t.done ? ' done' : '') + '" data-id="' + t.id + '"><input type="checkbox" aria-label="เสร็จแล้ว"' + (t.done ? ' checked' : '') + '><div class="t"><b>' + esc(t.title) + (t.doing && !t.done ? '<span class="tag doing">กำลังทำ</span>' : '') + '</b>'
+    + '<small' + (t.due && !t.done && t.due < now ? ' class="late"' : '') + '>' + (t.due ? (t.due < now && !t.done ? 'เลยกำหนด · ' : 'กำหนด ') + esc(fmtWhen(t.due)) : 'ไม่มีกำหนด') + (t.who ? ' · ' + esc(t.who) : '') + '</small>' + (t.note ? '<br><small>' + esc(t.note) + '</small>' : '')
+    + '</div><div class="row"><button class="btn sm" type="button" data-a="doing">' + (t.doing ? 'พัก' : 'เริ่มทำ') + '</button><button class="btn sm danger" type="button" data-a="del" aria-label="ลบ">ลบ</button></div></div>';
+  view().innerHTML = '<div class="card"><h2>เพิ่มงาน</h2><p class="mute">รายการงานของแอดมิน เก็บไว้ในเครื่อง/เบราว์เซอร์นี้เท่านั้น (ไม่ซิงก์ข้ามเครื่อง)</p>'
+    + '<form id="wf"><label class="f"><span>งาน</span><input type="text" id="wT" required maxlength="120" placeholder="เช่น ตรวจโควตาฝ่ายสวัสดิการ" autocomplete="off"></label>'
+    + '<div class="cols"><label class="f"><span>ผู้รับผิดชอบ (ถ้ามี)</span><input type="text" id="wW" maxlength="60" autocomplete="off"></label><label class="f"><span>หมายเหตุ</span><input type="text" id="wN" maxlength="200" autocomplete="off"></label></div>'
+    + dtHTML('wD', 'กำหนดเสร็จ') + '<button class="btn primary" type="submit">เพิ่มงาน</button></form></div>'
+    + '<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h2>รายการงาน</h2><div class="seg" role="tablist">' + [['open', 'ค้างอยู่'], ['done', 'เสร็จแล้ว'], ['all', 'ทั้งหมด']].map(([k, l]) => '<button type="button" data-f="' + k + '" class="' + (wkFilter === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div></div>'
+    + (list.length ? list.map(row).join('') : '<p class="empty">' + (wkFilter === 'done' ? 'ยังไม่มีงานที่เสร็จ' : 'ไม่มีงานค้าง 🎉') + '</p>') + '</div>';
+  dtInit('wD', null);
+  $('wf').onsubmit = (e) => { e.preventDefault(); const title = $('wT').value.trim(); if (!title) return; const a = tasks(); a.push({ id: Date.now(), title, who: $('wW').value.trim(), note: $('wN').value.trim(), due: pickers.wD.get(), done: false, doing: false }); saveTasks(a); toast('เพิ่มงานแล้ว'); pWork(); };
+  view().querySelectorAll('[data-f]').forEach((b) => { b.onclick = () => { wkFilter = b.dataset.f; pWork(); }; });
+  view().querySelectorAll('.wk').forEach((el) => {
+    const id = Number(el.dataset.id), upd = (fn) => { const a = tasks(), t = a.find((x) => x.id === id); if (t) fn(t, a); saveTasks(a); pWork(); };
+    el.querySelector('input').onchange = (e) => upd((t) => { t.done = e.target.checked; if (t.done) t.doing = false; });
+    el.querySelector('[data-a=doing]').onclick = () => upd((t) => { t.doing = !t.doing; });
+    el.querySelector('[data-a=del]').onclick = async () => { if (await confirmDlg('ลบงานนี้?', '', 'ลบ')) upd((t, a) => a.splice(a.indexOf(t), 1)); };
+  });
+}
+
+// --- students
+let stQ = '', stY = '', stG = '';
+async function pStudents() {
+  const my = gen;
+  view().innerHTML = '<div class="card"><h2>เพิ่ม / แก้ไขนักศึกษา</h2><p class="mute">ใส่รหัสเดิมเพื่อแก้ไขข้อมูล (นำเข้าไฟล์ Excel/CSV จำนวนมาก ยังทำได้ที่ระบบเดิม)</p><form id="sf"><div class="cols">'
+    + '<label class="f"><span>รหัสนักศึกษา</span><input type="text" id="sId" required inputmode="numeric" maxlength="12" placeholder="6740102220" autocomplete="off"></label>'
+    + '<label class="f"><span>ชื่อ-นามสกุล</span><input type="text" id="sNm" required autocomplete="off"></label>'
+    + '<label class="f"><span>ชั้นปี</span><select id="sYr"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>'
+    + '<label class="f"><span>เพศ</span><select id="sGn"><option value="M">ชาย</option><option value="F">หญิง</option></select></label>'
+    + '<label class="f"><span>เลขบัตรประชาชน (ไม่บังคับ)</span><input type="text" id="sNid" inputmode="numeric" maxlength="13" autocomplete="off"></label></div><button class="btn primary" type="submit">บันทึก</button></form></div>'
+    + '<div class="card"><div class="cols"><label class="f"><span>ค้นหา</span><input type="search" id="sQ" placeholder="ชื่อ / รหัส" value="' + esc(stQ) + '" autocomplete="off"></label>'
+    + '<label class="f"><span>ชั้นปี</span><select id="sFy"><option value="">ทุกชั้นปี</option>' + [1, 2, 3, 4].map((y) => '<option value="' + y + '"' + (String(y) === stY ? ' selected' : '') + '>ปี ' + y + '</option>').join('') + '</select></label>'
+    + '<label class="f"><span>เพศ</span><select id="sFg"><option value="">ทั้งหมด</option><option value="M"' + (stG === 'M' ? ' selected' : '') + '>ชาย</option><option value="F"' + (stG === 'F' ? ' selected' : '') + '>หญิง</option></select></label></div>'
+    + '<h2>รายชื่อ <span class="mute" id="sCnt"></span></h2><div class="tw" id="sList"><p class="empty">กำลังโหลด…</p></div></div>';
+  const load = async () => {
+    const q = new URLSearchParams(); if (stQ) q.set('q', stQ); if (stY) q.set('year', stY); if (stG) q.set('gender', stG);
+    try {
+      const rows = (await getJ('/camps/admin/students?' + q)).students || []; if (my !== gen) return;
+      $('sCnt').textContent = '(' + fmtN(rows.length) + ' คน)';
+      $('sList').innerHTML = rows.length ? '<table><thead><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>ปี</th><th>เพศ</th><th>ฝ่าย</th><th></th></tr></thead><tbody>' + rows.slice(0, 300).map((s) => '<tr><td>' + esc(s.student_id) + '</td><td>' + esc(s.name) + (s.aka ? ' <span class="tag">' + esc(s.aka) + '</span>' : '') + '</td><td>' + s.year + '</td><td>' + (s.gender === 'F' ? 'หญิง' : 'ชาย') + '</td><td>' + esc((s.department_name || '—').replace(/^ฝ่าย/, '')) + '</td><td class="row"><button class="btn sm" data-e="' + esc(s.student_id) + '">แก้ไข</button><button class="btn sm danger" data-d="' + esc(s.student_id) + '">ลบ</button></td></tr>').join('') + '</tbody></table>' + (rows.length > 300 ? '<p class="mute">แสดง 300 รายการแรก ใช้ช่องค้นหาเพื่อกรอง</p>' : '') : '<p class="empty">ไม่พบรายชื่อ</p>';
+      $('sList').querySelectorAll('[data-e]').forEach((b) => { b.onclick = () => { const s = rows.find((x) => x.student_id === b.dataset.e); $('sId').value = s.student_id; $('sNm').value = s.name; $('sYr').value = s.year; $('sGn').value = s.gender; $('sNid').value = s.national_id || ''; $('sf').scrollIntoView({ behavior: 'smooth' }); }; });
+      $('sList').querySelectorAll('[data-d]').forEach((b) => { b.onclick = async () => { if (!(await confirmDlg('ลบนักศึกษา ' + b.dataset.d + '?', 'การลงทะเบียนฝ่ายของคนนี้จะหายไปด้วย', 'ลบ'))) return; const r = await post('/camps/admin/students/delete', { studentId: b.dataset.d }); if (!r.ok) return toast(await errMsg(r), true); toast('ลบแล้ว'); load(); }; });
+    } catch (e) { if (my !== gen) return; if (e.forbidden) return noAdmin(); $('sList').innerHTML = '<p class="empty">' + esc(e.message) + '</p>'; }
+  };
+  let dt; $('sQ').oninput = (e) => { stQ = e.target.value.trim(); clearTimeout(dt); dt = setTimeout(load, 300); };
+  $('sFy').onchange = (e) => { stY = e.target.value; load(); }; $('sFg').onchange = (e) => { stG = e.target.value; load(); };
+  $('sf').onsubmit = async (e) => { e.preventDefault(); const r = await post('/camps/admin/students', { studentId: $('sId').value.trim(), name: $('sNm').value.trim(), year: Number($('sYr').value), gender: $('sGn').value, nationalId: $('sNid').value.trim() }); if (!r.ok) return toast(await errMsg(r), true); toast('บันทึกแล้ว'); $('sf').reset(); load(); };
+  load();
+}
+
+// --- registration open / close + schedule
+async function pReg() {
+  const my = gen; let ov;
+  try { ov = await getJ('/camps/admin/overview'); } catch (e) { if (e.forbidden) return noAdmin(); return retryable(pReg)(e); }
+  if (my !== gen) return;
+  const sc = ov.schedule || {}, cd = sc.mode === 'countdown', cur = ov.manual || ov.registration;
+  const ST = { pending: 'เร็วๆ นี้', open: 'เปิดลงทะเบียน', closed: 'ปิดลงทะเบียน' };
+  const when = sc.enabled ? ' · ตั้งเวลาไว้' + (sc.openAt != null ? ' เปิด ' + fmtWhen(sc.openAt) : '') + (sc.closeAt != null ? ' ปิด ' + fmtWhen(sc.closeAt) : '') : '';
+  view().innerHTML = '<div class="card"><h2>สถานะตอนนี้</h2><p class="mute">ตอนนี้: <b>' + (ST[ov.registration] || '-') + '</b>' + esc(when) + '</p><div class="row" id="stBtns">'
+    + ['pending', 'open', 'closed'].map((k) => '<button class="btn' + (k === cur ? ' primary' : '') + '" type="button" data-s="' + k + '"' + (sc.enabled ? ' disabled' : '') + '>' + ST[k] + '</button>').join('') + '</div>' + (sc.enabled ? '<p class="mute" style="margin-top:10px">ระหว่างตั้งเวลา ปุ่มด้านบนจะไม่ทำงาน — กด “หยุดตั้งเวลา” ก่อน</p>' : '') + '</div>'
+    + '<div class="card"><h2>ตั้งเวลาเปิด–ปิดลงทะเบียน</h2><p class="mute">เวลาตามเครื่องของคุณ (24 ชั่วโมง)</p>'
+    + '<div class="seg" style="margin-bottom:14px"><button type="button" id="mDT" class="' + (cd ? '' : 'on') + '">กำหนดวันและเวลา</button><button type="button" id="mCD" class="' + (cd ? 'on' : '') + '">นับถอยหลัง</button></div>'
+    + '<div id="pDT" class="' + (cd ? 'hidden' : '') + '"><div class="cols">' + dtHTML('rO', 'เปิดลงทะเบียนเมื่อ') + dtHTML('rC', 'ปิดลงทะเบียนเมื่อ') + '</div><p class="mute">ไม่ใส่เวลาเปิด = เปิดเลย · ไม่ใส่เวลาปิด = ไม่ปิดเอง</p></div>'
+    + '<div id="pCD" class="' + (cd ? '' : 'hidden') + '"><div class="cols"><label class="f"><span>เริ่มเปิดในอีก (ชั่วโมง)</span><input type="number" id="a1" min="0" max="2160" inputmode="numeric" placeholder="0"></label><label class="f"><span>และ (นาที)</span><input type="number" id="a2" min="0" max="59" inputmode="numeric" placeholder="0"></label><label class="f"><span>เปิดรับนาน (ชั่วโมง)</span><input type="number" id="b1" min="0" max="2160" inputmode="numeric" placeholder="ว่าง = ไม่ปิด"></label><label class="f"><span>และ (นาที)</span><input type="number" id="b2" min="0" max="59" inputmode="numeric" placeholder="0"></label></div></div>'
+    + '<div class="row"><button class="btn primary" type="button" id="rSave">' + (cd ? 'เริ่มนับถอยหลัง' : 'บันทึกและเปิดใช้') + '</button>' + (sc.enabled ? '<button class="btn" type="button" id="rStop">หยุดตั้งเวลา</button>' : '') + '</div></div>';
+  dtInit('rO', cd ? null : sc.openAt); dtInit('rC', cd ? null : sc.closeAt);
+  let mode = cd;
+  const setMode = (c) => { mode = c; $('mDT').classList.toggle('on', !c); $('mCD').classList.toggle('on', c); $('pDT').classList.toggle('hidden', c); $('pCD').classList.toggle('hidden', !c); $('rSave').textContent = c ? 'เริ่มนับถอยหลัง' : 'บันทึกและเปิดใช้'; };
+  $('mDT').onclick = () => setMode(false); $('mCD').onclick = () => setMode(true);
+  view().querySelectorAll('[data-s]').forEach((b) => { b.onclick = async () => {
+    const k = b.dataset.s; if (k === cur) return;
+    if (k === 'open' && !(await confirmDlg('เปิดลงทะเบียน?', 'นักศึกษาในรายชื่อจะเริ่มลงทะเบียนได้ทันที', 'เปิดลงทะเบียน'))) return;
+    if (k === 'closed' && !(await confirmDlg('ปิดลงทะเบียน?', 'นักศึกษาจะลงทะเบียนหรือเปลี่ยนฝ่ายไม่ได้อีก', 'ปิดลงทะเบียน'))) return;
+    const r = await post('/camps/admin/state', { registration: k }); if (!r.ok) return toast(await errMsg(r), true); toast('อัปเดตสถานะแล้ว'); pReg();
+  }; });
+  const save = async (p, m) => { const r = await post('/camps/admin/schedule', p); if (!r.ok) return toast(await errMsg(r), true); toast(m); pReg(); };
+  $('rSave').onclick = () => {
+    if (mode) {
+      const inS = (Number($('a1').value) || 0) * 3600 + (Number($('a2').value) || 0) * 60, raw = $('b1').value !== '' || $('b2').value !== '', forS = (Number($('b1').value) || 0) * 3600 + (Number($('b2').value) || 0) * 60;
+      if (raw && forS < 10) return toast('ระยะเวลาที่เปิดรับต้องมากกว่า 10 วินาที', true);
+      return save({ enabled: true, mode: 'countdown', startInSec: inS, durationSec: raw ? forS : null }, 'เริ่มนับถอยหลังแล้ว');
+    }
+    const o = pickers.rO.get(), c = pickers.rC.get();
+    if (o == null && c == null) return toast('กำหนดเวลาเปิดหรือเวลาปิดอย่างน้อยหนึ่งอย่าง', true);
+    if (o != null && c != null && c <= o) return toast('เวลาปิดต้องหลังเวลาเปิด', true);
+    save({ enabled: true, mode: 'datetime', openAt: o, closeAt: c }, 'บันทึกเวลาเปิด-ปิดแล้ว');
+  };
+  if ($('rStop')) $('rStop').onclick = async () => { if (await confirmDlg('หยุดตั้งเวลา?', 'สถานะจะกลับไปใช้ค่าที่กดเอง', 'หยุด')) save({ enabled: false, mode: sc.mode }, 'หยุดตั้งเวลาแล้ว'); };
+}
+
+// --- maintenance mode
+async function pMaint() {
+  const my = gen; let x;
+  try { x = await getJ('/camps/maintenance/admin/settings'); } catch (e) { if (e.forbidden) return noAdmin(); return retryable(pMaint)(e); }
+  if (my !== gen) return;
+  const SYS = { hr: ['นักศึกษา', 'ข้อมูลของฉัน · เลือกฝ่าย · AKA · เสื้อค่าย · แบบสำรวจ'], lotto: ['จับสลาก', 'เจ้าหน้าที่สแกน'], qrcheck: ['เช็ก QR', 'เจ้าหน้าที่ตรวจ'] };
+  const STT = { off: ['ปิดอยู่ (ระบบเปิดใช้งานปกติ)', 'closed'], upcoming: ['กำหนดไว้ล่วงหน้า (ยังไม่เริ่ม)', ''], active: ['กำลังปิดปรับปรุงอยู่', 'open'] }[x.state] || ['-', ''];
+  view().innerHTML = '<div class="card"><h2>สถานะ <span class="pill ' + STT[1] + '">' + STT[0] + '</span></h2><p class="mute">เมื่อเปิด นักศึกษา/เจ้าหน้าที่ของระบบที่เลือกจะเห็นหน้าประกาศปิดปรับปรุง และบันทึกข้อมูลไม่ได้ (ดูข้อมูลได้) หน้าแอดมินใช้ได้ปกติ งบประมาณไม่รวมในนี้</p>'
+    + '<label class="chk"><input type="checkbox" id="mOn"' + (x.enabled ? ' checked' : '') + '><span>เปิดโหมดปิดปรับปรุงระบบ</span></label>'
+    + '<h3 style="margin:14px 0 4px;font-size:15px">ระบบที่ปิด</h3>' + Object.keys(SYS).map((k) => '<label class="chk"><input type="checkbox" name="mSys" value="' + k + '"' + (x.scope.includes(k) ? ' checked' : '') + '><span><b>' + SYS[k][0] + '</b><br><small class="mute">' + SYS[k][1] + '</small></span></label>').join('')
+    + '<h3 style="margin:16px 0 8px;font-size:15px">ช่วงเวลา (ไม่บังคับ)</h3><div class="cols">' + dtHTML('mF', 'เริ่ม') + dtHTML('mU', 'สิ้นสุด') + '</div>'
+    + '<p class="mute">เว้น “เริ่ม” = ปิดทันทีที่บันทึก · เว้น “สิ้นสุด” = ปิดจนกว่าจะกดปิดเอง · ตั้งเริ่มล่วงหน้าได้ (เวลาตามเครื่องของคุณ)</p>'
+    + '<label class="f"><span>ข้อความที่แสดง <small class="mute" id="mCnt"></small></span><textarea id="mMsg" rows="4" maxlength="500" placeholder="' + esc(x.defaultMessage) + '"></textarea></label>'
+    + '<div class="row"><button class="btn primary" type="button" id="mSave">บันทึก</button><button class="btn" type="button" id="mNow">เปิดปิดปรับปรุงทันที</button><button class="btn" type="button" id="mOff">ปิดโหมดนี้ (เปิดระบบ)</button></div></div>'
+    + '<div class="card"><h2>ตัวอย่างที่ผู้ใช้เห็น</h2><div id="mPrev" style="background:var(--soft);border-radius:12px;padding:16px"></div></div>';
+  dtInit('mF', x.from); dtInit('mU', x.until); $('mMsg').value = x.message || '';
+  const scope = () => [...document.querySelectorAll('input[name=mSys]:checked')].map((i) => i.value);
+  const prev = () => { const m = $('mMsg').value.trim() || x.defaultMessage, u = pickers.mU.get(); $('mCnt').textContent = [...$('mMsg').value].length + ' / 500'; $('mPrev').innerHTML = '<h3>ปิดปรับปรุงระบบ</h3><p>' + esc(m) + '</p>' + (u ? '<p class="mute" style="margin:0">คาดว่าจะเปิดใช้งานอีกครั้ง ' + esc(fmtWhen(u)) + '</p>' : ''); };
+  $('mMsg').oninput = prev; $('mU').addEventListener('change', prev); $('mU').addEventListener('click', () => setTimeout(prev, 0)); prev();
+  const save = async (over) => {
+    const p = { enabled: $('mOn').checked, scope: scope(), from: pickers.mF.get(), until: pickers.mU.get(), message: $('mMsg').value, ...over };
+    if (p.from != null && p.until != null && p.until <= p.from) return toast('เวลาสิ้นสุดต้องหลังเวลาเริ่ม', true);
+    const r = await post('/camps/maintenance/admin/settings', p); if (!r.ok) return toast(await errMsg(r), true); toast(p.enabled ? 'บันทึกแล้ว' : 'ปิดโหมดปิดปรับปรุงแล้ว'); pMaint();
+  };
+  $('mSave').onclick = async () => {
+    if ($('mOn').checked && !scope().length) return toast('เลือกระบบที่จะปิดอย่างน้อย 1 ระบบ', true);
+    const f = pickers.mF.get();
+    if ($('mOn').checked && (!f || f <= Date.now()) && !(await confirmDlg('ปิดปรับปรุงทันที?', 'ผู้ใช้ระบบที่เลือกจะใช้งานไม่ได้ตั้งแต่ตอนนี้ (แอดมินยังใช้ได้)', 'ปิดปรับปรุง'))) return;
+    save();
+  };
+  $('mNow').onclick = async () => { if (!scope().length) return toast('เลือกระบบที่จะปิดอย่างน้อย 1 ระบบ', true); if (await confirmDlg('ปิดปรับปรุงทันที?', 'ผู้ใช้ระบบที่เลือกจะใช้งานไม่ได้จนกว่าจะกดปิดโหมดนี้', 'ปิดปรับปรุง')) save({ enabled: true, from: null, until: null }); };
+  $('mOff').onclick = () => save({ enabled: false });
+}
+
+// --- other systems (separate apps with their own pages)
+function pMore() {
+  const L = [['/admin/hr/shirt', 'เสื้อค่าย', 'ตั้งช่วงส่งแบบ / โหวต ดูผลงาน'], ['/admin/hr/survey', 'แบบสำรวจโรงเรียน', 'กรอกและพิมพ์แบบสำรวจรายฝ่าย'], ['/admin/hr/og', 'ตัวอย่างลิงก์', 'ชื่อ/รูปที่เห็นเมื่อแชร์ลิงก์'], ['/admin/hr/settings', 'โควตา · ฝ่าย · ตำแหน่ง', 'ตั้งค่าฝ่าย โควตา และตรวจตำแหน่ง'], ['/admin/hr/quota', 'โควตา', 'แก้โควตาแต่ละฝ่าย'], ['/admin/lotto/', 'จับสลาก', 'สแกน QR และจัดการเลขสลาก'], ['/admin/qrcheck/', 'เช็ก QR', 'ตรวจ QR นักศึกษา'], ['/admin/aka/', 'AKA', 'จัดการชื่อ AKA'], ['/budget/', 'งบประมาณ', 'ระบบการเงินโครงการ']];
+  view().innerHTML = '<div class="card"><h2>ระบบอื่น ๆ</h2><p class="mute">ระบบเหล่านี้ยังเป็นหน้าแยก (มีกล้องสแกน / ไฟล์ / ฟอร์มใหญ่)</p><div class="links">' + L.map(([h, t, s]) => '<a href="' + h + '">' + t + '<small>' + s + '</small></a>').join('') + '</div></div>';
+}
+
+// ---------- auth ----------
+let signedIn = false;
+function noAdmin() { view().innerHTML = '<div class="card"><h2>ไม่มีสิทธิ์</h2><p class="mute">บัญชีนี้ไม่ใช่แอดมิน ใช้บัญชีอื่นแทน</p><button class="btn primary" id="oth" type="button">ใช้บัญชี Google อื่น</button></div>'; $('oth').onclick = () => out(true); }
+function signin(msg) { signedIn = false; view().innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมิน') + '</p><button class="btn primary" id="li" type="button">เข้าสู่ระบบด้วย Google</button></div>'; $('li').onclick = async () => { try { await auth.loginWithRedirect({ authorizationParams: { connection: 'google-oauth2' }, appState: { returnTo: '/admin/' + (location.hash || '') } }); } catch (e) { signin(e.message); } }; $('logout').classList.add('hidden'); $('who').classList.add('hidden'); }
+const out = (other) => { try { if (other) sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: location.origin + '/admin/' } }); };
+async function showWho() { try { const u = await auth.getUser(); if (!u) return; const el = $('who'); el.classList.remove('hidden'); el.title = u.email || ''; el.innerHTML = u.picture ? '<img src="' + esc(u.picture) + '" alt="" referrerpolicy="no-referrer">' : esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()); $('logout').classList.remove('hidden'); } catch (e) { /* optional */ } }
+
+$('logout').onclick = () => out(false);
+$('burger').onclick = () => { const on = !document.body.classList.contains('menu'); document.body.classList.toggle('menu', on); $('burger').setAttribute('aria-expanded', String(on)); };
+$('scrim').onclick = () => document.body.classList.remove('menu');
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.body.classList.remove('menu'); });
+window.addEventListener('hashchange', go);
+document.addEventListener('visibilitychange', () => { /* dashboard timer already pauses while hidden */ });
+
+(async () => {
+  drawNav();
+  try {
+    await new Promise((res, rej) => { let n = 0; const w = () => (window.auth0 ? res() : ++n > 100 ? rej(new Error('โหลดหน้าเข้าสู่ระบบไม่สำเร็จ')) : setTimeout(w, 100)); w(); });
+    auth = await window.auth0.createAuth0Client({ domain: 'auth.litalkeducation.com', clientId: 'x', authorizationParams: { redirect_uri: location.href } });
+    if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } catch (e) { signedIn = false; auth = auth; return signin(e.message); } }
+    signedIn = await auth.isAuthenticated();
+    if (signedIn) showWho();
+    go();
+  } catch (e) { view().innerHTML = '<div class="card"><p class="mute">' + esc(e.message || 'เข้าใช้งานไม่ได้ชั่วคราว') + '</p></div>'; }
+})();
+})();
+</script>
 </body>
 </html>
