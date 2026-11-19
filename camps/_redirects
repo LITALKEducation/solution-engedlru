@@ -1,4 +1,4 @@
-# the single admin page was split into separate pages
+# every admin page now lives inside the one /admin/ page (old paths forward to its sections)
 # QR codes printed before the move pointed at /verify/?id=...
 /verify /budget/verify/ 302
 /verify/* /budget/verify/:splat 302
@@ -6,10 +6,22 @@
 /manifest.webmanifest /budget/manifest.webmanifest 301
 /budget/verify/* /budget/verify/index.html 200
 /admin /admin/ 301
-/hr/overview /admin/hr/overview 302
-/hr/quota /admin/hr/quota 302
-/hr/live /admin/hr/live 302
-/hr/students /admin/hr/students 302
-/hr/settings /admin/hr/settings 302
-/hr/admin /admin/hr/overview 302
-/hr/admin/ /admin/hr/overview 302
+/hr/overview /admin/#depts 302
+/hr/quota /admin/#depts 302
+/hr/live /admin/#dash 302
+/hr/students /admin/#students 302
+/hr/settings /admin/#reg 302
+/hr/admin /admin/#depts 302
+/hr/admin/ /admin/#depts 302
+/admin/hr/overview /admin/#depts 302
+/admin/hr/quota /admin/#depts 302
+/admin/hr/live /admin/#dash 302
+/admin/hr/students /admin/#students 302
+/admin/hr/survey /admin/#survey 302
+/admin/hr/shirt /admin/#shirt 302
+/admin/hr/og /admin/#og 302
+/admin/hr/maintenance /admin/#maint 302
+/admin/hr/settings /admin/#reg 302
+/admin/lotto/ /admin/#lotto 302
+/admin/qrcheck/ /admin/#qr 302
+/admin/aka/ /admin/#aka 302

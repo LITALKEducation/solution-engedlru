@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="/assets/inapp-guard.js"></script>
 <meta name="theme-color" content="#1f1f21">
 <meta name="robots" content="noindex,nofollow">
 <title>แอดมิน · กิจกรรมค่าย</title>
@@ -85,6 +86,11 @@ input[type=date].dtd::-webkit-calendar-picker-indicator{opacity:.6}
 .links a{display:block;background:var(--soft);border-radius:12px;padding:14px;text-decoration:none;color:var(--ink);font-weight:600}.links a small{display:block;font-weight:400;color:var(--mute)}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 18px;border-radius:12px;z-index:90;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s}#toast.show{opacity:1}#toast.err{background:var(--bad)}
 dialog{border:0;border-radius:16px;padding:20px;max-width:min(420px,92vw)}dialog::backdrop{background:rgba(0,0,0,.45)}
+
+.tabs{display:flex;flex-wrap:wrap;margin-bottom:14px}.tabs button{flex:0 0 auto}
+details>summary{list-style:revert}
+.noprint{margin-top:14px}
+@media print{.side,.top,.foot,.burger,.scrim,.noprint,#toast,#view>*:not(#svSheetWrap),#svSheetWrap~*,.seg{display:none!important}body,.main{background:#fff!important;padding:0!important}.app{display:block}.card{border-radius:0;padding:0}}
 @media(max-width:860px){
  .app{display:block}
  .side{position:fixed;inset:0 auto 0 0;width:260px;z-index:60;transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 30px rgba(0,0,0,.2)}
@@ -179,26 +185,34 @@ const NAV = [
   ['work', 'งานของฉัน', '<path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>'],
   ['', 'ฝ่ายบุคคล'],
   ['students', 'นักศึกษา', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M17 11a3 3 0 1 0 0-6M21.5 20c0-2.6-1.6-4.6-4-5.5"/>'],
+  ['depts', 'ฝ่าย · โควตา', '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'],
   ['reg', 'เปิด–ปิดลงทะเบียน', '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>'],
+  ['shirt', 'เสื้อค่าย', '<path d="M8 3l-5 3 2 5 3-1v10h8V10l3 1 2-5-5-3a4 4 0 0 1-8 0z"/>'],
+  ['survey', 'แบบสำรวจโรงเรียน', '<path d="M8 4h8l4 4v12H4V4zM8 12h8M8 16h5"/>'],
+  ['', 'ระบบกิจกรรม'],
+  ['lotto', 'จับสลาก', '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8v12M3 12h18M12 8c-2-4-6-3-5 0M12 8c2-4 6-3 5 0"/>'],
+  ['qr', 'เช็ก QR', '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v7M14 20h3"/>'],
+  ['aka', 'AKA', '<path d="M20 12a8 8 0 0 1-11.5 7.2L4 20l1-4.2A8 8 0 1 1 20 12z"/>'],
   ['', 'ระบบ'],
+  ['og', 'ตัวอย่างลิงก์', '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'],
   ['maint', 'ปิดปรับปรุงระบบ', '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'],
-  ['more', 'ระบบอื่น ๆ', '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>']
+  ['/budget/', 'งบประมาณ ↗', '<rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6 10v5M18 10v5"/>']
 ];
-const TITLES = Object.fromEntries(NAV.filter((n) => n[2]).map((n) => [n[0], n[1]]));
+const TITLES = Object.fromEntries(NAV.filter((n) => n[2] && n[0][0] !== '/').map((n) => [n[0], n[1]]));
 let page = 'dash', gen = 0, timer = null;
 const view = () => $('view');
 const failBox = (m, retry) => '<div class="card"><p class="mute">' + esc(m) + '</p><button class="btn" type="button" data-retry="1">ลองใหม่</button></div>';
 function drawNav() {
   const open = tasks().filter((t) => !t.done).length;
-  $('nav').innerHTML = NAV.map(([k, l, ic]) => !ic ? '<p class="grp">' + l + '</p>' : '<a href="#' + k + '"' + (k === page ? ' class="on" aria-current="page"' : '') + '>' + I(ic) + l + (k === 'work' && open ? '<span class="badge">' + open + '</span>' : '') + '</a>').join('');
+  $('nav').innerHTML = NAV.map(([k, l, ic]) => !ic ? '<p class="grp">' + l + '</p>' : '<a href="' + (k[0] === '/' ? k : '#' + k) + '"' + (k === page ? ' class="on" aria-current="page"' : '') + '>' + I(ic) + l + (k === 'work' && open ? '<span class="badge">' + open + '</span>' : '') + '</a>').join('');
 }
 function go() {
-  clearTimeout(timer); Object.keys(pickers).forEach((k) => delete pickers[k]);
+  clearTimeout(timer); stopCams(); view().onclick = null; Object.keys(pickers).forEach((k) => delete pickers[k]);
   const k = (location.hash || '#dash').slice(1); page = TITLES[k] ? k : 'dash'; gen++;
   $('ttl').textContent = TITLES[page]; document.title = TITLES[page] + ' · แอดมินกิจกรรมค่าย'; drawNav();
   document.body.classList.remove('menu'); $('burger').setAttribute('aria-expanded', 'false');
   if (!auth) return; if (!signedIn) return signin();
-  ({ dash: pDash, work: pWork, students: pStudents, reg: pReg, maint: pMaint, more: pMore })[page]();
+  ({ dash: pDash, work: pWork, students: pStudents, depts: pDepts, reg: pReg, shirt: pShirt, survey: pSurvey, lotto: pLotto, qr: pQr, aka: pAka, og: pOg, maint: pMaint })[page]();
   window.scrollTo(0, 0);
 }
 const retryable = (fn) => (e) => { view().innerHTML = failBox(e.message || 'เชื่อมต่อไม่ได้'); const b = view().querySelector('[data-retry]'); if (b) b.onclick = fn; };
@@ -262,9 +276,10 @@ function pWork() {
 
 // --- students
 let stQ = '', stY = '', stG = '';
-async function pStudents() {
+function pStudents() { tabbed('stu', [['list', 'รายชื่อ'], ['imp', 'นำเข้า'], ['exp', 'ส่งออก']], { list: stList, imp: stImport, exp: stExport }); }
+async function stList(tb) {
   const my = gen;
-  view().innerHTML = '<div class="card"><h2>เพิ่ม / แก้ไขนักศึกษา</h2><p class="mute">ใส่รหัสเดิมเพื่อแก้ไขข้อมูล (นำเข้าไฟล์ Excel/CSV จำนวนมาก ยังทำได้ที่ระบบเดิม)</p><form id="sf"><div class="cols">'
+  tb.innerHTML = '<div class="card"><h2>เพิ่ม / แก้ไขนักศึกษา</h2><p class="mute">ใส่รหัสเดิมเพื่อแก้ไขข้อมูล (นำเข้าหลายคนที่แท็บ “นำเข้า”)</p><form id="sf"><div class="cols">'
     + '<label class="f"><span>รหัสนักศึกษา</span><input type="text" id="sId" required inputmode="numeric" maxlength="12" placeholder="6740102220" autocomplete="off"></label>'
     + '<label class="f"><span>ชื่อ-นามสกุล</span><input type="text" id="sNm" required autocomplete="off"></label>'
     + '<label class="f"><span>ชั้นปี</span><select id="sYr"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>'
@@ -364,16 +379,450 @@ async function pMaint() {
   $('mOff').onclick = () => save({ enabled: false });
 }
 
-// --- other systems (separate apps with their own pages)
-function pMore() {
-  const L = [['/admin/hr/shirt', 'เสื้อค่าย', 'ตั้งช่วงส่งแบบ / โหวต ดูผลงาน'], ['/admin/hr/survey', 'แบบสำรวจโรงเรียน', 'กรอกและพิมพ์แบบสำรวจรายฝ่าย'], ['/admin/hr/og', 'ตัวอย่างลิงก์', 'ชื่อ/รูปที่เห็นเมื่อแชร์ลิงก์'], ['/admin/hr/settings', 'โควตา · ฝ่าย · ตำแหน่ง', 'ตั้งค่าฝ่าย โควตา และตรวจตำแหน่ง'], ['/admin/hr/quota', 'โควตา', 'แก้โควตาแต่ละฝ่าย'], ['/admin/lotto/', 'จับสลาก', 'สแกน QR และจัดการเลขสลาก'], ['/admin/qrcheck/', 'เช็ก QR', 'ตรวจ QR นักศึกษา'], ['/admin/aka/', 'AKA', 'จัดการชื่อ AKA'], ['/budget/', 'งบประมาณ', 'ระบบการเงินโครงการ']];
-  view().innerHTML = '<div class="card"><h2>ระบบอื่น ๆ</h2><p class="mute">ระบบเหล่านี้ยังเป็นหน้าแยก (มีกล้องสแกน / ไฟล์ / ฟอร์มใหญ่)</p><div class="links">' + L.map(([h, t, s]) => '<a href="' + h + '">' + t + '<small>' + s + '</small></a>').join('') + '</div></div>';
+
+// ====================== moved admin pages (each used to be its own page) ======================
+const sub = {};
+const send = async (m, p, b) => {
+  const r = await api(p, { method: m, headers: b === undefined ? {} : { 'Content-Type': 'application/json' }, body: b === undefined ? undefined : JSON.stringify(b) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error || ('เกิดข้อผิดพลาด (' + r.status + ')')), { status: r.status, data: d });
+  return d;
+};
+const fail = (e) => { if (e && e.status === 403) noAdmin(); else toast((e && e.message) || 'เชื่อมต่อไม่ได้', true); };
+const fdt = (s) => (s ? fmtWhen(new Date(String(s).replace(' ', 'T') + 'Z').getTime()) : '—');
+const GL = { M: 'ชาย', F: 'หญิง' }, YEARS = [1, 2, 3, 4], GENDERS = ['M', 'F'];
+const tabsHTML = (list, cur) => '<div class="seg tabs" role="tablist">' + list.map(([k, l]) => '<button type="button" role="tab" data-tab="' + k + '" aria-selected="' + (k === cur) + '" class="' + (k === cur ? 'on' : '') + '">' + l + '</button>').join('') + '</div><div id="tb"></div>';
+function tabbed(key, list, fns) {
+  const cur = list.some((x) => x[0] === sub[key]) ? sub[key] : list[0][0];
+  view().innerHTML = tabsHTML(list, cur);
+  view().querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { sub[key] = b.dataset.tab; stopCams(); tabbed(key, list, fns); }; });
+  fns[cur]($('tb'));
 }
+const camStops = []; const stopCams = () => { while (camStops.length) { try { camStops.pop()(); } catch (e) { /* ignore */ } } };
+const loadJs = (src) => new Promise((res, rej) => { if (document.querySelector('script[data-s="' + src + '"]')) return res(); const el = document.createElement('script'); el.src = src; el.dataset.s = src; el.onload = res; el.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(el); });
+const loadXlsx = async () => { if (!window.XLSX) await loadJs('/hr/vendor/xlsx.mini.min.js'); return window.XLSX; };
+function modal(html) {
+  const d = document.createElement('dialog'); d.innerHTML = html + ''; document.body.appendChild(d);
+  d.addEventListener('close', () => d.remove()); d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.close(); });
+  if (d.showModal) d.showModal(); else d.setAttribute('open', ''); return d;
+}
+const table = (head, rows, empty) => rows.length ? '<div class="tw"><table><thead><tr>' + head.map((h) => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' : '<p class="empty">' + (empty || 'ไม่พบข้อมูล') + '</p>';
+const saveXlsx = async (rows, name, wch, sheet) => { const X = await loadXlsx(), ws = X.utils.aoa_to_sheet(rows); if (wch) ws['!cols'] = wch.map((w) => ({ wch: w })); const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, sheet || 'Sheet1'); X.writeFile(wb, name); };
+const stamp = () => new Date().toISOString().slice(0, 10);
+
+// ---------- ฝ่าย · โควตา · หัวหน้า · ตำแหน่ง ----------
+let depData = null, allSt = [];
+const loadDep = async () => { depData = await getJ('/camps/admin/overview'); return depData; };
+function pDepts() {
+  tabbed('depts', [['ov', 'ภาพรวม'], ['quota', 'โควตา'], ['info', 'หัวหน้าฝ่าย'], ['geo', 'ตำแหน่ง']], { ov: depOverview, quota: depQuota, info: depInfo, geo: depGeo });
+}
+async function depOverview(tb) {
+  let a, st; try { [a, st] = await Promise.all([loadDep(), getJ('/camps/admin/students')]); } catch (e) { return tb.innerHTML = failBox(e.message), (tb.querySelector('[data-retry]').onclick = pDepts); }
+  allSt = st.students || [];
+  const sumG = (g) => YEARS.reduce((s, y) => s + (a.students[g][y] || 0), 0), total = sumG('M') + sumG('F');
+  const cell = (d, g, y) => { const q = d.quota[g][y], f = d.filled[g][y]; return '<div style="white-space:nowrap;' + (q > 0 && f >= q ? 'color:var(--warn);font-weight:700' : '') + '">' + (g === 'M' ? 'ช' : 'ญ') + ' ' + f + '/' + q + '</div>'; };
+  tb.innerHTML = '<div class="card"><h2>ลงทะเบียนแล้ว / โควตา <small class="mute">(ช = ชาย · ญ = หญิง)</small></h2>' + table(['ฝ่าย'].concat(YEARS.map((y) => 'ปี ' + y)).concat(['รวม']), a.departments.map((d) => '<tr><td><b>' + esc(d.name) + '</b></td>' + YEARS.map((y) => '<td>' + GENDERS.map((g) => cell(d, g, y)).join('') + '</td>').join('') + '<td>' + GENDERS.map((g) => (g === 'M' ? 'ช' : 'ญ') + ' ' + YEARS.reduce((s, y) => s + d.filled[g][y], 0) + '/' + YEARS.reduce((s, y) => s + d.quota[g][y], 0)).join('<br>') + '</td></tr>')) + '<p class="mute" style="margin:10px 0 0">นักศึกษาในรายชื่อ ' + total + ' คน · ลงทะเบียนแล้ว ' + a.selectedTotal + ' คน (ยังไม่ลงทะเบียน ' + Math.max(0, total - a.selectedTotal) + ')</p></div>'
+    + '<div class="card"><div class="row" style="justify-content:space-between"><h2>ผู้ลงทะเบียนแต่ละฝ่าย</h2><button class="btn sm" type="button" id="dxl">ส่งออก Excel (แยกฝ่าย)</button></div><p class="mute">แอดมินเพิ่มหรือนำชื่อออกจากฝ่ายได้เอง</p>'
+    + a.departments.map((d) => { const mem = allSt.filter((x) => x.department_code === d.code); return '<details style="border-top:1px solid var(--line);padding:8px 0"' + (sub.depOpen === d.code ? ' open' : '') + ' data-dep="' + d.code + '"><summary style="min-height:40px;cursor:pointer"><b>' + esc(d.name) + '</b> <span class="mute">' + mem.length + ' คน</span></summary>'
+      + (mem.length ? YEARS.map((y) => GENDERS.map((g) => { const m = mem.filter((x) => x.year === y && x.gender === g); return m.length ? '<p style="margin:6px 0"><span class="pill">ปี ' + y + ' ' + GL[g] + ' · ' + m.length + '/' + d.quota[g][y] + '</span> ' + m.map((x) => '<span class="tag">' + esc(x.name) + ' <button type="button" data-rm="' + esc(x.student_id) + '" aria-label="นำ ' + esc(x.name) + ' ออก" style="border:0;background:none;font-size:16px;padding:0 4px">×</button></span>').join(' ') + '</p>' : ''; }).join('')).join('') : '<p class="mute">ยังไม่มีผู้ลงทะเบียน</p>')
+      + '<button class="btn sm primary" type="button" data-add="' + d.code + '">＋ เพิ่มรายชื่อเข้า' + esc(d.name.replace(/^ฝ่าย/, '')) + '</button></details>'; }).join('') + '</div>';
+  tb.querySelectorAll('details[data-dep]').forEach((x) => { x.ontoggle = () => { if (x.open) sub.depOpen = x.dataset.dep; }; });
+  tb.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { const s = allSt.find((x) => x.student_id === b.dataset.rm); if (!(await confirmDlg('นำออกจากฝ่าย?', (s ? s.name : '') + ' จะกลับไปเป็นยังไม่ลงทะเบียน และที่นั่งจะถูกคืน', 'นำออก'))) return; try { await send('POST', '/camps/admin/selections/clear', { studentId: b.dataset.rm }); toast('นำออกแล้ว'); depOverview(tb); } catch (e) { fail(e); } }; });
+  tb.querySelectorAll('[data-add]').forEach((b) => { b.onclick = () => pickDialog(b.dataset.add, () => depOverview(tb)); });
+  $('dxl').onclick = async () => {
+    try { const X = await loadXlsx(), wb = X.utils.book_new(); for (const d of a.departments) { const mem = allSt.filter((x) => x.department_code === d.code).sort((p, q) => q.year - p.year || String(p.student_id).localeCompare(q.student_id)); const ws = X.utils.aoa_to_sheet([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']].concat(mem.map((x) => [String(x.student_id), x.name, x.year, GL[x.gender] || '']))); ws['!cols'] = [16, 28, 8, 8].map((w) => ({ wch: w })); X.utils.book_append_sheet(wb, ws, d.name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 28)); } X.writeFile(wb, 'registered-by-department-' + stamp() + '.xlsx'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); }
+  };
+}
+async function doAssign(code, ids, force) {
+  const d = await send('POST', '/camps/admin/selections/assign', { departmentCode: code, studentIds: ids, force: !!force });
+  let n = d.assigned;
+  if (d.noGender && d.noGender.length) toast('ข้าม ' + d.noGender.length + ' คนที่ยังไม่ระบุเพศ', true);
+  if (d.full.length && !force && await confirmDlg('ฝ่ายเต็มโควตา', 'เพิ่มไม่ได้ ' + d.full.length + ' คน (' + d.full.slice(0, 4).map((x) => x.name).join(', ') + ') เพิ่มเกินโควตาหรือไม่?', 'เพิ่มเกินโควตา')) { n += (await send('POST', '/camps/admin/selections/assign', { departmentCode: code, studentIds: d.full.map((x) => x.studentId), force: true })).assigned; }
+  toast(n ? 'เพิ่ม ' + n + ' คนแล้ว' : (d.unchanged ? 'อยู่ในฝ่ายนี้อยู่แล้ว' : 'ไม่ได้เพิ่มใคร'), !n && !d.unchanged); return n > 0 || d.unchanged > 0;
+}
+function pickDialog(code, done) {
+  const dep = depData.departments.find((x) => x.code === code), chosen = new Set();
+  const d = modal('<h2>เพิ่มรายชื่อเข้า' + esc(dep.name) + '</h2><label class="f"><input type="search" id="pkQ" placeholder="ค้นหาชื่อหรือรหัส" autocomplete="off"></label><label class="chk"><input type="checkbox" id="pkAll"><span>แสดงคนที่มีฝ่ายอยู่แล้ว (ย้ายมาฝ่ายนี้)</span></label><div id="pkL" style="max-height:40vh;overflow:auto"></div><label class="chk"><input type="checkbox" id="pkF"><span>เพิ่มแม้ฝ่ายเต็มโควตา</span></label><div class="row" style="justify-content:flex-end"><button class="btn" data-x type="button">ยกเลิก</button><button class="btn primary" id="pkOk" type="button" disabled>เพิ่ม</button></div>');
+  const draw = () => {
+    const q = $('pkQ').value.trim().toLowerCase(), all = $('pkAll').checked;
+    const rows = allSt.filter((x) => x.department_code !== code && (all || !x.department_code) && (!q || x.name.toLowerCase().includes(q) || x.student_id.includes(q))).slice(0, 200);
+    $('pkL').innerHTML = rows.map((x) => '<label class="chk"><input type="checkbox" value="' + esc(x.student_id) + '"' + (chosen.has(x.student_id) ? ' checked' : '') + '><span><b>' + esc(x.name) + '</b><br><small class="mute">' + esc(x.student_id) + ' · ปี ' + x.year + ' · ' + (GL[x.gender] || 'ไม่ระบุเพศ') + (x.department_name ? ' · อยู่ ' + esc(x.department_name) : '') + '</small></span></label>').join('') || '<p class="empty">ไม่พบนักศึกษา</p>';
+    $('pkOk').textContent = chosen.size ? 'เพิ่ม ' + chosen.size + ' คน' : 'เพิ่ม'; $('pkOk').disabled = !chosen.size;
+  };
+  d.addEventListener('change', (e) => { if (e.target.closest('#pkL')) { e.target.checked ? chosen.add(e.target.value) : chosen.delete(e.target.value); draw(); } else if (e.target.id === 'pkAll') draw(); });
+  $('pkQ').oninput = draw;
+  $('pkOk').onclick = async () => { $('pkOk').disabled = true; try { if (await doAssign(code, [...chosen], $('pkF').checked)) { d.close(); done(); } else draw(); } catch (e) { fail(e); draw(); } };
+  draw();
+}
+async function depQuota(tb) {
+  let a; try { a = await loadDep(); } catch (e) { return fail(e); }
+  tb.innerHTML = '<p class="mute">จำนวนที่รับของแต่ละฝ่าย แยกชาย / หญิงและชั้นปี (0 = ไม่เปิดรับ) ตั้งต่ำกว่าจำนวนที่ลงทะเบียนแล้วไม่ได้</p>' + a.departments.map((d) => '<div class="card"><h2>' + esc(d.name) + '</h2><div class="cols" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">' + GENDERS.map((g) => YEARS.map((y) => '<label class="f"><span>' + GL[g] + ' ปี ' + y + '</span><input type="number" inputmode="numeric" min="0" max="9999" id="q-' + d.code + '-' + g + '-' + y + '" value="' + d.quota[g][y] + '"><small class="mute">ลงแล้ว ' + d.filled[g][y] + '</small></label>').join('')).join('') + '</div><div class="row"><button class="btn primary sm" type="button" data-sq="' + d.code + '">บันทึกโควตา</button><button class="btn sm" type="button" data-cq="' + d.code + '">คัดลอก ชาย → หญิง</button></div></div>').join('');
+  tb.querySelectorAll('[data-cq]').forEach((b) => { b.onclick = () => { YEARS.forEach((y) => { $('q-' + b.dataset.cq + '-F-' + y).value = $('q-' + b.dataset.cq + '-M-' + y).value; }); toast('คัดลอกแล้ว กด “บันทึกโควตา” เพื่อยืนยัน'); }; });
+  tb.querySelectorAll('[data-sq]').forEach((b) => { b.onclick = async () => { const c = b.dataset.sq, quotas = { M: {}, F: {} }; GENDERS.forEach((g) => YEARS.forEach((y) => { quotas[g][y] = Number($('q-' + c + '-' + g + '-' + y).value); })); b.disabled = true; try { await send('POST', '/camps/admin/quota', { departmentCode: c, quotas }); toast('บันทึกโควตาแล้ว'); } catch (e) { fail(e); } b.disabled = false; }; });
+}
+async function squareJpeg(file, size = 480) {
+  const bmp = await createImageBitmap(file).catch(() => null); if (!bmp) throw new Error('อ่านรูปไม่ได้ ลองใช้ไฟล์ JPG หรือ PNG');
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'), m = Math.min(bmp.width, bmp.height);
+  x.fillStyle = '#fff'; x.fillRect(0, 0, size, size); x.drawImage(bmp, (bmp.width - m) / 2, (bmp.height - m) / 2, m, m, 0, 0, size, size);
+  const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.85)); if (!blob) throw new Error('แปลงรูปไม่ได้'); return blob;
+}
+async function depInfo(tb) {
+  let a; try { a = await loadDep(); } catch (e) { return fail(e); }
+  const ph = (d) => d.head && d.head.photo ? '<img src="' + API + '/camps/department-photo/' + encodeURIComponent(d.code) + '?v=' + esc(d.head.photo) + '" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover">' : '<span class="who" style="width:64px;height:64px;font-size:22px">' + esc(([...((d.head && d.head.name) || '?')][0]) || '?') + '</span>';
+  tb.innerHTML = '<p class="mute">แสดงให้นักศึกษาเห็นในหน้าเลือกฝ่าย</p>' + a.departments.map((d) => { const h = d.head || {}; return '<div class="card"><h2>' + esc(d.name) + '</h2><div class="row" style="margin-bottom:10px">' + ph(d) + '<label class="btn sm" for="df-' + d.code + '">' + (h.photo ? 'เปลี่ยนรูป' : 'อัปโหลดรูปหัวหน้าฝ่าย') + '</label><input id="df-' + d.code + '" data-pf="' + d.code + '" type="file" accept="image/*" class="hidden">' + (h.photo ? '<button class="btn sm danger" type="button" data-dp="' + d.code + '">ลบรูป</button>' : '') + '</div>'
+    + '<div class="cols"><label class="f"><span>หัวหน้าฝ่าย</span><input type="text" id="dh-' + d.code + '" maxlength="120" value="' + esc(h.name || '') + '" autocomplete="off"></label><label class="f"><span>ช่องทางติดต่อ</span><input type="text" id="dc-' + d.code + '" maxlength="200" value="' + esc(h.contact || '') + '" placeholder="เบอร์โทร / LINE ID" autocomplete="off"></label></div>'
+    + '<label class="f"><span>หน้าที่ของฝ่าย</span><textarea id="dd-' + d.code + '" rows="3" maxlength="1000">' + esc(d.description || '') + '</textarea></label><button class="btn primary sm" type="button" data-sd="' + d.code + '">บันทึก</button></div>'; }).join('');
+  tb.querySelectorAll('[data-sd]').forEach((b) => { b.onclick = async () => { const c = b.dataset.sd; try { await send('POST', '/camps/admin/department', { departmentCode: c, headName: $('dh-' + c).value, headContact: $('dc-' + c).value, description: $('dd-' + c).value }); toast('บันทึกข้อมูลฝ่ายแล้ว'); } catch (e) { fail(e); } }; });
+  tb.querySelectorAll('[data-pf]').forEach((i) => { i.onchange = async () => { const f = i.files[0]; if (!f) return; if (f.size > 15 * 1048576) return toast('ไฟล์รูปใหญ่เกินไป', true); try { const blob = await squareJpeg(f); const r = await api('/camps/admin/department/photo?code=' + encodeURIComponent(i.dataset.pf), { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob }); if (!r.ok) throw new Error(await errMsg(r)); toast('อัปโหลดรูปแล้ว'); depInfo(tb); } catch (e) { toast(e.message, true); } }; });
+  tb.querySelectorAll('[data-dp]').forEach((b) => { b.onclick = async () => { if (!(await confirmDlg('ลบรูปหัวหน้าฝ่าย?', 'นักศึกษาจะเห็นเป็นตัวอักษรย่อแทน', 'ลบรูป'))) return; try { await send('POST', '/camps/admin/department/photo/delete', { departmentCode: b.dataset.dp }); toast('ลบรูปแล้ว'); depInfo(tb); } catch (e) { fail(e); } }; });
+}
+async function depGeo(tb) {
+  let a; try { a = await loadDep(); } catch (e) { return fail(e); }
+  const g = a.geo || {};
+  tb.innerHTML = '<div class="card"><h2>ตรวจสอบตำแหน่งก่อนลงทะเบียน</h2><p class="mute">นักศึกษาต้องอยู่ในรัศมีจากจุดนี้ถึงจะลงทะเบียนได้ ตำแหน่งมาจากโทรศัพท์ของนักศึกษา จึงเป็นเพียงการกันเบื้องต้น</p><label class="chk"><input type="checkbox" id="gOn"' + (g.enabled ? ' checked' : '') + '><span>เปิดการตรวจสอบตำแหน่ง</span></label>'
+    + '<div class="cols"><label class="f"><span>ชื่อสถานที่</span><input type="text" id="gN" maxlength="120" value="' + esc(g.name || '') + '"></label><label class="f"><span>รัศมี (เมตร)</span><input type="number" id="gR" min="10" max="100000" inputmode="numeric" value="' + (g.radius ?? 200) + '"></label><label class="f"><span>ละติจูด</span><input type="number" id="gLa" step="any" inputmode="decimal" value="' + (g.lat ?? '') + '"></label><label class="f"><span>ลองจิจูด</span><input type="number" id="gLo" step="any" inputmode="decimal" value="' + (g.lng ?? '') + '"></label></div>'
+    + '<div class="row"><button class="btn" type="button" id="gHere">ใช้ตำแหน่งปัจจุบันของฉัน</button><button class="btn primary" type="button" id="gSave">บันทึก</button></div></div>';
+  $('gHere').onclick = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => { $('gLa').value = p.coords.latitude.toFixed(6); $('gLo').value = p.coords.longitude.toFixed(6); toast('ใช้ตำแหน่งปัจจุบัน (±' + Math.round(p.coords.accuracy) + ' ม.)'); }, (e) => toast(e.code === 1 ? 'ไม่ได้อนุญาตให้ใช้ตำแหน่ง' : 'หาตำแหน่งไม่ได้', true), { enableHighAccuracy: true, timeout: 15000 }) : toast('เครื่องนี้ไม่รองรับตำแหน่ง', true);
+  $('gSave').onclick = async () => { const on = $('gOn').checked, la = $('gLa').value, lo = $('gLo').value; if (on && (la === '' || lo === '')) return toast('ต้องใส่ละติจูดและลองจิจูด', true); try { await send('POST', '/camps/admin/geo', { enabled: on, name: $('gN').value, lat: la === '' ? null : Number(la), lng: lo === '' ? null : Number(lo), radius: Number($('gR').value) }); toast('บันทึกแล้ว'); } catch (e) { fail(e); } };
+}
+
+// ---------- นักศึกษา: import / export (extra tabs on the students page) ----------
+function stImport(tb) {
+  tb.innerHTML = '<div class="card"><h2>นำเข้า Excel / CSV</h2><p class="mute">คอลัมน์ <b>รหัสนักศึกษา, ชื่อ-นามสกุล, ชั้นปี, เพศ</b> และ <b>ฝ่าย</b> (ไม่บังคับ) รหัสที่มีอยู่แล้วจะถูกอัปเดต</p><div class="row"><label class="btn" for="stFile">เลือกไฟล์</label><input type="file" id="stFile" class="hidden" accept=".xlsx,.xls,.csv,.txt"><button class="btn" type="button" id="stTpl">ดาวน์โหลดไฟล์ตัวอย่าง</button><span class="mute" id="stFn"></span></div><label class="f" style="margin-top:12px"><span>หรือวางรายชื่อ</span><textarea id="stTxt" rows="6" placeholder="รหัสนักศึกษา,ชื่อ-นามสกุล,ชั้นปี,เพศ&#10;6740102220,สมชาย ใจดี,3,ชาย"></textarea></label><button class="btn primary" type="button" id="stGo">นำเข้า</button><div id="stRes" style="margin-top:10px"></div></div>';
+  $('stTpl').onclick = () => saveXlsx([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย'], ['6740102220', 'สมชาย ใจดี', 3, 'ชาย', 'ฝ่ายการสอน'], ['6840100001', 'สมหญิง รักเรียน', 2, 'หญิง', '']], 'camp-students-template.xlsx', [16, 26, 8, 8, 18], 'รายชื่อ').catch(() => toast('ดาวน์โหลดไม่สำเร็จ', true));
+  $('stFile').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return; if (f.size > 5 * 1048576) { e.target.value = ''; return toast('ไฟล์ใหญ่เกิน 5 MB', true); }
+    const buf = await f.arrayBuffer(), u = new Uint8Array(buf, 0, Math.min(4, buf.byteLength)); let text;
+    if (/\.(xlsx|xls)$/i.test(f.name) || (u[0] === 0x50 && u[1] === 0x4b) || (u[0] === 0xd0 && u[1] === 0xcf)) { try { const X = await loadXlsx(), wb = X.read(buf, { type: 'array' }); text = X.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ',', RS: '\n', blankrows: false }); } catch (er) { e.target.value = ''; return toast('อ่านไฟล์ไม่ได้', true); } }
+    else { try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (x) { try { text = new TextDecoder('windows-874').decode(buf); } catch (y) { text = new TextDecoder().decode(buf); } } }
+    $('stTxt').value = text; $('stFn').textContent = f.name; e.target.value = '';
+  };
+  $('stGo').onclick = async () => {
+    const text = $('stTxt').value.trim(); if (!text) return toast('เลือกไฟล์หรือวางรายชื่อก่อน', true); $('stGo').disabled = true;
+    try { const d = await send('POST', '/camps/admin/students/bulk', { text }); $('stRes').innerHTML = '✓ เพิ่มใหม่ <b>' + d.added + '</b> · อัปเดต <b>' + d.updated + '</b>' + (d.assigned ? ' · ใส่เข้าฝ่าย <b>' + d.assigned + '</b>' : '') + (d.errors.length ? ' · ข้าม <b>' + d.errors.length + '</b> แถว<div style="color:var(--bad)">' + d.errors.slice(0, 30).map((x) => 'บรรทัด ' + x.line + ': ' + esc(x.error)).join('<br>') + '</div>' : ''); if (!d.errors.length) $('stTxt').value = ''; toast('นำเข้าเสร็จแล้ว'); } catch (e) { fail(e); }
+    $('stGo').disabled = false;
+  };
+}
+async function stExport(tb) {
+  tb.innerHTML = '<div class="card"><h2>ส่งออกรายชื่อ</h2><p class="mute">ข้อมูลทุกคนในรายชื่อ รวมชื่อเล่น AKA ฝ่าย เบอร์โทร</p><div class="row"><button class="btn primary" type="button" id="exX">ดาวน์โหลด Excel</button><button class="btn" type="button" id="exC">ดาวน์โหลด CSV</button></div></div>';
+  const rows = async () => { const l = (await getJ('/camps/admin/students')).students || []; return [['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชื่อ-สกุล (อังกฤษ)', 'ชื่อเล่น', 'AKA', 'ชั้นปี', 'เพศ', 'ฝ่าย', 'วันเกิด', 'เบอร์โทรศัพท์', 'เบอร์ผู้ปกครอง', 'เลขบัตรประชาชน']].concat(l.map((s) => [String(s.student_id), s.name, s.name_en || '', s.nickname || '', s.aka || '', s.year, GL[s.gender] || '', s.department_name || '', s.birth_date || '', s.phone || '', s.guardian_phone || '', s.national_id || ''])); };
+  $('exX').onclick = async () => { try { await saveXlsx(await rows(), 'camp-students-' + stamp() + '.xlsx', [14, 28, 26, 12, 16, 8, 8, 20, 14, 14, 14, 16], 'นักศึกษา'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
+  $('exC').onclick = async () => { try { const csv = '﻿' + (await rows()).map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students-' + stamp() + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
+}
+
+// ---------- เสื้อค่าย ----------
+const SH_ST = { unset: ['ยังไม่กำหนดวัน', ''], before: ['ยังไม่ถึงเวลา', ''], open: ['เปิดอยู่', 'open'], after: ['ปิดแล้ว', 'closed'] };
+const shChip = (s) => { const v = SH_ST[s] || SH_ST.unset; return '<span class="pill ' + v[1] + '">' + v[0] + '</span>'; };
+const shName = (d) => d.title || d.designer;
+const AI_KEYS = { iptc_ai: 'แท็ก AI ในไฟล์', sd_params: 'พารามิเตอร์ Stable Diffusion', midjourney: 'Midjourney', dalle: 'DALL·E', openai: 'OpenAI', firefly: 'Adobe Firefly', gemini: 'Google AI', c2pa: 'Content Credentials' };
+const shAi = (a) => !a || !a.level ? '<p class="mute">ตรวจ AI: ยังไม่ได้ตรวจ</p>' : a.level === 'none' ? '<p class="mute">ตรวจ AI: ไม่พบสัญญาณ · ' + (a.score != null ? 'Sightengine ให้คะแนน ' + Math.round(a.score * 100) + '% (ผ่านเกณฑ์)' : '<b>ไม่ได้คะแนนจาก Sightengine</b> (ยังไม่ได้ตั้งค่า หรือเรียกบริการไม่สำเร็จ ดู log ของ Worker)') + '</p>' : '<p><span class="tag" style="' + (a.level === 'likely' ? 'background:#fde4e1;color:#9b2a1d' : '') + '">' + (a.level === 'likely' ? 'น่าจะสร้างด้วย AI' : 'อาจสร้างด้วย AI ควรตรวจสอบ') + '</span></p><p class="mute">' + (a.score != null ? 'คะแนน ' + Math.round(a.score * 100) + '%' + (a.signals.length ? ' · ' : '') : '') + a.signals.map((k) => esc(AI_KEYS[k] || k)).join(', ') + '</p>';
+function shResize(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1080 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+      const g = c.getContext('2d'), alpha = file.type !== 'image/jpeg'; if (!alpha) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); } g.drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      const jpeg = () => c.toBlob((b) => (b ? res(b) : rej(new Error('resize'))), 'image/jpeg', 0.88); if (!alpha) return jpeg();
+      c.toBlob((b) => (b && b.size <= 9.8 * 1048576 ? res(b) : jpeg()), 'image/png');
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('image')); }; im.src = url;
+  });
+}
+async function pShirt() {
+  const my = gen; let a; try { a = await getJ('/camps/shirt/admin/overview'); } catch (e) { if (e.forbidden) return noAdmin(); return retryable(pShirt)(e); }
+  if (my !== gen) return;
+  const s = a.settings, smp = a.sample;
+  const win = (idp, label, hint, st, f, t) => '<h3 style="margin:14px 0 2px;font-size:15px">' + label + ' ' + shChip(st) + '</h3><p class="mute">' + hint + '</p><div class="cols">' + dtHTML(idp + 'F', 'เริ่ม') + dtHTML(idp + 'T', 'สิ้นสุด') + '</div>';
+  view().innerHTML = '<div class="card"><h2>เสื้อตัวอย่าง</h2><p class="mute">รูปนี้แสดงตามที่อัปโหลดในหน้านักศึกษาและหน้าสาธารณะ</p>' + (smp.image ? '<img src="' + esc(smp.image) + '" alt="เสื้อตัวอย่าง" style="max-width:260px;width:100%;border-radius:12px;margin-bottom:10px">' : '<p class="mute">ยังไม่ได้อัปโหลด</p>')
+    + '<label class="f"><span>รูปเสื้อตัวอย่าง (PNG / JPG / WebP ไม่เกิน 10 MB)</span><input type="file" id="shF" accept="image/png,image/jpeg,image/webp"></label><div class="row"><button class="btn primary" type="button" id="shUp">' + (smp.image ? 'เปลี่ยนรูป' : 'อัปโหลดรูป') + '</button>' + (smp.image ? '<button class="btn danger" type="button" id="shRs">ลบรูป</button>' : '') + '</div></div>'
+    + (a.blocks && a.blocks.length ? '<div class="card"><h2>ถูกระงับการส่ง (ตรวจพบ AI)</h2>' + a.blocks.map((b) => '<p>' + esc(b.studentName) + ' · ' + esc(b.studentId) + ' <span class="mute">ถึง ' + esc(fmtWhen(b.until)) + '</span> <button class="btn sm" data-ub="' + esc(b.studentId) + '">ปลดล็อก</button></p>').join('') + '</div>' : '')
+    + '<div class="card"><h2>ผลงานทั้งหมด <small class="mute">(' + a.totals.designs + ' ผลงาน · ' + a.totals.votes + ' โหวต)</small></h2>' + (a.designs.length ? '<div class="links" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">' + a.designs.map((d) => '<div style="background:var(--soft);border-radius:12px;padding:10px;' + (d.hidden ? 'opacity:.6' : '') + '"><button type="button" data-big="' + esc(d.id) + '" style="border:0;background:none;padding:0;width:100%"><img src="' + esc(d.image) + '" alt="" loading="lazy" style="width:100%;border-radius:8px;display:block"></button><b>' + esc(shName(d)) + '</b><p class="mute" style="margin:0">ออกแบบโดย ' + esc(d.designer) + ' · ' + esc(d.classGroup) + '<br>ส่งโดย ' + esc(d.studentName) + ' · ' + esc(d.studentId) + '</p><p style="margin:4px 0"><b>' + d.votes + '</b> โหวต' + (d.hidden ? ' · <span class="tag">ซ่อนอยู่</span>' : '') + '</p>' + shAi(d.ai) + '<div class="row"><button class="btn sm" data-rc="' + esc(d.id) + '">ตรวจ AI ซ้ำ</button><button class="btn sm" data-hide="' + esc(d.id) + '" data-to="' + (d.hidden ? 0 : 1) + '">' + (d.hidden ? 'แสดง' : 'ซ่อน') + '</button><button class="btn sm danger" data-del="' + esc(d.id) + '">ลบ</button></div></div>').join('') + '</div>' : '<p class="empty">ยังไม่มีใครส่งผลงาน</p>') + '</div>'
+    + '<div class="card"><h2>กำหนดวัน</h2><p class="mute">ส่งผลงานได้ในช่วง “รับผลงาน” และโหวตได้ในช่วง “โหวต” (ช่วงโหวตต้องเริ่มหลังปิดรับผลงาน) เว้นว่างถ้ายังไม่กำหนด</p>' + win('sb', 'รับผลงาน', 'ช่วงที่นักศึกษาอัปโหลดและแก้ไขผลงาน', a.submit) + win('vt', 'โหวต', 'ช่วงที่นักศึกษาดูผลงานทั้งหมดและโหวต', a.vote)
+    + '<label class="chk"><input type="checkbox" id="shGal"' + (s.galleryPublic !== false ? ' checked' : '') + '><span>แสดงผลงานในหน้าสาธารณะ <a href="/shirt/" target="_blank" rel="noopener">/shirt/</a></span></label><label class="chk"><input type="checkbox" id="shPub"' + (s.resultsPublic ? ' checked' : '') + '><span>ประกาศผล (ให้เห็นคะแนนโหวต)</span></label><div class="row"><button class="btn primary" type="button" id="shSv">บันทึกวันที่</button><button class="btn" type="button" id="shCl">ล้างวันที่ทั้งหมด</button></div></div>';
+  dtInit('sbF', s.submitFrom); dtInit('sbT', s.submitTo); dtInit('vtF', s.voteFrom); dtInit('vtT', s.voteTo);
+  let pending = null;
+  $('shF').onchange = async (e) => { const f = e.target.files[0]; pending = null; if (!f) return; if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { e.target.value = ''; return toast('ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น', true); } try { pending = await shResize(f); } catch (er) { e.target.value = ''; toast('เปิดไฟล์รูปไม่ได้', true); } };
+  $('shUp').onclick = async () => { if (!pending) return toast('เลือกรูปเสื้อตัวอย่างก่อน', true); $('shUp').disabled = true; try { const r = await api('/camps/shirt/admin/sample', { method: 'POST', headers: { 'Content-Type': pending.type }, body: pending }); if (!r.ok) throw new Error(await errMsg(r)); toast('อัปโหลดแล้ว'); pShirt(); } catch (e) { toast(e.message, true); $('shUp').disabled = false; } };
+  if ($('shRs')) $('shRs').onclick = async () => { if (await confirmDlg('ลบรูปเสื้อตัวอย่าง?', 'กล่องเสื้อตัวอย่างจะไม่แสดง', 'ลบ')) { try { await send('POST', '/camps/shirt/admin/sample/reset'); toast('ลบแล้ว'); pShirt(); } catch (e) { fail(e); } } };
+  const save = async (clear) => { const v = (id) => (clear ? null : pickers[id].get()); try { await send('POST', '/camps/shirt/admin/settings', { submitFrom: v('sbF'), submitTo: v('sbT'), voteFrom: v('vtF'), voteTo: v('vtT'), resultsPublic: clear ? false : $('shPub').checked, galleryPublic: clear ? true : $('shGal').checked }); toast(clear ? 'ล้างวันที่แล้ว' : 'บันทึกแล้ว'); pShirt(); } catch (e) { fail(e); } };
+  $('shSv').onclick = () => save(false); $('shCl').onclick = async () => { if (await confirmDlg('ล้างวันที่ทั้งหมด?', 'ช่วงรับผลงานและช่วงโหวตจะกลับเป็น “ยังไม่กำหนด”', 'ล้าง')) save(true); };
+  view().onclick = async (ev) => {
+    const big = ev.target.closest('[data-big]'); if (big) { const d = a.designs.find((z) => z.id === big.dataset.big); if (d) modal('<h2>' + esc(shName(d)) + '</h2><p class="mute">ออกแบบโดย ' + esc(d.designer) + ' · ' + esc(d.classGroup) + '</p><img src="' + esc(d.image) + '" alt="" style="max-width:100%;max-height:65vh;display:block;margin:auto"><div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn primary" data-x type="button">ปิด</button></div>'); return; }
+    const ub = ev.target.closest('[data-ub]'); if (ub) { try { await send('POST', '/camps/shirt/admin/block/clear', { studentId: ub.dataset.ub }); toast('ปลดล็อกแล้ว'); pShirt(); } catch (e) { fail(e); } return; }
+    const rc = ev.target.closest('[data-rc]'); if (rc) { rc.disabled = true; rc.textContent = 'กำลังตรวจ…'; try { const r = await send('POST', '/camps/shirt/admin/design/recheck', { id: rc.dataset.rc }); toast(r.scored ? 'ตรวจซ้ำแล้ว · คะแนน AI ' + Math.round(r.ai.score * 100) + '%' : 'ตรวจซ้ำแล้ว แต่ไม่ได้คะแนนจาก Sightengine (ตรวจ secret / log ของ Worker)', !r.scored); pShirt(); } catch (e) { fail(e); rc.disabled = false; rc.textContent = 'ตรวจ AI ซ้ำ'; } return; }
+    const h = ev.target.closest('[data-hide]'); if (h) { try { await send('POST', '/camps/shirt/admin/design/hide', { id: h.dataset.hide, hidden: h.dataset.to === '1' }); toast(h.dataset.to === '1' ? 'ซ่อนแล้ว' : 'แสดงแล้ว'); pShirt(); } catch (e) { fail(e); } return; }
+    const x = ev.target.closest('[data-del]'); if (x) { if (!(await confirmDlg('ลบผลงาน?', 'พร้อมโหวตทั้งหมดจะถูกลบถาวร', 'ลบ'))) return; try { await send('POST', '/camps/shirt/admin/design/delete', { id: x.dataset.del }); toast('ลบแล้ว'); pShirt(); } catch (e) { fail(e); } }
+  };
+}
+
+// ---------- แบบสำรวจโรงเรียน ----------
+let svTpl = null, svCur = null, svDirty = false;
+const svDigits = (s) => String(s || '').replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50)).replace(/\D/g, '');
+async function pSurvey() {
+  const my = gen; svCur = null; svDirty = false;
+  view().innerHTML = '<div class="card"><h2>เลือกนักศึกษา</h2><form id="svF" autocomplete="off"><label class="f"><span>รหัสนักศึกษา</span><div class="row"><input type="text" id="svId" inputmode="numeric" maxlength="14" placeholder="เช่น 6740102220" style="flex:1;min-width:0"><button class="btn primary" type="submit">เปิดแบบสำรวจ</button></div></label><p class="mute">ใช้แบบสำรวจของฝ่ายที่นักศึกษาคนนั้นลงทะเบียนไว้</p></form><div id="svPick" role="status"></div></div><div id="svSheetWrap"></div><div class="card" id="svList"><p class="mute">กำลังโหลด…</p></div>';
+  $('svF').onsubmit = (e) => { e.preventDefault(); svOpen($('svId').value); };
+  try { svTpl = await getJ('/camps/survey/admin/templates'); } catch (e) { if (e.forbidden) return noAdmin(); return retryable(pSurvey)(e); }
+  if (my !== gen) return; svList();
+}
+async function svList() {
+  const box = $('svList'); if (!box) return; let d; try { d = await getJ('/camps/survey/admin/list'); } catch (e) { box.innerHTML = '<p class="mute">' + esc(e.message) + '</p>'; return; }
+  box.innerHTML = '<h2>แบบสำรวจที่บันทึกแล้ว <small class="mute">' + d.forms.length + ' ฉบับ</small></h2>' + table(['ฝ่าย', 'ผู้สำรวจ', 'โรงเรียน', 'ความคืบหน้า', 'บันทึกล่าสุด', ''], d.forms.map((f) => '<tr><td>' + esc(f.departmentName) + '</td><td>' + esc(f.name) + '<br><small class="mute">' + esc(f.studentId) + '</small></td><td>' + (esc(f.schoolName) || '—') + '</td><td>' + f.done + '/' + f.total + '</td><td>' + esc(fdt(f.updatedAt)) + '</td><td><button class="btn sm" data-o="' + esc(f.studentId) + '">เปิด</button></td></tr>'), 'ยังไม่มีแบบสำรวจที่บันทึกไว้')
+    + '<h2 style="margin-top:18px">ผู้ได้รับมอบหมายให้กรอกเอง <small class="mute">' + d.assignees.length + ' คน</small></h2><p class="mute">นักศึกษาที่ได้รับมอบหมายเข้าสู่ระบบด้วยอีเมล @lru.ac.th ที่ ' + esc(location.origin) + '/hr/survey <button class="btn sm" type="button" id="svCp">คัดลอกลิงก์</button></p>'
+    + (d.assignees.length ? table(['ผู้ได้รับมอบหมาย', 'ฝ่าย', 'แบบสำรวจ', ''], d.assignees.map((x) => '<tr><td>' + esc(x.name) + '<br><small class="mute">' + esc(x.studentId) + '</small></td><td>' + (esc(x.departmentName) || '<span class="mute">ยังไม่มีฝ่าย</span>') + '</td><td>' + (x.hasForm ? 'บันทึกแล้ว' : 'ยังไม่ได้กรอก') + '</td><td class="row"><button class="btn sm" data-o="' + esc(x.studentId) + '">เปิด</button><button class="btn sm" data-ua="' + esc(x.studentId) + '">ยกเลิกมอบหมาย</button></td></tr>')) : '<p class="empty">ยังไม่ได้มอบหมายใคร</p>');
+  box.querySelectorAll('[data-o]').forEach((b) => { b.onclick = () => svOpen(b.dataset.o); });
+  box.querySelectorAll('[data-ua]').forEach((b) => { b.onclick = () => svAssign(b.dataset.ua, false); });
+  $('svCp').onclick = async () => { try { await navigator.clipboard.writeText(location.origin + '/hr/survey'); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้', true); } };
+}
+async function svAssign(id, on) { try { await send('POST', '/camps/survey/admin/assign', { studentId: id, assigned: on }); toast(on ? 'มอบหมายแล้ว' : 'ยกเลิกการมอบหมายแล้ว'); svList(); const c = $('svAs'); if (c && svCur && svCur.student.studentId === id) c.checked = on; } catch (e) { toast(e.message, true); const c = $('svAs'); if (c) c.checked = !on; } }
+async function svOpen(raw) {
+  const id = svDigits(raw), pick = $('svPick'), wrap = $('svSheetWrap');
+  if (id.length < 6) { pick.innerHTML = '<p style="color:var(--bad)">กรอกรหัสนักศึกษาให้ครบ</p>'; return; }
+  if (svDirty && !(await confirmDlg('ยังไม่ได้บันทึก', 'ข้อมูลที่แก้ไขยังไม่ได้บันทึก เปิดนักศึกษาคนอื่นเลยไหม?', 'เปิดเลย'))) return;
+  $('svId').value = id; pick.innerHTML = '<p class="mute">กำลังโหลด…</p>'; wrap.innerHTML = '';
+  let d; try { d = await getJ('/camps/survey/admin/student?id=' + encodeURIComponent(id)); } catch (e) { svCur = null; svDirty = false; pick.innerHTML = '<p style="color:var(--bad)">' + esc(e.message) + '</p>'; return; }
+  const s = d.student;
+  pick.innerHTML = '<p><b>' + esc(s.name) + '</b><br><span class="mute">' + esc(s.studentId) + ' · ปี ' + s.year + ' · ' + (s.departmentName ? esc(s.departmentName) : 'ยังไม่มีฝ่าย') + '</span></p>'
+    + (d.template ? '<p class="mute">' + (d.saved ? 'บันทึกล่าสุด ' + esc(fdt(d.form.updatedAt)) : 'ยังไม่มีแบบสำรวจของคนนี้ กรอกแล้วกดบันทึก') + '</p>' : '<p style="color:var(--bad)">' + (d.code === 'NO_DEPARTMENT' ? 'นักศึกษาคนนี้ยังไม่มีฝ่าย จึงยังไม่มีแบบสำรวจ (กำหนดฝ่ายที่หน้า “ฝ่าย · โควตา”)' : 'ฝ่ายนี้ยังไม่มีแบบสำรวจ') + '</p>')
+    + '<label class="chk"><input type="checkbox" id="svAs"' + (d.assigned ? ' checked' : '') + '><span>ให้นักศึกษาคนนี้กรอกเองที่หน้า /hr/survey</span></label>';
+  $('svAs').onchange = (e) => svAssign(s.studentId, e.target.checked);
+  svCur = d.template ? { student: s, tpl: d.template, form: d.form } : null; svDirty = false; if (svCur) svRender();
+}
+function svRender() {
+  const { student: s, tpl: t, form: f } = svCur, v = f || { schoolName: '', surveyDate: '', coordinator: '', phone: '', checks: t.items.map(() => false), notes: t.items.map(() => ''), summary: '', surveyor: s.name };
+  const inp = (id, l, val, ex) => '<label class="f"><span>' + l + '</span><input id="' + id + '" value="' + esc(val) + '" ' + (ex || 'type="text"') + '></label>';
+  $('svSheetWrap').innerHTML = '<div class="card" id="svPaper"><h2 style="text-align:center">' + esc(svTpl.title) + '</h2><p class="mute" style="text-align:center">' + esc(svTpl.subtitle) + '</p><p><b>' + esc(t.name) + ' | ' + esc(t.en) + '</b><br><span class="mute">' + esc(t.blurb) + '</span></p>'
+    + '<div class="cols">' + inp('svSc', 'ชื่อโรงเรียน', v.schoolName, 'type="text" maxlength="150"') + inp('svDt', 'วันที่สำรวจ', v.surveyDate, 'type="date"') + inp('svCo', 'ผู้ประสานงาน', v.coordinator, 'type="text" maxlength="120"') + inp('svPh', 'เบอร์โทรศัพท์', v.phone, 'type="tel" maxlength="30"') + '</div><p class="mute">' + esc(svTpl.instruction) + '</p>'
+    + '<div class="tw"><table><thead><tr><th>ลำดับ</th><th>รายการสำรวจ</th><th>หมายเหตุ</th></tr></thead><tbody>' + t.items.map((it, i) => '<tr><td style="white-space:nowrap"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="svc' + i + '" style="width:22px;height:22px"' + (v.checks[i] ? ' checked' : '') + ' aria-label="สำรวจแล้ว ข้อ ' + (i + 1) + '">' + (i + 1) + '.</label></td><td>' + esc(it) + '</td><td style="min-width:180px"><textarea id="svn' + i + '" rows="1" maxlength="300" aria-label="หมายเหตุ ข้อ ' + (i + 1) + '">' + esc(v.notes[i]) + '</textarea></td></tr>').join('') + '</tbody></table></div>'
+    + '<label class="f" style="margin-top:12px"><span>สรุปผลการสำรวจ / สิ่งที่ต้องดำเนินการเพิ่มเติม</span><textarea id="svSm" rows="4" maxlength="2000">' + esc(v.summary) + '</textarea></label>' + inp('svBy', 'ผู้สำรวจ', v.surveyor, 'type="text" maxlength="120"')
+    + '<div class="row noprint"><button class="btn primary" type="button" id="svSv">บันทึก</button><button class="btn" type="button" id="svPr">พิมพ์ / บันทึกเป็น PDF</button>' + (f ? '<button class="btn danger" type="button" id="svDl">ลบแบบสำรวจ</button>' : '') + '<span class="mute" id="svCn"></span></div></div>';
+  const paper = $('svPaper'), cnt = () => { const n = t.items.filter((_, i) => $('svc' + i).checked).length; $('svCn').textContent = 'สำรวจแล้ว ' + n + ' / ' + t.items.length + ' ข้อ' + (svDirty ? ' · ยังไม่ได้บันทึก' : ''); };
+  paper.addEventListener('input', () => { svDirty = true; cnt(); }); paper.addEventListener('change', () => { svDirty = true; cnt(); }); cnt();
+  const read = () => { const n = t.items.length, g = (id) => $(id).value; return { studentId: s.studentId, schoolName: g('svSc'), surveyDate: g('svDt'), coordinator: g('svCo'), phone: g('svPh'), summary: g('svSm'), surveyor: g('svBy'), checks: Array.from({ length: n }, (_, i) => $('svc' + i).checked), notes: Array.from({ length: n }, (_, i) => g('svn' + i)) }; };
+  $('svSv').onclick = async () => { $('svSv').disabled = true; try { const d = await send('POST', '/camps/survey/admin/save', read()); svCur.form = d.form; svDirty = false; toast('บันทึกแบบสำรวจแล้ว'); svRender(); svList(); } catch (e) { fail(e); $('svSv').disabled = false; } };
+  $('svPr').onclick = () => { paper.querySelectorAll('textarea').forEach((x) => { x.style.height = 'auto'; x.style.height = x.scrollHeight + 'px'; }); window.print(); };
+  if ($('svDl')) $('svDl').onclick = async () => { if (!(await confirmDlg('ลบแบบสำรวจ?', 'ลบแบบสำรวจของ ' + s.name + ' ย้อนกลับไม่ได้', 'ลบ'))) return; try { await send('POST', '/camps/survey/admin/delete', { studentId: s.studentId }); toast('ลบแล้ว'); svCur.form = null; svDirty = false; svRender(); svList(); } catch (e) { fail(e); } };
+}
+window.addEventListener('beforeunload', (e) => { if (svDirty) { e.preventDefault(); e.returnValue = ''; } });
+
+// ---------- ตัวอย่างลิงก์ (Open Graph) ----------
+async function pOg() {
+  const my = gen; let og; try { og = await getJ('/camps/og/admin/pages'); } catch (e) { if (e.forbidden) return noAdmin(); return retryable(pOg)(e); }
+  if (my !== gen) return;
+  const host = (u) => String(u).replace(/^https?:\/\//, '').replace(/\/.*$/, ''), len = (s) => [...String(s || '')].length;
+  view().innerHTML = '<div class="card"><h2>ตัวอย่างลิงก์ของแต่ละหน้า</h2><p class="mute">ชื่อ คำอธิบาย และรูปที่เห็นเมื่อแชร์ลิงก์ใน LINE, Facebook ฯลฯ เว้นว่างหรือกด “คืนค่าเดิม” เพื่อใช้ค่าเริ่มต้น แอปแชตอาจจำตัวอย่างเดิมไว้สักพัก (ลองส่งลิงก์ต่อท้ายด้วย ?x=1)</p></div>' + og.pages.map((p) => '<section class="card" id="og-' + p.page + '"></section>').join('');
+  const card = (p, t, d) => '<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;max-width:420px;margin-bottom:12px"><img src="' + esc(p.image) + '" alt="" style="width:100%;display:block"><div style="padding:8px 12px"><small class="mute">' + esc(host(p.url)) + '</small><br><b>' + esc(t) + '</b><br><span class="mute">' + esc(d) + '</span></div></div>';
+  const render = (p) => {
+    const id = p.page, T = og.limits.title, D = og.limits.description;
+    $('og-' + id).innerHTML = '<h2>' + esc(p.label) + ' <a class="mute" href="' + esc(p.path) + '" target="_blank" rel="noopener">' + esc(p.path) + '</a></h2><div id="op-' + id + '"></div>'
+      + '<label class="f"><span>ชื่อ <small class="mute" id="otc-' + id + '"></small></span><input type="text" id="ot-' + id + '" maxlength="' + T + '" value="' + esc(p.custom.title) + '" placeholder="' + esc(p.defaults.title) + '" autocomplete="off"></label>'
+      + '<label class="f"><span>คำอธิบาย <small class="mute" id="odc-' + id + '"></small></span><textarea id="od-' + id + '" rows="2" maxlength="' + D + '" placeholder="' + esc(p.defaults.description) + '">' + esc(p.custom.description) + '</textarea></label>'
+      + '<div class="row"><button class="btn primary sm" type="button" id="os-' + id + '">บันทึกข้อความ</button><button class="btn sm" type="button" id="or-' + id + '"' + (p.custom.title || p.custom.description ? '' : ' disabled') + '>คืนค่าเดิม</button></div>'
+      + '<label class="f" style="margin-top:12px"><span>รูปตัวอย่าง <small class="mute">' + (p.customImage ? 'ใช้รูปที่อัปโหลด' : 'ใช้รูปเริ่มต้น') + ' · แนะนำ 1200 × 630 px ไม่เกิน 2 MB</small></span><input type="file" id="of-' + id + '" accept="image/png,image/jpeg,image/webp"></label>' + (p.customImage ? '<button class="btn sm danger" type="button" id="oi-' + id + '">ใช้รูปเริ่มต้น</button>' : '')
+      + (p.updatedAt ? '<p class="mute">แก้ไขล่าสุด ' + esc(fdt(p.updatedAt)) + (p.updatedBy ? ' · ' + esc(p.updatedBy) : '') + '</p>' : '');
+    const ti = $('ot-' + id), de = $('od-' + id), sync = () => { $('otc-' + id).textContent = len(ti.value) + ' / ' + T; $('odc-' + id).textContent = len(de.value) + ' / ' + D; $('op-' + id).innerHTML = card(p, ti.value.trim() || p.defaults.title, de.value.trim() || p.defaults.description); };
+    ti.oninput = sync; de.oninput = sync; sync();
+    const run = async (fn, msg) => { $('og-' + id).querySelectorAll('button,input,textarea').forEach((x) => { x.disabled = true; }); try { const d = await fn(); og.pages[og.pages.findIndex((x) => x.page === id)] = d.page; toast(msg); render(d.page); } catch (e) { fail(e); $('og-' + id).querySelectorAll('button,input,textarea').forEach((x) => { x.disabled = false; }); } };
+    $('os-' + id).onclick = () => run(() => send('POST', '/camps/og/admin/save', { page: id, title: ti.value, description: de.value }), 'บันทึกแล้ว');
+    $('or-' + id).onclick = async () => { if (await confirmDlg('คืนค่าเดิม?', 'ชื่อและคำอธิบายของ “' + p.label + '” จะกลับเป็นค่าเริ่มต้น (รูปไม่เปลี่ยน)', 'คืนค่าเดิม')) run(() => send('POST', '/camps/og/admin/reset', { page: id, what: 'text' }), 'คืนค่าเดิมแล้ว'); };
+    if ($('oi-' + id)) $('oi-' + id).onclick = async () => { if (await confirmDlg('ใช้รูปเริ่มต้น?', 'ลบรูปที่อัปโหลดของ “' + p.label + '”', 'ใช้รูปเริ่มต้น')) run(() => send('POST', '/camps/og/admin/reset', { page: id, what: 'image' }), 'ใช้รูปเริ่มต้นแล้ว'); };
+    $('of-' + id).onchange = (e) => { const f = e.target.files[0]; if (!f) return; if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { e.target.value = ''; return toast('ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น', true); } if (f.size > og.limits.image) { e.target.value = ''; return toast('ไฟล์ใหญ่เกินไป (ไม่เกิน 2 MB)', true); } run(async () => { const r = await api('/camps/og/admin/image?page=' + encodeURIComponent(id), { method: 'POST', headers: { 'Content-Type': f.type }, body: f }); const d = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(d.error || 'อัปโหลดไม่สำเร็จ'), { status: r.status }); return d; }, 'อัปโหลดรูปแล้ว'); };
+  };
+  og.pages.forEach(render);
+}
+
+// ---------- จับสลาก ----------
+let loRows = [];
+function pLotto() { tabbed('lotto', [['stu', 'รายชื่อและเลขสลาก'], ['sc', 'คนสแกน']], { stu: loStudents, sc: loScanners }); }
+// RFC-4180-lite reader (quotes, "" escapes, newlines in quotes, BOM, , ; or tab) -> array of cell arrays
+function readRows(text){
+ const src=String(text||'').replace(/^﻿/,''),first=(src.split(/\r?\n/).find(l=>l.trim())||'');
+ const cnt=c=>first.split(c).length-1,delim=cnt('\t')>0&&cnt('\t')>=Math.max(cnt(','),cnt(';'))?'\t':cnt(';')>cnt(',')?';':',';
+ const rows=[];let row=[],cell='',q=false;
+ const endCell=()=>{row.push(cell.normalize('NFC').replace(/[​-‍⁠﻿]/g,'').replace(/[   　]/g,' ').replace(/[ \t]+/g,' ').trim());cell=''};
+ const endRow=()=>{endCell();if(row.some(c=>c!==''))rows.push(row);row=[]};
+ for(let i=0;i<src.length;i++){const ch=src[i];
+  if(q){if(ch==='"'){if(src[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}
+  else if(ch==='"'&&cell==='')q=true;else if(ch===delim)endCell();else if(ch==='\n')endRow();else if(ch!=='\r')cell+=ch}
+ if(cell!==''||row.length)endRow();
+ return rows}
+const thDigits=s=>String(s||'').replace(/[๐-๙]/g,c=>String(c.charCodeAt(0)-0x0e50));
+// header names (Thai or English, any order, spaces ignored); without a header the order is id, name, draw number
+const HEAD={id:/^(รหัส|รหัสนักศึกษา|รหัสประจำตัว|รหัสประจำตัวนักศึกษา|เลขประจำตัว|เลขประจำตัวนักศึกษา|studentid|student_id|id|code)$/i,name:/^(ชื่อ|ชื่อ-?นามสกุล|ชื่อและนามสกุล|ชื่อสกุล|name|fullname|firstname)$/i,last:/^(นามสกุล|สกุล|lastname|surname)$/i,prefix:/^(คำนำหน้า|คำนำหน้าชื่อ|title|prefix)$/i,draw:/^(เลขจับสลาก|เลขสลาก|หมายเลขสลาก|หมายเลข|เลข|ลำดับสลาก|draw|drawnumber|draw_number|number|ticket)$/i};
+function parseCsv(text){
+ const rows=readRows(text);if(!rows.length)return[];
+ const keyed={};rows[0].forEach((c,i)=>{const k=c.replace(/\s+/g,'');for(const n in HEAD)if(HEAD[n].test(k)&&keyed[n]===undefined)keyed[n]=i});
+ const numericFirst=/^\d{6,12}$/.test(thDigits(rows[0][0]).replace(/^[a-z]{2}/i,'').replace(/@.*$/,''));
+ const hasHead=!numericFirst&&Object.keys(keyed).length>=2;
+ const col=hasHead?{id:keyed.id??-1,name:keyed.name??-1,last:keyed.last??-1,prefix:keyed.prefix??-1,draw:keyed.draw??-1}:{id:0,name:1,last:-1,prefix:-1,draw:2};
+ return(hasHead?rows.slice(1):rows).map(c=>{
+  const pre=col.prefix>=0?c[col.prefix]||'':'',last=col.last>=0?c[col.last]||'':'';
+  return{studentId:thDigits(c[col.id]),name:((pre&&pre.length>4&&!/\.$/.test(pre)?pre+' ':pre)+(c[col.name]||'')+(last?' '+last:'')).trim(),drawNumber:thDigits(c[col.draw])}})}
+async function loStudents(tb) {
+  tb.innerHTML = '<div class="stats" id="loSt"></div><div class="card"><h2>เพิ่ม / แก้ไขรายชื่อ</h2><form id="loF"><div class="cols"><label class="f"><span>รหัสนักศึกษา</span><input type="text" id="loId" required inputmode="numeric" placeholder="6740102220" autocomplete="off"></label><label class="f"><span>ชื่อ-นามสกุล</span><input type="text" id="loNm" required autocomplete="off"></label><label class="f"><span>เลขจับสลาก</span><input type="text" id="loDr" required autocomplete="off"></label></div><button class="btn primary" type="submit">บันทึก</button></form></div>'
+    + '<div class="card"><h2>นำเข้า Excel / CSV</h2><p class="mute">คอลัมน์ รหัสนักศึกษา, ชื่อ-นามสกุล, เลขจับสลาก (อ่านชีตแรก) ครั้งละไม่เกิน 1,000 รายชื่อ</p><div class="row"><label class="btn" for="loFile">เลือกไฟล์</label><input type="file" id="loFile" class="hidden" accept=".xlsx,.xls,.csv,.txt"><button class="btn" type="button" id="loTpl">ไฟล์ตัวอย่าง</button><span class="mute" id="loFn"></span></div><label class="f" style="margin-top:10px"><textarea id="loTx" rows="4" placeholder="รหัสนักศึกษา,ชื่อ-นามสกุล,เลขจับสลาก"></textarea></label><button class="btn primary" type="button" id="loGo">นำเข้ารายชื่อ</button><div id="loRes" style="margin-top:8px"></div></div>'
+    + '<div class="card"><div class="row" style="justify-content:space-between"><h2>รายชื่อ</h2><input type="search" id="loQ" placeholder="ค้นหาชื่อ / รหัส / เลขสลาก" style="max-width:260px" autocomplete="off"></div><div id="loTb"></div></div>';
+  const stats = async () => { try { const d = await send('GET', '/camps/lotto/admin/overview'); $('loSt').innerHTML = [['รายชื่อทั้งหมด', d.total], ['เช็คชื่อแล้ว', d.checked], ['ยังไม่เช็คชื่อ', d.remaining], ['เปิดของขวัญแล้ว', d.gifts || 0]].map(([l, n]) => '<div class="stat"><span>' + l + '</span><b>' + n + '</b></div>').join(''); } catch (e) { fail(e); } };
+  const list = async () => {
+    try { loRows = (await send('GET', '/camps/lotto/admin/students' + ($('loQ').value ? '?q=' + encodeURIComponent($('loQ').value) : ''))).students || []; } catch (e) { return fail(e); }
+    $('loTb').innerHTML = table(['รหัส', 'ชื่อ-นามสกุล', 'เลขสลาก', 'สถานะ', 'เวลาสแกน', 'เจ้าหน้าที่', ''], loRows.map((x) => '<tr><td>' + esc(x.student_id) + '</td><td>' + esc(x.student_name) + '</td><td><b>' + esc(x.draw_number) + '</b></td><td>' + (x.checked_at ? '<span class="pill open">เช็คชื่อแล้ว</span>' : '<span class="pill">ยังไม่เช็ค</span>') + '</td><td>' + esc(fdt(x.checked_at)) + '</td><td>' + esc(x.checked_by || '—') + '</td><td class="row" style="flex-wrap:nowrap"><button class="btn sm" data-qr="' + esc(x.student_id) + '">QR</button><button class="btn sm" data-ed="' + esc(x.student_id) + '">แก้ไข</button><button class="btn sm danger" data-dl="' + esc(x.student_id) + '">ลบ</button></td></tr>'), 'ไม่พบรายชื่อ');
+    $('loTb').querySelectorAll('[data-qr]').forEach((b) => { b.onclick = async () => { const x = loRows.find((r) => r.student_id === b.dataset.qr); try { await loadJs('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'); } catch (e) { return toast('โหลดตัวสร้าง QR ไม่สำเร็จ', true); } const d = modal('<h2>QR · ' + esc(x.student_name) + '</h2><div id="loQr" style="display:grid;place-items:center;padding:12px"></div><p class="mute" style="text-align:center">' + esc(x.student_id) + ' · เลขจับสลาก ' + esc(x.draw_number) + '</p><div class="row" style="justify-content:flex-end"><button class="btn" type="button" onclick="window.print()">พิมพ์</button><button class="btn primary" data-x type="button">ปิด</button></div>'); new window.QRCode($('loQr'), { text: x.student_id, width: 220, height: 220 }); d.id = 'qrDlg'; }; });
+    $('loTb').querySelectorAll('[data-ed]').forEach((b) => { b.onclick = () => { const x = loRows.find((r) => r.student_id === b.dataset.ed); $('loId').value = x.student_id; $('loNm').value = x.student_name; $('loDr').value = x.draw_number; $('loF').scrollIntoView({ behavior: 'smooth' }); }; });
+    $('loTb').querySelectorAll('[data-dl]').forEach((b) => { b.onclick = async () => { if (!(await confirmDlg('ลบรายชื่อนี้?', '', 'ลบ'))) return; try { await send('DELETE', '/camps/lotto/admin/students/' + encodeURIComponent(b.dataset.dl)); toast('ลบรายชื่อแล้ว'); list(); stats(); } catch (e) { fail(e); } }; });
+  };
+  $('loF').onsubmit = async (e) => { e.preventDefault(); try { const d = await send('POST', '/camps/lotto/admin/students', { studentId: $('loId').value, name: $('loNm').value, drawNumber: $('loDr').value }); toast(d.created ? 'เพิ่มรายชื่อแล้ว' : 'อัปเดตข้อมูลแล้ว'); $('loF').reset(); list(); stats(); } catch (er) { fail(er); } };
+  let t; $('loQ').oninput = () => { clearTimeout(t); t = setTimeout(list, 250); };
+  $('loTpl').onclick = () => saveXlsx([['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'เลขจับสลาก'], ['6740102220', 'สมชาย ใจดี', '001'], ['6840100001', 'สมหญิง รักเรียน', '002']], 'lotto-students-template.xlsx', [16, 26, 14], 'รายชื่อ').catch(() => toast('ดาวน์โหลดไม่สำเร็จ', true));
+  $('loFile').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return; if (f.size > 5 * 1048576) { e.target.value = ''; return toast('ไฟล์ใหญ่เกิน 5 MB', true); }
+    const buf = await f.arrayBuffer(), u = new Uint8Array(buf, 0, Math.min(4, buf.byteLength)); let text;
+    if (/\.(xlsx|xls)$/i.test(f.name) || (u[0] === 0x50 && u[1] === 0x4b) || (u[0] === 0xd0 && u[1] === 0xcf)) { try { const X = await loadXlsx(), wb = X.read(buf, { type: 'array' }); text = X.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ',', RS: '\n', blankrows: false }); } catch (er) { e.target.value = ''; return toast('อ่านไฟล์ไม่ได้', true); } }
+    else { try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (x) { try { text = new TextDecoder('windows-874').decode(buf); } catch (y) { text = new TextDecoder().decode(buf); } } }
+    $('loTx').value = text; $('loFn').textContent = f.name + ' · ' + parseCsv(text).length + ' รายชื่อ — ตรวจสอบแล้วกด “นำเข้ารายชื่อ”'; e.target.value = '';
+  };
+  $('loGo').onclick = async () => {
+    const students = parseCsv($('loTx').value); if (!students.length) return toast('เลือกไฟล์หรือวางรายชื่อก่อน', true); if (students.length > 1000) return toast('นำเข้าได้ครั้งละไม่เกิน 1,000 รายชื่อ', true);
+    $('loGo').disabled = true; try { const d = await send('POST', '/camps/lotto/admin/students/import', { students }); $('loRes').innerHTML = '✓ นำเข้าสำเร็จ <b>' + d.imported + '</b> รายชื่อ' + (d.errors.length ? ' · ข้าม <b>' + d.errors.length + '</b> แถว<div style="color:var(--bad)">' + d.errors.slice(0, 30).map((x) => 'แถว ' + esc(x.row || x.studentId || '') + ': ' + esc(x.error)).join('<br>') + '</div>' : ''); if (!d.errors.length) { $('loTx').value = ''; $('loFn').textContent = ''; } list(); stats(); } catch (e) { fail(e); }
+    $('loGo').disabled = false;
+  };
+  stats(); list();
+}
+async function loScanners(tb) {
+  tb.innerHTML = '<div class="card"><h2>คนสแกน</h2><p class="mute">ใส่อีเมลมหาวิทยาลัยของคนที่จะช่วยสแกน QR (สแกนที่หน้า <a href="/lotto/">/lotto/</a>)</p><form id="scF" class="row"><input type="email" id="scE" required placeholder="student@lru.ac.th" style="flex:1;min-width:200px" autocomplete="off"><button class="btn primary" type="submit">เพิ่ม</button></form><div id="scL" style="margin-top:12px"></div></div>';
+  const list = async () => { try { const d = await send('GET', '/camps/lotto/admin/scanners'); $('scL').innerHTML = table(['อีเมลเจ้าหน้าที่', 'เพิ่มเมื่อ', ''], (d.scanners || []).map((x) => '<tr><td>' + esc(x.email) + '</td><td>' + esc(fdt(x.created_at)) + '</td><td><button class="btn sm danger" data-rm="' + esc(x.email) + '">เอาออก</button></td></tr>'), 'ยังไม่มีใครในรายชื่อ'); $('scL').querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { if (!(await confirmDlg('เอาออก?', b.dataset.rm, 'เอาออก'))) return; try { await send('DELETE', '/camps/lotto/admin/scanners/' + encodeURIComponent(b.dataset.rm)); toast('เอาออกแล้ว'); list(); } catch (e) { fail(e); } }; }); } catch (e) { fail(e); } };
+  $('scF').onsubmit = async (e) => { e.preventDefault(); try { await send('POST', '/camps/lotto/admin/scanners', { email: $('scE').value }); $('scF').reset(); toast('เพิ่มแล้ว'); list(); } catch (er) { fail(er); } };
+  list();
+}
+
+// ---------- เช็ก QR ----------
+const QK = { manual: 'ตรวจทั่วไป', aka: 'เทียบป้ายกับ AKA' };
+const badge = (r) => '<span class="pill ' + (r === 'pass' ? 'open' : 'closed') + '">' + (r === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน') + '</span>';
+function pQr() { tabbed('qr', [['res', 'ผลการตรวจ'], ['set', 'ตั้งค่า']], { res: qrResults, set: qrSettings }); }
+async function qrResults(tb) {
+  let d; try { d = await send('GET', '/camps/qrcheck/admin/checks'); } catch (e) { return fail(e); }
+  tb.innerHTML = '<div class="card"><h2>สรุปผลการตรวจ</h2>' + table(['รายการตรวจ', 'ประเภท', 'ตรวจแล้ว', 'ผ่าน', 'ไม่ผ่าน', 'ยังไม่ตรวจ*'], d.checks.map((c) => '<tr><td><b>' + esc(c.name) + '</b>' + (c.active ? '' : ' <span class="tag">ปิดใช้งาน</span>') + '</td><td>' + QK[c.kind] + '</td><td>' + c.results + '</td><td>' + c.passed + '</td><td>' + c.failed + '</td><td>' + Math.max(0, d.registered - c.results) + '</td></tr>')) + '<p class="mute" style="margin:8px 0 0">นักศึกษาทั้งหมด ' + d.roster + ' คน · เลือกฝ่ายแล้ว ' + d.registered + ' คน · *นับจากผู้ที่เลือกฝ่ายแล้ว</p></div>'
+    + '<div class="card"><h2>รายการผลการตรวจ</h2><div class="cols"><label class="f"><span>รายการตรวจ</span><select id="qfC"><option value="">ทุกรายการ</option>' + d.checks.map((c) => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></label><label class="f"><span>ผล</span><select id="qfR"><option value="">ทุกผล</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></label><label class="f"><span>ค้นหา</span><input type="search" id="qfQ" placeholder="ชื่อ / รหัส" autocomplete="off"></label></div><button class="btn sm" type="button" id="qfX">ดาวน์โหลด Excel</button><div id="qfT" style="margin-top:10px"></div></div>';
+  let rows = [], t;
+  const load = async () => { const q = new URLSearchParams(); if ($('qfC').value) q.set('checkId', $('qfC').value); if ($('qfR').value) q.set('result', $('qfR').value); if ($('qfQ').value.trim()) q.set('q', $('qfQ').value.trim()); try { rows = (await send('GET', '/camps/qrcheck/admin/results?' + q)).results || []; } catch (e) { return fail(e); }
+    $('qfT').innerHTML = table(['รายการตรวจ', 'รหัส', 'ชื่อ-นามสกุล', 'ปี', 'ฝ่าย', 'ผล', 'ข้อความบนป้าย', 'หมายเหตุ', 'เวลา', 'ผู้ตรวจ'], rows.map((x) => '<tr><td>' + esc(x.check_name) + '</td><td>' + esc(x.student_id) + '</td><td>' + esc(x.name || '—') + '</td><td>' + esc(x.year || '—') + '</td><td>' + esc(x.department_name || '—') + '</td><td>' + badge(x.result) + '</td><td>' + esc(x.reference || '—') + '</td><td>' + esc(x.note || '—') + '</td><td>' + esc(fdt(x.updated_at || x.checked_at)) + '</td><td>' + esc(x.updated_by || x.checked_by) + '</td></tr>'), 'ไม่พบผลการตรวจ'); };
+  ['qfC', 'qfR'].forEach((id) => { $(id).onchange = load; }); $('qfQ').oninput = () => { clearTimeout(t); t = setTimeout(load, 300); };
+  $('qfX').onclick = async () => { if (!rows.length) return toast('ไม่มีข้อมูลให้ดาวน์โหลด', true); try { await saveXlsx([['รายการตรวจ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ', 'ฝ่าย', 'ผล', 'ข้อความบนป้าย', 'หมายเหตุ', 'ตรวจเมื่อ', 'ผู้ตรวจ', 'แก้ไขเมื่อ', 'ผู้แก้ไข']].concat(rows.map((x) => [x.check_name, String(x.student_id), x.name || '', x.year || '', GL[x.gender] || '', x.department_name || '', x.result === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน', x.reference || '', x.note || '', fdt(x.checked_at), x.checked_by, x.updated_at ? fdt(x.updated_at) : '', x.updated_by || ''])), 'qr-check-results-' + stamp() + '.xlsx', [22, 15, 26, 8, 8, 18, 9, 16, 28, 18, 28, 18, 28], 'ผลการตรวจ'); } catch (e) { toast('ดาวน์โหลดไม่สำเร็จ', true); } };
+  load();
+}
+async function qrSettings(tb) {
+  let d, o; try { [d, o] = await Promise.all([send('GET', '/camps/qrcheck/admin/checks'), send('GET', '/camps/qrcheck/admin/officers')]); } catch (e) { return fail(e); }
+  const by = Object.fromEntries(d.checks.map((c) => [c.id, c]));
+  tb.innerHTML = '<div class="card"><h2>รายการตรวจ</h2>' + table(['ลำดับ', 'ชื่อรายการ', 'ประเภท', 'ต้องเลือกฝ่าย', 'สถานะ', 'ผลที่บันทึก', ''], d.checks.map((c) => '<tr><td>' + c.sortOrder + '</td><td><b>' + esc(c.name) + '</b><br><small class="mute">' + esc(c.description) + '</small></td><td>' + QK[c.kind] + '</td><td>' + (c.requireRegistered ? 'ใช่' : 'ไม่') + '</td><td>' + (c.active ? '<span class="pill open">เปิดใช้งาน</span>' : '<span class="pill">ปิดใช้งาน</span>') + '</td><td>' + c.results + '</td><td class="row" style="flex-wrap:nowrap"><button class="btn sm" data-ed="' + c.id + '">แก้ไข</button><button class="btn sm" data-tg="' + c.id + '">' + (c.active ? 'ปิด' : 'เปิด') + '</button><button class="btn sm danger" data-dl="' + c.id + '">ลบ</button></td></tr>'), 'ยังไม่มีรายการตรวจ')
+    + '<h3 style="margin:16px 0 6px;font-size:15px">เพิ่มรายการตรวจ</h3><form id="qcF"><div class="cols"><label class="f"><span>ชื่อรายการ</span><input type="text" id="qcN" required maxlength="80" placeholder="เช่น ตรวจครั้งที่ 1"></label><label class="f"><span>คำอธิบาย</span><input type="text" id="qcD" maxlength="200"></label><label class="f"><span>ประเภท</span><select id="qcK"><option value="manual">ตรวจทั่วไป</option><option value="aka">เทียบป้ายกับ AKA</option></select></label></div><label class="chk"><input type="checkbox" id="qcR" checked><span>ต้องเลือกฝ่ายแล้วถึงตรวจได้</span></label><button class="btn primary" type="submit">เพิ่มรายการตรวจ</button></form></div>'
+    + '<div class="card"><h2>คนช่วยตรวจ</h2><p class="mute">แอดมินใช้ได้เสมอ (ตรวจที่หน้า <a href="/qrcheck/">/qrcheck/</a>)</p><form id="qoF" class="row"><input type="email" id="qoE" required placeholder="student@lru.ac.th" style="flex:1;min-width:200px"><button class="btn primary" type="submit">เพิ่ม</button></form><div style="margin-top:10px">' + table(['อีเมล', 'เพิ่มโดย', 'เมื่อ', ''], o.officers.map((x) => '<tr><td>' + esc(x.email) + '</td><td>' + esc(x.added_by) + '</td><td>' + esc(fdt(x.created_at)) + '</td><td><button class="btn sm danger" data-rm="' + esc(x.email) + '">เอาออก</button></td></tr>'), 'ยังไม่มีเจ้าหน้าที่ในรายชื่อ') + '</div></div>';
+  const redo = () => qrSettings(tb);
+  tb.querySelectorAll('[data-tg]').forEach((b) => { b.onclick = async () => { try { await send('PATCH', '/camps/qrcheck/admin/checks/' + b.dataset.tg, { active: !by[b.dataset.tg].active }); toast('อัปเดตแล้ว'); redo(); } catch (e) { fail(e); } }; });
+  tb.querySelectorAll('[data-dl]').forEach((b) => { b.onclick = async () => { if (!(await confirmDlg('ลบรายการตรวจ “' + by[b.dataset.dl].name + '”?', 'ผลที่บันทึกไว้จะหายไปด้วย', 'ลบ'))) return; try { await send('DELETE', '/camps/qrcheck/admin/checks/' + b.dataset.dl); toast('ลบแล้ว'); redo(); } catch (e) { fail(e); } }; });
+  tb.querySelectorAll('[data-ed]').forEach((b) => { b.onclick = () => { const c = by[b.dataset.ed]; const m = modal('<h2>แก้ไขรายการตรวจ</h2><label class="f"><span>ชื่อ</span><input type="text" id="meN" value="' + esc(c.name) + '"></label><label class="f"><span>คำอธิบาย</span><input type="text" id="meD" value="' + esc(c.description) + '"></label><label class="f"><span>ลำดับที่แสดง</span><input type="number" id="meO" inputmode="numeric" value="' + c.sortOrder + '"></label><div class="row" style="justify-content:flex-end"><button class="btn" data-x type="button">ยกเลิก</button><button class="btn primary" id="meS" type="button">บันทึก</button></div>'); $('meS').onclick = async () => { try { await send('PATCH', '/camps/qrcheck/admin/checks/' + c.id, { name: $('meN').value, description: $('meD').value, sortOrder: Number($('meO').value) }); m.close(); toast('บันทึกแล้ว'); redo(); } catch (e) { fail(e); } }; }; });
+  tb.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { if (!(await confirmDlg('เอาออกจากรายชื่อ?', b.dataset.rm, 'เอาออก'))) return; try { await send('DELETE', '/camps/qrcheck/admin/officers/' + encodeURIComponent(b.dataset.rm)); toast('เอาออกแล้ว'); redo(); } catch (e) { fail(e); } }; });
+  $('qcF').onsubmit = async (e) => { e.preventDefault(); try { await send('POST', '/camps/qrcheck/admin/checks', { name: $('qcN').value, description: $('qcD').value, kind: $('qcK').value, requireRegistered: $('qcR').checked }); toast('เพิ่มรายการตรวจแล้ว'); redo(); } catch (er) { fail(er); } };
+  $('qoF').onsubmit = async (e) => { e.preventDefault(); try { await send('POST', '/camps/qrcheck/admin/officers', { email: $('qoE').value }); toast('เพิ่มแล้ว'); redo(); } catch (er) { fail(er); } };
+}
+
+// ---------- AKA ----------
+let akaOv = null, akaRows = [];
+function pAka() { tabbed('aka', [['list', 'รายชื่อ AKA'], ['set', 'เปิด–ปิด · ส่งออก']], { list: akaList, set: akaSettings }); }
+async function akaList(tb) {
+  try { akaOv = await send('GET', '/camps/aka/admin/overview'); } catch (e) { return fail(e); }
+  tb.innerHTML = '<div class="card"><div class="cols"><label class="f"><span>ฝ่าย</span><select id="afD"><option value="">ทุกฝ่าย</option>' + akaOv.departments.map((d) => '<option value="' + esc(d.code) + '">' + esc(d.name) + '</option>').join('') + '<option value="none">ยังไม่เลือกฝ่าย</option></select></label><label class="f"><span>ชั้นปี</span><select id="afY"><option value="">ทุกชั้นปี</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label><label class="f"><span>สถานะ</span><select id="afN"><option value="">ทั้งหมด</option><option value="1">ตั้งชื่อแล้ว</option><option value="0">ยังไม่ตั้งชื่อ</option></select></label><label class="f"><span>ค้นหา</span><input type="search" id="afQ" placeholder="ชื่อ / รหัส / ชื่อเล่น / AKA" autocomplete="off"></label></div><h2>รายชื่อ <small class="mute" id="afC"></small></h2><div id="afT"></div></div>';
+  const load = async () => { const q = new URLSearchParams(); if ($('afD').value) q.set('department', $('afD').value); if ($('afY').value) q.set('year', $('afY').value); if ($('afN').value) q.set('named', $('afN').value); if ($('afQ').value.trim()) q.set('q', $('afQ').value.trim());
+    try { akaRows = (await send('GET', '/camps/aka/admin/list?' + q)).students || []; } catch (e) { return fail(e); }
+    $('afC').textContent = akaRows.length + ' คน';
+    $('afT').innerHTML = table(['รหัส', 'ชื่อ-สกุล', 'ปี', 'ฝ่าย', 'ชื่อเล่น', 'AKA', ''], akaRows.slice(0, 400).map((x, i) => '<tr><td>' + esc(x.studentId) + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.year) + '</td><td>' + (esc(x.departmentName) || '—') + '</td><td>' + (esc(x.nickname) || '—') + '</td><td>' + (x.aka ? '<b>' + esc(x.aka) + '</b>' : '<span class="tag">ยังไม่ตั้ง</span>') + '</td><td><button class="btn sm" data-i="' + i + '">แก้ไข</button></td></tr>'), 'ไม่พบรายชื่อ');
+    $('afT').querySelectorAll('[data-i]').forEach((b) => { b.onclick = () => { const x = akaRows[Number(b.dataset.i)]; const m = modal('<h2>แก้ไขชื่อ — ' + esc(x.name) + '</h2><p class="mute">รหัส ' + esc(x.studentId) + ' · ปี ' + esc(x.year) + '</p><label class="f"><span>ชื่อเล่น</span><input type="text" id="aeN" maxlength="30" value="' + esc(x.nickname) + '"></label><label class="f"><span>AKA</span><input type="text" id="aeA" maxlength="40" value="' + esc(x.aka) + '"></label><div class="row" style="justify-content:flex-end">' + (x.aka || x.nickname ? '<button class="btn danger" id="aeC" type="button">ล้างชื่อ</button>' : '') + '<button class="btn" data-x type="button">ยกเลิก</button><button class="btn primary" id="aeS" type="button">บันทึก</button></div>');
+      $('aeS').onclick = async () => { try { await send('POST', '/camps/aka/admin/set', { studentId: x.studentId, nickname: $('aeN').value, aka: $('aeA').value }); m.close(); toast('บันทึกแล้ว'); load(); } catch (e) { fail(e); } };
+      if ($('aeC')) $('aeC').onclick = async () => { if (!(await confirmDlg('ล้างชื่อ?', 'ล้างชื่อเล่นและ AKA ของ ' + x.name, 'ล้างชื่อ'))) return; try { await send('POST', '/camps/aka/admin/set', { studentId: x.studentId, clear: true }); m.close(); toast('ล้างชื่อแล้ว'); load(); } catch (e) { fail(e); } }; }; });
+  };
+  ['afD', 'afY', 'afN'].forEach((id) => { $(id).onchange = load; }); let t; $('afQ').oninput = () => { clearTimeout(t); t = setTimeout(load, 300); };
+  load();
+}
+// groups by department (HR order, "ยังไม่เลือกฝ่าย" last); inside a department: year 4 -> 1, then student id (the server already sorts this way)
+async function exportRows(onlyNamed) {
+  const list = (await send('GET', '/camps/aka/admin/list' + (onlyNamed ? '?named=1' : ''))).students || [], groups = [];
+  for (const s of list) {
+    const code = s.departmentCode || 'none';
+    let g = groups.find((x) => x.code === code);
+    if (!g) groups.push(g = { code, name: s.departmentName || 'ยังไม่เลือกฝ่าย', people: [] });
+    g.people.push(s);
+  }
+  const yr = (a, b) => b.year - a.year || String(a.studentId).localeCompare(String(b.studentId));
+  groups.forEach((g) => g.people.sort(yr));
+  return groups;
+}
+const AHEAD = ['รหัสนักศึกษา', 'ชื่อ-สกุล', 'ชื่อเล่น', 'AKA'];
+const arow = (s) => [String(s.studentId), s.name, s.nickname, s.aka];
+const akaXlsx = async (onlyNamed) => {
+  try {
+    const groups = await exportRows(onlyNamed); if (!groups.length) return toast('ไม่มีข้อมูลให้ส่งออก', true);
+    if (!window.XLSX) await loadJs('/aka/vendor/xlsx.mini.min.js');
+    const X = window.XLSX, wb = X.utils.book_new(), used = new Set();
+    for (const g of groups) {
+      const ws = X.utils.aoa_to_sheet([AHEAD].concat(g.people.map(arow))); ws['!cols'] = [16, 28, 16, 20].map((w) => ({ wch: w }));
+      let n = g.name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 28) || 'ฝ่าย', k = 2; const base = n; while (used.has(n)) n = base.slice(0, 26) + ' ' + k++;
+      used.add(n); X.utils.book_append_sheet(wb, ws, n);
+    }
+    X.writeFile(wb, 'aka-by-department-' + stamp() + '.xlsx');
+  } catch (e) { toast('ดาวน์โหลดไม่สำเร็จ ลองใหม่อีกครั้ง', true); }
+};
+let fonts = null;
+const akaPdf = async (onlyNamed) => {
+  try {
+    const groups = await exportRows(onlyNamed); if (!groups.length) return toast('ไม่มีข้อมูลให้ส่งออก', true);
+    if (!window.jspdf) { await loadJs('/aka/vendor/jspdf.umd.min.js'); await loadJs('/aka/vendor/jspdf.plugin.autotable.min.js'); }
+    const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
+    if (!fonts) fonts = { n: await b64('/assets/fonts/SarabunTH-Regular.ttf'), b: await b64('/assets/fonts/SarabunTH-Bold.ttf') };
+    const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    if (!window.thaiShape) await loadJs('/assets/thai-shape.js');   // jsPDF has no Thai shaping: pick vowel/tone-mark glyph variants ourselves
+    const T = window.thaiShape, rawText = doc.text.bind(doc), rawTable = doc.autoTable.bind(doc);
+    doc.text = (s, ...a) => rawText(Array.isArray(s) ? s.map(T) : T(s), ...a);
+    doc.autoTable = (o) => rawTable({ ...o, didParseCell: (d) => { d.cell.text = d.cell.text.map(T); if (o.didParseCell) o.didParseCell(d); } });
+    doc.addFileToVFS('Sarabun-Regular.ttf', fonts.n); doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal'); doc.addFileToVFS('Sarabun-Bold.ttf', fonts.b); doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold');
+    const styles = { font: 'Sarabun', fontSize: 11, cellPadding: 2 }, headStyles = { font: 'Sarabun', fontStyle: 'bold', fillColor: [183, 28, 28] };
+    groups.forEach((g, i) => {
+      if (i) doc.addPage();
+      doc.setFont('Sarabun', 'bold'); doc.setFontSize(16); doc.text(g.name, 14, 17);
+      doc.setFont('Sarabun', 'normal'); doc.setFontSize(10); doc.text('รายชื่อ AKA · ' + g.people.length + ' คน · เรียงชั้นปีจากสูงไปต่ำ · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH'), 14, 23);
+      const body = []; let y = null;
+      for (const s of g.people) { if (s.year !== y) { y = s.year; body.push([{ content: 'ชั้นปี ' + y, colSpan: 4, styles: { fontStyle: 'bold', fillColor: [243, 244, 246] } }]); } body.push(arow(s)); }
+      doc.autoTable({ startY: 28, head: [AHEAD], body, styles, headStyles, columnStyles: { 0: { cellWidth: 34 }, 2: { cellWidth: 36 } } });
+    });
+    const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, 196, 290, { align: 'right' }); }
+    doc.save('aka-by-department-' + stamp() + '.pdf');
+  } catch (e) { toast('ดาวน์โหลดไม่สำเร็จ ลองใหม่อีกครั้ง', true); }
+};
+async function akaSettings(tb) {
+  try { akaOv = await send('GET', '/camps/aka/admin/overview'); } catch (e) { return fail(e); }
+  const o = akaOv, pct = o.total ? Math.round(o.named / o.total * 100) : 0, sc = o.schedule || {}, cd = sc.mode === 'countdown';
+  const word = { pending: 'ยังไม่เปิด', open: 'เปิดรับอยู่', closed: 'ปิดรับแล้ว' }[o.state];
+  tb.innerHTML = '<div class="card"><h2>เปิด–ปิดรับการตั้งชื่อ</h2><p class="mute">นักศึกษาตั้งและแก้ชื่อได้จนกว่าจะปิดรับ ปิดแล้วแอดมินยังแก้ให้ได้</p><div class="bar" style="margin-bottom:6px"><i style="width:' + pct + '%"></i></div><p class="mute">ตั้งชื่อแล้ว <b>' + o.named + '</b> จาก ' + o.total + ' คน (' + pct + '%) · ตอนนี้: <b>' + word + '</b></p><div class="row"><button class="btn' + (o.manual === 'open' ? ' primary' : '') + '" type="button" data-st="open">เปิดรับการตั้งชื่อ</button><button class="btn' + (o.manual === 'closed' ? ' primary' : '') + '" type="button" data-st="closed">ปิดรับการตั้งชื่อ</button></div></div>'
+    + '<div class="card"><h2>ตั้งเวลาเปิด–ปิดรับ</h2><p class="mute">' + (sc.enabled ? 'กำลังตั้งเวลา' + (sc.openAt != null ? ' · เปิด ' + esc(fmtWhen(sc.openAt)) : '') + (sc.closeAt != null ? ' · ปิด ' + esc(fmtWhen(sc.closeAt)) : '') + ' (ปุ่มด้านบนไม่ทำงานจนกว่าจะหยุดตั้งเวลา)' : 'ยังไม่ได้ตั้งเวลา') + '</p><div class="seg" style="margin-bottom:12px"><button type="button" id="aDT" class="' + (cd ? '' : 'on') + '">กำหนดวันและเวลา</button><button type="button" id="aCD" class="' + (cd ? 'on' : '') + '">นับถอยหลัง</button></div>'
+    + '<div id="aPD" class="' + (cd ? 'hidden' : '') + '"><div class="cols">' + dtHTML('aO', 'เปิดรับเมื่อ') + dtHTML('aC', 'ปิดรับเมื่อ') + '</div></div><div id="aPC" class="' + (cd ? '' : 'hidden') + '"><div class="cols"><label class="f"><span>เริ่มเปิดในอีก (ชม.)</span><input type="number" id="ai1" min="0" max="2160" inputmode="numeric" placeholder="0"></label><label class="f"><span>และ (นาที)</span><input type="number" id="ai2" min="0" max="59" inputmode="numeric" placeholder="0"></label><label class="f"><span>เปิดรับนาน (ชม.)</span><input type="number" id="af1" min="0" max="2160" inputmode="numeric" placeholder="ว่าง = ไม่ปิด"></label><label class="f"><span>และ (นาที)</span><input type="number" id="af2" min="0" max="59" inputmode="numeric" placeholder="0"></label></div></div>'
+    + '<div class="row"><button class="btn primary" type="button" id="aSv">' + (cd ? 'เริ่มนับถอยหลัง' : 'บันทึกเวลา') + '</button>' + (sc.enabled ? '<button class="btn" type="button" id="aSt">หยุดตั้งเวลา</button>' : '') + '</div></div>'
+    + '<div class="card"><h2>ส่งออกรายชื่อ</h2><p class="mute">แยกตามฝ่าย เรียงปี 4 → 1 (รหัส · ชื่อ-สกุล · ชื่อเล่น · AKA)</p><label class="chk"><input type="checkbox" id="aOn"><span>เฉพาะผู้ที่ตั้งชื่อแล้ว</span></label><div class="row"><button class="btn primary" type="button" id="aXl">ดาวน์โหลด Excel</button><button class="btn" type="button" id="aPf">ดาวน์โหลด PDF</button></div></div>';
+  dtInit('aO', cd ? null : sc.openAt); dtInit('aC', cd ? null : sc.closeAt);
+  let mode = cd; const setMode = (c) => { mode = c; $('aDT').classList.toggle('on', !c); $('aCD').classList.toggle('on', c); $('aPD').classList.toggle('hidden', c); $('aPC').classList.toggle('hidden', !c); $('aSv').textContent = c ? 'เริ่มนับถอยหลัง' : 'บันทึกเวลา'; };
+  $('aDT').onclick = () => setMode(false); $('aCD').onclick = () => setMode(true);
+  tb.querySelectorAll('[data-st]').forEach((b) => { b.onclick = async () => { const s = b.dataset.st; if (o.manual === s) return; if (!(await confirmDlg(s === 'closed' ? 'ปิดรับการตั้งชื่อ?' : 'เปิดรับการตั้งชื่ออีกครั้ง?', s === 'closed' ? 'นักศึกษาจะแก้ชื่อเองไม่ได้อีก' : '', 'ตกลง'))) return; try { await send('POST', '/camps/aka/admin/state', { state: s }); toast(s === 'closed' ? 'ปิดรับการตั้งชื่อแล้ว' : 'เปิดรับการตั้งชื่อแล้ว'); akaSettings(tb); } catch (e) { fail(e); } }; });
+  const save = async (p, m) => { try { await send('POST', '/camps/aka/admin/schedule', p); toast(m); akaSettings(tb); } catch (e) { fail(e); } };
+  $('aSv').onclick = () => {
+    if (mode) { const inS = (Number($('ai1').value) || 0) * 3600 + (Number($('ai2').value) || 0) * 60, has = $('af1').value !== '' || $('af2').value !== '', forS = (Number($('af1').value) || 0) * 3600 + (Number($('af2').value) || 0) * 60; if (has && forS < 10) return toast('ระยะเวลาที่เปิดรับต้องมากกว่า 10 วินาที', true); return save({ enabled: true, mode: 'countdown', startInSec: inS, durationSec: has ? forS : null }, 'เริ่มนับถอยหลังแล้ว'); }
+    const op = pickers.aO.get(), cl = pickers.aC.get(); if (op == null && cl == null) return toast('ใส่เวลาเปิดหรือเวลาปิดอย่างน้อยหนึ่งอย่าง', true); if (op != null && cl != null && cl <= op) return toast('เวลาปิดต้องหลังเวลาเปิด', true);
+    save({ enabled: true, mode: 'datetime', openAt: op, closeAt: cl }, 'บันทึกเวลาแล้ว');
+  };
+  if ($('aSt')) $('aSt').onclick = async () => { if (await confirmDlg('หยุดตั้งเวลา?', 'แล้วใช้ปุ่มเปิด/ปิดแทน', 'หยุด')) save({ enabled: false, mode: sc.mode }, 'หยุดตั้งเวลาแล้ว'); };
+  $('aXl').onclick = () => akaXlsx($('aOn').checked); $('aPf').onclick = () => akaPdf($('aOn').checked);
+}
+
 
 // ---------- auth ----------
 let signedIn = false;
 function noAdmin() { view().innerHTML = '<div class="card"><h2>ไม่มีสิทธิ์</h2><p class="mute">บัญชีนี้ไม่ใช่แอดมิน ใช้บัญชีอื่นแทน</p><button class="btn primary" id="oth" type="button">ใช้บัญชี Google อื่น</button></div>'; $('oth').onclick = () => out(true); }
-function signin(msg) { signedIn = false; view().innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมิน') + '</p><button class="btn primary" id="li" type="button">เข้าสู่ระบบด้วย Google</button></div>'; $('li').onclick = async () => { try { await auth.loginWithRedirect({ authorizationParams: { connection: 'google-oauth2' }, appState: { returnTo: '/admin/' + (location.hash || '') } }); } catch (e) { signin(e.message); } }; $('logout').classList.add('hidden'); $('who').classList.add('hidden'); }
+function signin(msg) { signedIn = false; view().innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมิน') + '</p><button class="btn primary" id="li" type="button">เข้าสู่ระบบด้วย Google</button></div>'; $('li').onclick = async () => { try { sessionStorage.setItem('adminHash', location.hash || ''); } catch (e) { /* ignore */ } try { await auth.loginWithRedirect({ authorizationParams: { connection: 'google-oauth2' }, appState: { returnTo: '/admin/' } }); } catch (e) { signin(e.message); } }; $('logout').classList.add('hidden'); $('who').classList.add('hidden'); }
 const out = (other) => { try { if (other) sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: location.origin + '/admin/' } }); };
 async function showWho() { try { const u = await auth.getUser(); if (!u) return; const el = $('who'); el.classList.remove('hidden'); el.title = u.email || ''; el.innerHTML = u.picture ? '<img src="' + esc(u.picture) + '" alt="" referrerpolicy="no-referrer">' : esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()); $('logout').classList.remove('hidden'); } catch (e) { /* optional */ } }
 
@@ -390,6 +839,7 @@ document.addEventListener('visibilitychange', () => { /* dashboard timer already
     await new Promise((res, rej) => { let n = 0; const w = () => (window.auth0 ? res() : ++n > 100 ? rej(new Error('โหลดหน้าเข้าสู่ระบบไม่สำเร็จ')) : setTimeout(w, 100)); w(); });
     auth = await window.auth0.createAuth0Client({ domain: 'auth.litalkeducation.com', clientId: 'x', authorizationParams: { redirect_uri: location.href } });
     if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } catch (e) { signedIn = false; auth = auth; return signin(e.message); } }
+    try { const h = sessionStorage.getItem('adminHash'); if (h && signedIn !== undefined && !location.hash) { sessionStorage.removeItem('adminHash'); history.replaceState(null, '', location.pathname + h); } } catch (e) { /* ignore */ }
     signedIn = await auth.isAuthenticated();
     if (signedIn) showWho();
     go();

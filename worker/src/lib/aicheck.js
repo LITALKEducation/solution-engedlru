@@ -16,8 +16,10 @@ export async function detect(env, buf, mime) {
     fd.append("media", new Blob([buf], { type: mime }), "design");
     fd.append("models", "genai"); fd.append("api_user", env.SIGHTENGINE_USER); fd.append("api_secret", env.SIGHTENGINE_SECRET);
     const r = await fetch("https://api.sightengine.com/1.0/check.json", { method: "POST", body: fd, signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return null;
-    const d = await r.json(), s = Number(d?.type?.ai_generated);
+    const d = await r.json().catch(() => null);
+    if (!r.ok || !d || d.status === "failure") { console.error("[aicheck] sightengine", r.status, JSON.stringify(d?.error || d || {}).slice(0, 300)); return null; }
+    const s = Number(d?.type?.ai_generated);
+    if (!Number.isFinite(s)) console.error("[aicheck] sightengine: no type.ai_generated in response", JSON.stringify(d).slice(0, 300));
     return Number.isFinite(s) ? Math.min(1, Math.max(0, s)) : null;
   } catch (e) { console.error("[aicheck]", e?.message || e); return null; }
 }

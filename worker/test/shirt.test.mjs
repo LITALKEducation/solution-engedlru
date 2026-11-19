@@ -158,5 +158,12 @@ console.log('9. AI-generated image check (blocks 24 h when likely)');
  r=await call('s3','POST',base+'&meta=',null,PNG);ok(hit===1&&r.s===422&&r.d.code==='AI_DETECTED','detection service score 0.93 -> refused + locked');const br=db.prepare("SELECT reason FROM camp_shirt_blocks WHERE student_id='6740102222'").get();ok(br&&JSON.parse(br.reason).score===0.93,'score kept in the block reason');db.exec('DELETE FROM camp_shirt_blocks');
  globalThis.fetch=async(u,o)=>{if(String(u).includes('sightengine'))return new Response('x',{status:500});return realFetch(u,o)};
  r=await call('s3','POST',base+'&meta=',null,JPG);a=await ai();ok(r.s===200&&a.level==='none'&&a.score===null,'service down -> fail open, upload accepted');
+ {const did=db.prepare("SELECT id FROM camp_shirt_designs WHERE student_id='6740102222'").get().id;
+ r=await call('s3','POST','/camps/shirt/admin/design/recheck',{id:did});ok(r.s===403,'students cannot recheck');
+ r=await call('admin','POST','/camps/shirt/admin/design/recheck',{id:'f'.repeat(24)});ok(r.s===404,'recheck unknown 404');
+ env.SIGHTENGINE_USER='u';env.SIGHTENGINE_SECRET='k';globalThis.fetch=async(u,o)=>{if(String(u).includes('sightengine'))return new Response(JSON.stringify({type:{ai_generated:0.7}}),{headers:{'content-type':'application/json'}});return realFetch(u,o)};
+ r=await call('admin','POST','/camps/shirt/admin/design/recheck',{id:did});a=await ai();ok(r.s===200&&r.d.scored&&a.level==='review'&&a.score===0.7,'recheck stores the new score (0.7 -> review)');
+ globalThis.fetch=async(u,o)=>{if(String(u).includes('sightengine'))return new Response(JSON.stringify({type:{ai_generated:0.02}}),{headers:{'content-type':'application/json'}});return realFetch(u,o)};
+ r=await call('admin','POST','/camps/shirt/admin/design/recheck',{id:did});a=await ai();ok(r.s===200&&a.level==='none'&&a.score===0.02,'recheck can clear a flag');}
  globalThis.fetch=realFetch;delete env.SIGHTENGINE_USER;delete env.SIGHTENGINE_SECRET}
 console.log(failn?`shirt: ${pass} passed, ${failn} FAILED`:`shirt: ${pass} passed, 0 failed`);process.exit(failn?1:0);

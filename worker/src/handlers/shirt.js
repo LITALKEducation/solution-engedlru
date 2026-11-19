@@ -10,7 +10,7 @@
 //             GET  /camps/shirt/gallery                   the designs with designer + class group, for the public page /shirt/ (no sign-in; admins can switch it off)
 //   Admin:    GET  /camps/shirt/admin/overview            POST /camps/shirt/admin/settings
 //             POST /camps/shirt/admin/sample   body = picture   |  POST /camps/shirt/admin/sample/reset
-//             POST /camps/shirt/admin/design/hide | delete
+//             POST /camps/shirt/admin/design/hide | delete | recheck (run the AI check again on the stored picture)
 import { json } from "../lib/cors.js";
 import { who, requireAdmin, clean, fail } from "./camps.js";
 import { assess } from "../lib/aicheck.js";
@@ -234,6 +234,17 @@ async function adminHide(request, env) {
   await audit(env, a, hidden ? "SHIRT_HIDE" : "SHIRT_UNHIDE", id);
   return json(request, env, { ok: true });
 }
+async function adminRecheck(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null), id = clean(b?.id, 40);
+  const d = await env.DB.prepare("SELECT id,image_key,image_mime,ai_signals FROM camp_shirt_designs WHERE id=?").bind(id).first(); if (!d) return fail(request, env, "ไม่พบผลงาน", 404);
+  const obj = await env.FILES.get(d.image_key); if (!obj) return fail(request, env, "ไม่พบไฟล์รูป", 404);
+  let old = []; try { old = JSON.parse(d.ai_signals || "[]"); } catch (e) { /* none */ }
+  const ai = await assess(env, new Uint8Array(await obj.arrayBuffer()), d.image_mime, Array.isArray(old) ? old.join(",") : "");   // keeps the tags the browser read from the original file
+  await env.DB.prepare("UPDATE camp_shirt_designs SET ai_level=?,ai_score=?,ai_signals=? WHERE id=?").bind(ai.level, ai.score, JSON.stringify(ai.signals), id).run();
+  await audit(env, a, "SHIRT_AI_RECHECK", id, { level: ai.level, score: ai.score });
+  return json(request, env, { ok: true, ai: { level: ai.level, score: ai.score, signals: ai.signals }, scored: ai.score != null });
+}
 async function adminUnblock(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null), id = clean(b?.studentId, 20);
@@ -266,6 +277,7 @@ export async function shirt(request, env, url) {
     if (m === "POST" && p === "/camps/shirt/admin/settings") return await adminSettings(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/hide") return await adminHide(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/block/clear") return await adminUnblock(request, env);
+    if (m === "POST" && p === "/camps/shirt/admin/design/recheck") return await adminRecheck(request, env);
     if (m === "POST" && p === "/camps/shirt/admin/design/delete") return await adminDelete(request, env);
     return fail(request, env, "Not Found", 404);
   } catch (e) {
