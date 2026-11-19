@@ -139,7 +139,7 @@ img,svg,canvas,video{max-width:100%}
  .main{padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 16px)}
  .adtop{position:sticky;top:0;z-index:15;background:#fff;margin:0 -12px 14px;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:nowrap;gap:10px}
  .adtop h1{font-size:19px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
- .adtop .acc{flex:none;max-width:46%;overflow:hidden}
+ .adtop .acc{flex:none;max-width:60%}
  .adtop .acc :is(.ut,.uc small){display:none!important}
  .search{order:0;min-width:0;width:auto;flex:1}
  .burger,.who{width:44px;height:44px;flex:none}
@@ -162,4 +162,4 @@ img,svg,canvas,video{max-width:100%}
  .modal-actions,.dlg .acts{flex-wrap:wrap;gap:8px}.modal-actions>*,.dlg .acts>*{flex:1 1 140px}
  #toast{left:12px!important;right:12px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 12px)!important;max-width:none!important;transform:none!important}
 }
-@media(max-width:420px){.adtop .acc{display:none}.page h2{font-size:17px}}
+@media(max-width:420px){.page h2{font-size:17px}.adtop .acc :is(.uc,.chipbtn){gap:6px}.adtop .acc .chipbtn{min-height:40px;padding:0 12px;font-size:14px}}
