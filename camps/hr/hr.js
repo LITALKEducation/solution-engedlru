@@ -240,7 +240,7 @@ function renderProfile() {
     + (st.nickname ? row('ชื่อเล่น', st.nickname) : add('ชื่อเล่น', 'เพิ่มชื่อเล่น')) + (st.aka ? row('ชื่อ AKA', st.aka) : add('ชื่อ AKA', 'ตั้งชื่อ AKA', '/hr/aka'))
     + row('วันเกิด', fmtBirth(st.birth_date) || '—', 'wide') + (phone ? sec('เบอร์โทรศัพท์', phone, 4) : add('เบอร์โทรศัพท์', 'เพิ่มเบอร์')) + (gphone ? sec('เบอร์ผู้ปกครอง', gphone, 4) : add('เบอร์ผู้ปกครอง', 'เพิ่มเบอร์'))
     + (nid ? sec('รหัสบัตรประชาชน 13 หลัก', nid, 3, 'wide nid') : '') + '</div>'
-    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลประจำตัว <span class="pfopt">สุขภาพและอาหารไม่บังคับกรอก</span></h3></div><div class="pfgrid">'
+    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลประจำตัว</h3></div><div class="pfgrid">'
     + (dep ? row('ฝ่าย', dep, 'wide') : add('ฝ่าย', 'เลือกฝ่าย', '/hr/choose', true))
     + (st.blood_type ? row('กรุ๊ปเลือด', st.blood_type === 'unknown' ? 'ไม่ทราบ' : st.blood_type) : add('กรุ๊ปเลือด', 'เพิ่ม')) + (st.diet ? row('วิธีการกิน', st.diet) : add('วิธีการกิน', 'เพิ่ม'))
     + (st.food_allergy ? row('แพ้อาหาร', st.food_allergy, 'wide') : add('แพ้อาหาร', 'เพิ่ม', '', true)) + (st.medical ? secText('โรคประจำตัว', st.medical, 'wide') : add('โรคประจำตัว', 'เพิ่ม', '', true)) + '</div>'
