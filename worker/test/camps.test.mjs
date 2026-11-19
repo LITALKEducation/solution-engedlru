@@ -49,6 +49,12 @@ r=await call('s1','GET','/camps/admin/health-export');ok(r.s===403,'a student ca
 r=await call('s1','POST','/camps/me/profile',P({foodAllergy:'',diet:'',bloodType:'',medical:''}));r=await call('s1','GET','/camps/me');ok(!r.d.student.food_allergy&&!r.d.student.diet&&!r.d.student.blood_type&&!r.d.student.medical&&!r.d.student.health_consent_at,'clearing every health field withdraws the consent');
 r=await call('s1','POST','/camps/me/accept-terms',{});ok(r.s===200&&r.d.version==='2026-11-19','student accepts terms');
 r=await call('s1','GET','/camps/me');ok(r.d.student.terms_ver==='2026-11-19'&&!!r.d.student.terms_accepted_at,'acceptance stored with version and time');
+// deleting a student erases everything about them, not just the roster row
+r=await call('admin','POST','/camps/admin/students',{studentId:'6740108888',name:'Delete Me',year:2,gender:'M'});
+await env.DB.prepare("INSERT INTO camp_aka (student_id,nickname,aka,updated_by) VALUES ('6740108888','Del','Gone','t')").run().catch(async()=>{await env.DB.prepare("INSERT INTO camp_aka (student_id,nickname,aka) VALUES ('6740108888','Del','Gone')").run()});
+await env.DB.prepare("INSERT INTO camp_shirt_blocks (student_id,until,reason) VALUES ('6740108888',9999999999999,'t')").run().catch(()=>{});
+r=await call('admin','POST','/camps/admin/students/delete',{studentId:'6740108888'});ok(r.s===200,'admin deletes a student');
+{const c1=await env.DB.prepare("SELECT (SELECT COUNT(*) FROM camp_students WHERE student_id='6740108888')+(SELECT COUNT(*) FROM camp_aka WHERE student_id='6740108888')+(SELECT COUNT(*) FROM camp_shirt_blocks WHERE student_id='6740108888') c").first();ok(c1.c===0,'delete erased the roster row, AKA and shirt block (full erasure)');}
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740109999',name:'Old Timer',year:4,gender:'F'});ok(r.s===200,'throwaway student for the retention tests');
 r=await call('admin','POST','/camps/admin/students/status',{studentId:'6740109999',endDate:'2020-01-15',reason:'graduated'});ok(r.s===200,'admin sets the end-of-status date');
 r=await call('admin','POST','/camps/admin/students/status',{studentId:'6740109999',endDate:'2020-13-45',reason:'graduated'});ok(r.s===400,'bad end date rejected');

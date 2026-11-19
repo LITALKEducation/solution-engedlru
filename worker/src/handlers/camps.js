@@ -643,8 +643,8 @@ async function adminDeleteStudent(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const id = normalizeStudentId(b?.studentId); if (!id) return fail(request, env, "รหัสนักศึกษาไม่ถูกต้อง");
-  await env.DB.batch([env.DB.prepare("DELETE FROM camp_selections WHERE student_id=?").bind(id), env.DB.prepare("DELETE FROM camp_students WHERE student_id=?").bind(id)]);
-  await audit(env, a, "CAMP_STUDENT_DELETE", id);
+  await eraseStudent(env, id);   // the same full erasure as the retention purge: AKA, department, shirt design + picture, votes, scans, surveys, activity-log entries
+  await audit(env, a, "CAMP_STUDENT_DELETE", null, { erased: true });
   return json(request, env, { ok: true });
 }
 
