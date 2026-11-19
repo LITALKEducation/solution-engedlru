@@ -516,3 +516,19 @@ a.pfadd,button.pfadd{display:block;width:100%;text-align:left;border:1.5px dashe
 .pfadd:hover{border-color:var(--accent);background:var(--panel)}
 .pf span{color:#5f5f68}
 @media(max-width:420px){.pfhead{flex-wrap:nowrap;gap:12px}.pfimg{width:64px;height:64px;font-size:26px}.pfhead h2{font-size:18px}.pfedit{margin-left:0}}
+
+/* student section menu: links on wide screens, an HTML dropdown on phones */
+.hrdd{display:none;position:relative;width:100%}
+.hrdd-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:0 16px;border:1px solid #cdd1ea;border:1px solid #cfcfd4;border-radius:16px;background:#fff;color:var(--ink);font:inherit;font-weight:600;font-size:1rem;cursor:pointer;box-shadow:var(--shadow);transition:border-color .2s,box-shadow .2s}
+.hrdd-btn svg{flex:none;transition:transform .25s var(--ease-smooth-out)}
+.hrdd.open .hrdd-btn{border-color:var(--accent)}.hrdd.open .hrdd-btn svg{transform:rotate(180deg)}
+.hrdd-list{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:20;display:grid;gap:2px;padding:8px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 40px -14px rgba(0,0,0,.35);opacity:0;transform:translateY(-6px) scale(.98);transform-origin:top;visibility:hidden;pointer-events:none;transition:opacity .18s var(--ease-smooth-out),transform .18s var(--ease-smooth-out),visibility 0s .18s}
+.hrdd.open .hrdd-list{opacity:1;transform:none;visibility:visible;pointer-events:auto;transition-delay:0s}
+nav.hrnav .hrdd-list a{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 14px;border-radius:12px;color:var(--ink)!important;text-decoration:none;font-weight:500;font-size:1rem;background:none!important}
+nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-list a[aria-current]{background:var(--soft)!important;font-weight:600}
+@media(max-width:720px){
+ nav.hrnav:has(.hrdd){display:block!important;background:none!important;padding:0!important;border-radius:0!important;overflow:visible}
+ nav.hrnav:has(.hrdd)>a{display:none!important}
+ nav.hrnav .hrdd{display:block}
+}
+@media(prefers-reduced-motion:reduce){.hrdd-list,.hrdd-btn svg{transition:none!important}}

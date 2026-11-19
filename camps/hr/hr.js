@@ -135,7 +135,18 @@ function renderNav() {
   if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
-  else el.innerHTML = [['profile', '/hr/', 'ข้อมูลส่วนตัว'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกจากหัวหน้า'], ['select', '/hr/select', 'เลือกจากรายการ']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
+  else {
+    const tabs = [['profile', '/hr/', 'ข้อมูลส่วนตัว'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกจากหัวหน้า'], ['select', '/hr/select', 'เลือกจากรายการ']];
+    const cur = tabs.find((t) => t[0] === TAB) || tabs[0];
+    const link = ([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>';
+    // wide screens: the row of links. Phones: an HTML dropdown (not the OS picker) that shows the current page and opens a panel of links
+    el.innerHTML = tabs.map(link).join('')
+      + '<div class="hrdd"><button type="button" class="hrdd-btn" aria-haspopup="true" aria-expanded="false" aria-controls="hrddList"><span>' + cur[2] + '</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>'
+      + '<div class="hrdd-list" id="hrddList" role="menu">' + tabs.map(([k, h, l]) => '<a role="menuitem" href="' + h + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + (TAB === k ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + '</a>').join('') + '</div></div>';
+    const dd = el.querySelector('.hrdd'), btn = dd.querySelector('.hrdd-btn'), setOpen = (o) => { dd.classList.toggle('open', o); btn.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+    btn.onclick = (e) => { e.stopPropagation(); setOpen(!dd.classList.contains('open')); };
+    if (!window.__hrddBound) { window.__hrddBound = 1; document.addEventListener('click', (e) => { const d = document.querySelector('.hrdd.open'); if (d && !d.contains(e.target)) { d.classList.remove('open'); d.querySelector('.hrdd-btn').setAttribute('aria-expanded', 'false'); } }); document.addEventListener('keydown', (e) => { const d = document.querySelector('.hrdd.open'); if (e.key === 'Escape' && d) { d.classList.remove('open'); const b = d.querySelector('.hrdd-btn'); b.setAttribute('aria-expanded', 'false'); b.focus(); } }); }
+  }
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
 }
 function renderState() {
