@@ -22,7 +22,7 @@
     + '@media print{#siteFoot{display:none!important}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var COLS = [
-    ['นักศึกษา', [['/hr/', 'เลือกฝ่าย'], ['/hr/aka', 'ตั้งชื่อ AKA'], ['/shirt/', 'แบบเสื้อค่าย']]],
+    ['นักศึกษา', [['/hr/', 'ข้อมูลส่วนตัว'], ['/hr/aka', 'ตั้งชื่อ AKA'], ['/shirt/', 'แบบเสื้อค่าย']]],
     ['เจ้าหน้าที่', [['/lotto/', 'จับสลาก'], ['/qrcheck/', 'เช็ก QR']]],
     ['การเงิน', [['/budget/', 'งบประมาณ']]]
   ];
