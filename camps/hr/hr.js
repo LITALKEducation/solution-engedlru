@@ -135,7 +135,7 @@ function renderNav() {
   if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
-  else el.innerHTML = [['profile', '/hr/', 'ข้อมูลของฉัน'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกฝ่าย'], ['select', '/hr/select', 'เลือกเลย']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
+  else el.innerHTML = [['profile', '/hr/', 'ข้อมูลส่วนตัว'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกจากหัวหน้า'], ['select', '/hr/select', 'เลือกจากรายการ']].map(([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join('');
   const on = el.querySelector('a.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);   // keep the current item visible on narrow screens
 }
 function renderState() {
@@ -200,17 +200,29 @@ function renderProfile() {
   }
   const init = esc((st.name || '?').replace(/^(นางสาว|นาย|นาง)\s*/, '').trim()[0] || '?');
   const dep = me.selection && me.selection.department_name;
-  const row = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + (v ? esc(v) : '<i class="none">ยังไม่มีข้อมูล</i>') + '</b></div>';
+  document.body.classList.add('pf-in');   // the account chip and back link are redundant here (the menu bar and the card say the same)
+  // sensitive values start hidden (last digits only); the eye button shows them for a short while
+  const hide = (str, keep) => { let n = 0; return String(str).split('').reverse().map((c) => (/\d/.test(c) ? (n++ < keep ? c : '•') : c)).reverse().join(''); };
+  const sec = (k, v, keep, cls) => v ? '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b data-full="' + esc(v) + '" data-mask="' + esc(hide(v, keep)) + '">' + esc(hide(v, keep)) + '</b></div>' : '';
+  const row = (k, v, cls) => '<div class="pf' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + esc(v) + '</b></div>';
+  const add = (k, label, href, wide) => (href ? '<a class="pf pfadd' + (wide ? ' wide' : '') + '" href="' + href + '">' : '<button type="button" class="pf pfadd" onclick="editProfile()">') + '<span>' + k + '</span><b>+ ' + label + '</b>' + (href ? '</a>' : '</button>');
+  const phone = fmtPhone(st.phone), gphone = fmtPhone(st.guardian_phone), nid = fmtNid(st.national_id);
+  const penIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
+  const eyeIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   box.innerHTML = '<div class="card idcard">'
     + '<div class="pfhead">' + (authPicture ? '<img class="pfimg" src="' + esc(authPicture) + '" alt="รูปโปรไฟล์ของ ' + esc(st.name) + '" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pfimg ph\',textContent:\'' + init + '\'}))">' : '<span class="pfimg ph" aria-hidden="true">' + init + '</span>')
     + '<div class="pfwho"><h2>' + esc(st.name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</h2>' + (st.name_en ? '<div class="pfen">' + esc(st.name_en) + '</div>' : '')
-    + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span><span class="chip dep' + (dep ? '' : ' none') + '">' + (dep ? esc(dep) : 'ยังไม่ได้เลือกฝ่าย') + '</span></div></div>'
-    + '<button class="btn primary sm pfedit" type="button" onclick="editProfile()">✎ แก้ไข</button></div>'
-    + '<h3 class="pfh">ข้อมูลส่วนตัว</h3><div class="pfgrid">' + row('ชื่อเล่น', st.nickname) + row('ชื่อ AKA', st.aka) + row('วันเกิด', fmtBirth(st.birth_date), 'wide') + row('เบอร์โทรศัพท์', fmtPhone(st.phone)) + row('เบอร์ผู้ปกครอง', fmtPhone(st.guardian_phone)) + '</div>'
-    + '<h3 class="pfh">ข้อมูลประจำตัว</h3><div class="pfgrid">' + row('รหัสนักศึกษา', st.student_id) + row('ฝ่าย', dep) + row('รหัสบัตรประชาชน 13 หลัก', fmtNid(st.national_id), 'wide nid') + '</div>'
-    + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><b>QR รหัสนักศึกษา</b><span>' + esc(st.student_id) + '</span><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
-    + '<p class="muted pfhint">ชื่อเล่น / AKA ตั้งได้ที่เมนู <a href="/hr/aka">ตั้งชื่อ AKA</a> · ฝ่ายเปลี่ยนได้ที่เมนู <a href="/hr/choose">เลือกฝ่าย</a></p>'
+    + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span>' + (dep ? '<span class="chip dep">' + esc(dep) + '</span>' : '') + '</div></div>'
+    + '<button class="pfedit" type="button" onclick="editProfile()" aria-label="แก้ไขข้อมูล" title="แก้ไขข้อมูล">' + penIc + '</button></div>'
+    + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><span class="qrlbl">QR รหัสนักศึกษา</span><b class="qrid">' + esc(st.student_id) + '</b><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
+    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลส่วนตัว</h3><button type="button" class="pfeye" id="pfEye" aria-pressed="false" aria-label="แสดงข้อมูลที่ซ่อนไว้" title="แสดง / ซ่อนเบอร์และเลขบัตร">' + eyeIc + '</button></div><div class="pfgrid">'
+    + (st.nickname ? row('ชื่อเล่น', st.nickname) : add('ชื่อเล่น', 'เพิ่มชื่อเล่น')) + (st.aka ? row('ชื่อ AKA', st.aka) : add('ชื่อ AKA', 'ตั้งชื่อ AKA', '/hr/aka'))
+    + row('วันเกิด', fmtBirth(st.birth_date) || '—', 'wide') + (phone ? sec('เบอร์โทรศัพท์', phone, 4) : add('เบอร์โทรศัพท์', 'เพิ่มเบอร์')) + (gphone ? sec('เบอร์ผู้ปกครอง', gphone, 4) : add('เบอร์ผู้ปกครอง', 'เพิ่มเบอร์')) + '</div>'
+    + '<h3 class="pfh">ข้อมูลประจำตัว</h3><div class="pfgrid">' + (dep ? row('ฝ่าย', dep) : add('ฝ่าย', 'เลือกฝ่าย', '/hr/choose', true)) + (nid ? sec('รหัสบัตรประชาชน 13 หลัก', nid, 3, 'wide nid') : '') + '</div>'
     + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
+  let eyeT = 0; const eye = $('pfEye');
+  const setEye = (on) => { clearTimeout(eyeT); eye.setAttribute('aria-pressed', on ? 'true' : 'false'); eye.classList.toggle('on', on); box.querySelectorAll('[data-full]').forEach((el) => { el.textContent = on ? el.dataset.full : el.dataset.mask; }); if (on) eyeT = setTimeout(() => setEye(false), 20000); };
+  eye.onclick = () => setEye(eye.getAttribute('aria-pressed') !== 'true');
   drawQR($('qrSmall'), st.student_id, 168);
 }
 
