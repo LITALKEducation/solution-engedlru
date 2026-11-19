@@ -1,4 +1,4 @@
-// AI-generated image check for the shirt uploads. Two sources, both best effort (no detector is reliable, so the result only FLAGS a design for the admins):
+// AI-generated image check for the shirt uploads. Two sources, both best effort (no detector is reliable, so 'review' only FLAGS a design for the admins; the shirt handler refuses 'likely' and locks the student out for 24 h, and admins can lift that):
 //   1. embedded generator tags (IPTC "trainedAlgorithmicMedia", Stable Diffusion / ComfyUI parameters, Midjourney, DALL-E, Firefly, C2PA ...). The browser reads them from the
 //      ORIGINAL file (resizing strips them) and sends the short keys below; the Worker only accepts keys from this list.
 //   2. an optional detection service: Sightengine "genai" when the secrets SIGHTENGINE_USER and SIGHTENGINE_SECRET are set (`wrangler secret put ...`).

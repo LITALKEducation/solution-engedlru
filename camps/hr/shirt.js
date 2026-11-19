@@ -82,6 +82,8 @@ function renderShirtSubmit() {
       : '<p class="muted">' + (x.submit === 'before' ? 'ยังไม่ถึงเวลารับผลงาน เปิดรับ ' + esc(shWhen(x.schedule.submitFrom)) : x.submit === 'unset' ? 'ยังไม่กำหนดวันรับผลงาน' : 'ปิดรับผลงานแล้ว คุณไม่ได้ส่งผลงาน') + '</p>';
     host.innerHTML = h + '</div>'; if ($('shMineBig')) $('shMineBig').onclick = () => shLightbox(my.image, shName(my), shWho(my)); return;
   }
+  const blocked = x.blockedUntil && x.blockedUntil > Date.now();
+  if (blocked) h += '<div class="notice" role="alert"><b>ระงับการส่งผลงานชั่วคราว</b><br>ตรวจพบว่ารูปที่ส่งน่าจะสร้างด้วย AI ส่งใหม่ได้หลัง ' + esc(shWhen(x.blockedUntil)) + '</div>';
   h += '<p class="muted">ส่งได้ 1 ผลงาน แก้ไขได้จนถึง ' + esc(shWhen(x.schedule.submitTo)) + '</p><div class="shup"><form id="shForm" class="form" novalidate autocomplete="off">'
     + '<label><span>ชื่อผู้ออกแบบ <em class="req">*</em></span><input id="shDesigner" maxlength="80" required></label><label><span>หมู่เรียน <em class="req">*</em></span><input id="shGroup" maxlength="40" required placeholder="เช่น ปี 2 หมู่ 1"></label>'
     + '<label><span>รูปลายเสื้อ ' + (my ? '(เลือกใหม่ถ้าต้องการเปลี่ยน)' : '<em class="req">*</em>') + '<small class="hint"> PNG / JPG / WebP ไม่เกิน 10 MB (ย่อเป็นไม่เกิน 1080 × 1080 px อัตโนมัติ)</small></span><input id="shFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
@@ -97,6 +99,7 @@ function renderShirtSubmit() {
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { e.target.value = ''; live(); return toast('ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น', true); }
     try { meta = await shMeta(f); blob = await shResize(f); blobUrl = URL.createObjectURL(blob); live(); } catch (err) { e.target.value = ''; live(); toast('เปิดไฟล์รูปไม่ได้', true); }
   };
+  if (blocked) { $('shSave').disabled = true; $('shFile').disabled = true; }
   $('shForm').onsubmit = async (e) => {
     e.preventDefault();
     const designer = $('shDesigner').value.trim(), group = $('shGroup').value.trim();
@@ -166,6 +169,7 @@ function renderShirtAdmin() {
     + (smp.image ? '<img class="shsamplepic" src="' + esc(smp.image) + '" alt="เสื้อตัวอย่าง">' : '<p class="muted">ยังไม่ได้อัปโหลด กล่องเสื้อตัวอย่างจะไม่แสดง</p>')
     + '<div class="form"><label><span>รูปเสื้อตัวอย่าง (PNG / JPG / WebP ไม่เกิน 10 MB, ย่อเป็น 1080 × 1080 px)</span><input id="shSampleFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
     + '<div class="filerow"><button class="btn primary" type="button" id="shUpSample">' + (smp.image ? 'เปลี่ยนรูป' : 'อัปโหลดรูป') + '</button>' + (smp.image ? '<button class="btn danger" type="button" id="shResetSample">ลบรูปเสื้อตัวอย่าง</button>' : '') + '</div></div></div>'
+    + (a.blocks && a.blocks.length ? '<div class="panel"><h3>ถูกระงับการส่ง (ตรวจพบ AI)</h3>' + a.blocks.map((b) => '<p>' + esc(b.studentName) + ' · ' + esc(b.studentId) + ' <span class="muted">ถึง ' + esc(shWhen(b.until)) + '</span> <button class="btn sm" data-unblock="' + esc(b.studentId) + '">ปลดล็อก</button></p>').join('') + '</div>' : '')
     + '<div class="panel"><h3>ผลงานทั้งหมด <span class="muted">(' + a.totals.designs + ' ผลงาน · ' + a.totals.votes + ' โหวต)</span></h3>'
     + (a.designs.length ? '<div class="shgrid">' + a.designs.map((d) => '<figure class="shcard' + (d.hidden ? ' off' : '') + '"><button type="button" class="shimg" data-big="' + d.id + '" aria-label="ขยายรูป">' + shMock(d.image, 'white') + '</button><figcaption><b>' + esc(shName(d)) + '</b>' + shWho(d)
       + '<p class="muted">ส่งโดย ' + esc(d.studentName) + ' · ' + esc(d.studentId) + '</p><p class="shvotes"><b>' + d.votes + '</b> โหวต' + (d.hidden ? ' · <span class="tag">ซ่อนอยู่</span>' : '') + '</p>' + shAi(d.ai) + '<div class="shact"><button class="btn sm" data-hide="' + d.id + '" data-to="' + (d.hidden ? 0 : 1) + '">' + (d.hidden ? 'แสดง' : 'ซ่อน') + '</button><button class="btn sm danger" data-del="' + d.id + '">ลบ</button></div></figcaption></figure>').join('') + '</div>' : '<p class="muted">ยังไม่มีใครส่งผลงาน</p>') + '</div>'
@@ -200,6 +204,7 @@ function renderShirtAdmin() {
   $('shClear').onclick = async () => { if (await confirmDlg('ล้างวันที่ทั้งหมด?', 'ทั้งช่วงรับผลงานและช่วงโหวตจะกลับไปเป็น “ยังไม่กำหนด”', 'ล้าง')) save(true); };
   body.onclick = async (ev) => {
     const big = ev.target.closest('[data-big]'); if (big) { const d = a.designs.find((z) => z.id === big.dataset.big); if (d) shLightbox(d.image, shName(d), shWho(d)); return; }
+    const ub = ev.target.closest('[data-unblock]'); if (ub) { const r = await post('/camps/shirt/admin/block/clear', { studentId: ub.dataset.unblock }); if (!r.ok) return toast(await shErr(r), true); toast('ปลดล็อกแล้ว'); return loadShirtAdmin(); }
     const h = ev.target.closest('[data-hide]'); if (h) { const r = await post('/camps/shirt/admin/design/hide', { id: h.dataset.hide, hidden: h.dataset.to === '1' }); if (!r.ok) return toast(await shErr(r), true); toast(h.dataset.to === '1' ? 'ซ่อนแล้ว (โหวตของผลงานนี้ถูกคืน)' : 'แสดงแล้ว'); return loadShirtAdmin(); }
     const x = ev.target.closest('[data-del]'); if (x) { const d = a.designs.find((z) => z.id === x.dataset.del); if (!(await confirmDlg('ลบผลงาน?', '“' + (d ? shName(d) : '') + '” พร้อมโหวตทั้งหมดจะถูกลบถาวร', 'ลบ'))) return; const r = await post('/camps/shirt/admin/design/delete', { id: x.dataset.del }); if (!r.ok) return toast(await shErr(r), true); toast('ลบแล้ว'); loadShirtAdmin(); }
   };
