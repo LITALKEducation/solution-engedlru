@@ -335,10 +335,10 @@ function renderUserChip(x) {
 function renderAcct(x) {
   renderUserChip(x);
   const box = $('acct');
-  if (!box) { if (PROFILE || AKA || SHIRT) { const pb = $(PROFILE ? 'profile' : AKA ? 'akaBox' : 'shirtBox'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()')) + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
+  if (!box) { if (PROFILE || AKA || SHIRT) { const pb = $(PROFILE ? 'profile' : AKA ? 'akaBox' : 'shirtBox'); if (pb && (!me || (x && x.error))) pb.innerHTML = '<div class="card acct">' + (x && x.error ? '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>' : '<h2>เข้าสู่ระบบ</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p>') + '</div>'; return; } if (x && x.error) renderAdmin(x); else if (!me) renderAdmin(); return; }
   if (x && x.error) { box.innerHTML = '<div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button>'; return; }
   if (!me) {
-    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()');
+    box.innerHTML = '<h2>เข้าสู่ระบบเพื่อลงทะเบียน</h2><p class="meta">ใช้อีเมลมหาวิทยาลัย (@lru.ac.th)</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p>';
     return;
   }
   const adminPill = me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '';
@@ -602,7 +602,7 @@ const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธ�
 function renderAdmin(x) {
   const box = $('adminBox'); if (!box) return;
   if (x && x.error) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button></div>'; return; }
-  if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบ</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลที่มีสิทธิ์แอดมิน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '</div>'; return; }
+  if (!me) { box.innerHTML = '<div class="card acct"><h2>เข้าสู่ระบบ</h2><p class="meta">เข้าสู่ระบบด้วยอีเมลที่มีสิทธิ์แอดมิน</p>' + gBtn('เข้าสู่ระบบด้วย Google', 'login()') + '<p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p></div>'; return; }
   if (!me.isAdmin) { box.innerHTML = NO_PERM(me); return; }
   box.innerHTML = '<h2 class="sr">เมนูแอดมิน</h2><div id="adminBody"><div class="skeleton"></div></div>';
   loadAdminPage();

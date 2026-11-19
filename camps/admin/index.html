@@ -180,6 +180,7 @@ input[type=checkbox]:checked,input[type=radio]:checked{animation:t-pop var(--dur
 @keyframes t-shimmer{to{background-position:-200% 0}}
 .skel,.muted-load{background:linear-gradient(90deg,var(--soft) 30%,#fff 50%,var(--soft) 70%) 0 0/200% 100%;animation:t-shimmer 1.4s linear infinite}
 @media(prefers-reduced-motion:reduce){main,#view,.dlg,.modal,.scanpop,.dlg .box,.modal-card,.scanpop-card,dialog,dialog::backdrop,#toast{animation:none!important;transition:none!important;filter:none!important}input[type=checkbox]:checked,input[type=radio]:checked{animation:none}}
+.gatelegal{margin:12px 0 0;font-size:13px;color:var(--mute);text-align:center}.gatelegal a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 </style>
 </head>
 <body>
@@ -1003,7 +1004,7 @@ async function akaSettings(tb) {
 // ---------- auth ----------
 let signedIn = false;
 function noAdmin() { view().innerHTML = '<div class="card"><h2>ไม่มีสิทธิ์</h2><p class="mute">บัญชีนี้ไม่ใช่แอดมิน ใช้บัญชีอื่นแทน</p><button class="btn primary" id="oth" type="button">ใช้บัญชี Google อื่น</button></div>'; $('oth').onclick = () => out(true); }
-function signin(msg) { signedIn = false; view().innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมิน') + '</p><button class="btn primary" id="li" type="button">เข้าสู่ระบบด้วย Google</button></div>'; $('li').onclick = async () => { try { sessionStorage.setItem('adminHash', location.hash || ''); } catch (e) { /* ignore */ } try { await auth.loginWithRedirect({ authorizationParams: { connection: 'google-oauth2' }, appState: { returnTo: '/admin/' } }); } catch (e) { signin(e.message); } }; $('logout').classList.add('hidden'); $('who').classList.add('hidden'); }
+function signin(msg) { signedIn = false; view().innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมิน') + '</p><button class="btn primary" id="li" type="button">เข้าสู่ระบบด้วย Google</button><p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p></div>'; $('li').onclick = async () => { try { sessionStorage.setItem('adminHash', location.hash || ''); } catch (e) { /* ignore */ } try { await auth.loginWithRedirect({ authorizationParams: { connection: 'google-oauth2' }, appState: { returnTo: '/admin/' } }); } catch (e) { signin(e.message); } }; $('logout').classList.add('hidden'); $('who').classList.add('hidden'); }
 const out = (other) => { try { if (other) sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: location.origin + '/admin/' } }); };
 async function showWho() { try { const u = await auth.getUser(); if (!u) return; const el = $('who'); el.classList.remove('hidden'); el.title = u.email || ''; el.innerHTML = u.picture ? '<img src="' + esc(u.picture) + '" alt="" referrerpolicy="no-referrer">' : esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()); $('logout').classList.remove('hidden'); } catch (e) { /* optional */ } }
 

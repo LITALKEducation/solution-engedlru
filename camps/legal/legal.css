@@ -24,3 +24,4 @@
 .lcards a:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}.lcards b{font-size:1.125rem}.lcards span{color:var(--mute,#5f5f68)}
 @media(min-width:760px){.lcards{grid-template-columns:repeat(3,1fr)}}
 @media print{.lnav,.ltoc{display:none}.lbody section{border:0;box-shadow:none;padding:0}}
+.lcontact{margin:18px 0 0;text-align:center;color:var(--mute,#5f5f68)!important}.lcontact a{color:var(--ink,#18181b)!important;text-decoration:underline;text-underline-offset:3px}

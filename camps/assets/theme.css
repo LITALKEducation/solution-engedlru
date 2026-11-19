@@ -159,3 +159,5 @@ input[type=checkbox]:checked,input[type=radio]:checked{animation:t-pop var(--dur
 @keyframes t-shimmer{to{background-position:-200% 0}}
 .skel,.muted-load{background:linear-gradient(90deg,var(--soft) 30%,#fff 50%,var(--soft) 70%) 0 0/200% 100%;animation:t-shimmer 1.4s linear infinite}
 @media(prefers-reduced-motion:reduce){main,#view,.dlg,.modal,.scanpop,.dlg .box,.modal-card,.scanpop-card,dialog,dialog::backdrop,#toast{animation:none!important;transition:none!important;filter:none!important}input[type=checkbox]:checked,input[type=radio]:checked{animation:none}}
+
+.gatelegal{margin:12px 0 0;font-size:.8125rem;color:var(--mute)!important;text-align:center;line-height:1.7}.gatelegal a{color:var(--ink)!important;text-decoration:underline;text-underline-offset:3px}
