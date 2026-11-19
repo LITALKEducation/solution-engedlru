@@ -583,3 +583,7 @@ nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-li
 .shrules li{background:none!important;padding:4px 2px!important;font-weight:500}.shrules li.no{background:none!important;font-weight:700}
 
 .gatelegal{margin:12px 0 0;font-size:.8125rem;color:var(--mute)!important;text-align:center}.gatelegal a{color:var(--ink)!important;text-decoration:underline;text-underline-offset:3px}
+
+.talinks{margin:4px 0 12px;padding-left:1.3em;line-height:2}.talinks a{color:var(--ink)!important;text-decoration:underline;text-underline-offset:3px;font-weight:600}
+#termsAsk{z-index:90}
+.pfcons{margin-top:2px}.pfcons .shok{margin:0}.pfcons a{color:var(--ink)!important;text-decoration:underline}

@@ -205,15 +205,16 @@ function editProfile() {
     + f('pfNick', 'ชื่อเล่น', 'maxlength="30"' + (akaOpen ? '' : ' disabled'), akaOpen) + f('pfAka', 'ชื่อ AKA', 'maxlength="40"' + (akaOpen ? '' : ' disabled'), akaOpen) + '</div>'
     + '<p class="pfsec">ข้อมูลส่วนตัว</p><div class="pfg">' + f('pfBirth', 'วันเกิด', 'type="date" min="1900-01-01" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก" placeholder="x-xxxx-xxxxx-xx-x"')
     + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + '</div>'
-    + '<p class="pfsec">สุขภาพและอาหาร <span class="pfopt">ไม่บังคับกรอก</span></p><p class="pfnote">ใช้ดูแลเรื่องอาหารและความปลอดภัยในค่ายเท่านั้น เห็นได้เฉพาะคุณและแอดมิน การกรอกข้อมูลในหมวดนี้ถือเป็นการยินยอมตาม <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> ล้างช่องเพื่อถอนความยินยอมได้</p><div class="pfg">'
+    + '<p class="pfsec">สุขภาพและอาหาร <span class="pfopt">ไม่บังคับกรอก</span></p><p class="pfnote">ใช้ดูแลเรื่องอาหารและความปลอดภัยในค่ายเท่านั้น เห็นได้เฉพาะคุณและแอดมิน ทุกครั้งที่แอดมินเปิดดูจะมีบันทึกไว้</p><div class="pfg">'
     + selHTML('pfBlood', 'กรุ๊ปเลือด', bloodOpts, st.blood_type || '') + selHTML('pfDiet', 'วิธีการกิน', dietOpts, dietVal)
     + '<div id="pfDietOW" class="span2 ' + (dietVal === '__other' ? '' : 'hidden') + '">' + f('pfDietO', 'ระบุวิธีการกิน', 'maxlength="100"', false) + '</div>'
-    + f('pfAllergy', 'แพ้อาหาร', 'maxlength="300" placeholder="เช่น กุ้ง ถั่วลิสง นมวัว"', false, true) + f('pfMedical', 'โรคประจำตัว / ยาที่ใช้ประจำ', 'maxlength="300" placeholder="เช่น หอบหืด ภูมิแพ้"', false, true) + '</div>'
+    + f('pfAllergy', 'แพ้อาหาร', 'maxlength="300" placeholder="เช่น กุ้ง ถั่วลิสง นมวัว"', false, true) + f('pfMedical', 'โรคประจำตัว / ยาที่ใช้ประจำ', 'maxlength="300" placeholder="เช่น หอบหืด ภูมิแพ้"', false, true)
+    + '<div class="span2 pfcons"><label class="shok"><input type="checkbox" id="pfConsent"> <span>ฉันยินยอมให้เก็บและใช้ข้อมูลสุขภาพและอาหารข้างบนตาม <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> (ล้างทุกช่องเพื่อถอนความยินยอม)</span></label><span class="pferr" id="pfConsentE" role="alert"></span></div></div>'
     + '</div><div class="pfdf"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
   d.firstElementChild.classList.add('pfbox');
   $('pfName').value = st.name || ''; $('pfNameEn').value = st.name_en || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfBirth').value = st.birth_date || '';
   $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfPhone').value = fmtPhone(st.phone) || ''; $('pfGPhone').value = fmtPhone(st.guardian_phone) || '';
-  $('pfAllergy').value = st.food_allergy || ''; $('pfMedical').value = st.medical || ''; if (dietVal === '__other') $('pfDietO').value = st.diet;
+  $('pfAllergy').value = st.food_allergy || ''; $('pfMedical').value = st.medical || ''; $('pfConsent').checked = !!st.health_consent_at; if (dietVal === '__other') $('pfDietO').value = st.diet;
   selBind(d, (id, v) => { dirty = true; if (id === 'pfDiet') { $('pfDietOW').classList.toggle('hidden', v !== '__other'); if (v === '__other') $('pfDietO').focus(); } });
   // type-ahead formatting for the id card and phone numbers
   const fmtOn = (id, fn) => { $(id).addEventListener('input', () => { const v = $(id).value, o = fn(v); if (o !== v) $(id).value = o; }); };
@@ -222,16 +223,18 @@ function editProfile() {
   // a tap on the backdrop must not throw away typed changes
   d.addEventListener('mousedown', (e) => { if (e.target === d && dirty) e.stopImmediatePropagation(); }, true);
   d.addEventListener('click', async (e) => { if (e.target.closest('[data-x]')) { if (dirty && !(await confirmDlg('ทิ้งการแก้ไข?', 'ข้อมูลที่แก้ไว้จะไม่ถูกบันทึก', 'ทิ้ง'))) return; d.remove(); } });
-  const FIELD = { name: 'pfName', nameEn: 'pfNameEn', nickname: 'pfNick', aka: 'pfAka', birthDate: 'pfBirth', nationalId: 'pfNid', phone: 'pfPhone', guardianPhone: 'pfGPhone', bloodType: 'pfBlood' };
+  const FIELD = { name: 'pfName', nameEn: 'pfNameEn', nickname: 'pfNick', aka: 'pfAka', birthDate: 'pfBirth', nationalId: 'pfNid', phone: 'pfPhone', guardianPhone: 'pfGPhone', bloodType: 'pfBlood', healthConsent: 'pfConsent' };
   const clearErr = () => d.querySelectorAll('.pferr').forEach((x) => { x.textContent = ''; x.parentElement.classList.remove('bad'); }); 
   const showErr = (id, msg) => { const inp = $(id); if (!inp) return false; const e = $(id + 'E'); if (e) { e.textContent = msg; inp.parentElement.classList.add('bad'); } inp.setAttribute('aria-invalid', 'true'); inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (inp.focus) inp.focus({ preventScroll: true }); return true; };
   $('pfForm').addEventListener('submit', async (e) => {
     e.preventDefault(); clearErr();
     const bad = [...d.querySelectorAll('#pfForm input[required]')].find((i) => !i.disabled && !i.validity.valid);
     if (bad) { showErr(bad.id, bad.validity.valueMissing ? 'กรุณากรอกช่องนี้' : (bad.title || 'รูปแบบไม่ถูกต้อง')); return; }
+    const anyH = $('pfBlood').value || $('pfDiet').value || $('pfAllergy').value.trim() || $('pfMedical').value.trim();
+    if (anyH && !$('pfConsent').checked) { showErr('pfConsent', 'ติ๊กยินยอมก่อน หากกรอกข้อมูลสุขภาพและอาหาร'); return; }
     const btn = e.submitter; if (btn) btn.disabled = true;
     try {
-      const r = await post('/camps/me/profile', { name: $('pfName').value, nameEn: $('pfNameEn').value, nickname: $('pfNick').value, aka: $('pfAka').value, birthDate: $('pfBirth').value, nationalId: $('pfNid').value, phone: $('pfPhone').value, guardianPhone: $('pfGPhone').value, bloodType: $('pfBlood').value, diet: $('pfDiet').value === '__other' ? $('pfDietO').value.trim() : $('pfDiet').value, foodAllergy: $('pfAllergy').value, medical: $('pfMedical').value });
+      const r = await post('/camps/me/profile', { name: $('pfName').value, nameEn: $('pfNameEn').value, nickname: $('pfNick').value, aka: $('pfAka').value, birthDate: $('pfBirth').value, nationalId: $('pfNid').value, phone: $('pfPhone').value, guardianPhone: $('pfGPhone').value, bloodType: $('pfBlood').value, diet: $('pfDiet').value === '__other' ? $('pfDietO').value.trim() : $('pfDiet').value, foodAllergy: $('pfAllergy').value, medical: $('pfMedical').value, healthConsent: $('pfConsent').checked });
       if (!r.ok) { let j = {}; try { j = await r.json(); } catch (x) { /* keep empty */ } const msg = j.error || ('เกิดข้อผิดพลาด (' + r.status + ')'); if (!(j.field && FIELD[j.field] && showErr(FIELD[j.field], msg))) toast(msg, true); return; }
       dirty = false; d.remove(); toast('บันทึกแล้ว'); await loadMe();
     } catch (x) { toast(sessionGone(x) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); }
@@ -534,12 +537,31 @@ async function loadMe() {
   if (!r.ok) { const m = await errMsg(r); renderAcct({ error: m }); renderGate({ error: m }); return; }
   try { const u = await auth0Client.getUser(); authPicture = (u && /^https:\/\//.test(u.picture || '')) ? u.picture : ''; } catch (e) { authPicture = ''; }
   loadMe.tries = 0; const wasAdmin = !!(me && me.isAdmin); me = await r.json(); if (me.adminDeferred && wasAdmin) me.isAdmin = true; state = me.registration || state; renderState(); renderAcct(); renderNav();
+  if (PAGE === 'student' && me.student && me.legalVersion && me.student.terms_ver !== me.legalVersion) askTerms();
   if (PROFILE) { ungate(); renderProfile(); checkAdminLater(); return; }
   if (AKA) { ungate(); loadAka(); checkAdminLater(); return; }
   if (SHIRT) { ungate(); loadShirt(); checkAdminLater(); return; }
   if (PAGE === 'student' && TAB === 'survey') { ungate(); loadSurveyMe(); return; }   // hr/survey.js
   if (PAGE === 'student') { ungate(); await loadDepartments(); startPolling(); checkAdminLater(); } else { renderDepts(); renderAdmin(); }
   if (PAGE === 'student') resumeAfterLogin();
+}
+// first sign-in (and every time the terms / privacy policy change): the student must accept them before using the pages; the acceptance is stored with the version
+function askTerms() {
+  if ($('termsAsk')) return;
+  const d = document.createElement('div'); d.className = 'dlg'; d.id = 'termsAsk';
+  d.innerHTML = '<div class="box wide" role="dialog" aria-modal="true" aria-labelledby="taT"><h3 id="taT">ข้อกำหนดและนโยบาย</h3><p>ก่อนใช้งาน กรุณาอ่านเอกสารต่อไปนี้ (เปิดอ่านในแท็บใหม่)</p>'
+    + '<ul class="talinks"><li><a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a></li><li><a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></li><li><a href="/legal/third-party" target="_blank" rel="noopener">บริการของบุคคลที่สาม</a></li></ul>'
+    + '<label class="shok"><input type="checkbox" id="taOk"> <span>ฉันได้อ่านและยอมรับข้อกำหนดการใช้งานและนโยบายความเป็นส่วนตัว</span></label>'
+    + '<div class="btns"><button class="btn" type="button" id="taOut">ออกจากระบบ</button><button class="btn primary" type="button" id="taGo" disabled>ยอมรับและใช้งานต่อ</button></div></div>';
+  document.body.appendChild(d);
+  const ok = $('taOk'), go = $('taGo'); ok.onchange = () => { go.disabled = !ok.checked; };
+  $('taOut').onclick = () => logout();
+  go.onclick = async () => {
+    go.disabled = true;
+    try { const r = await post('/camps/me/accept-terms'); if (!r.ok) { toast(await errMsg(r), true); go.disabled = !ok.checked; return; } me.student.terms_ver = me.legalVersion; d.remove(); toast('บันทึกการยอมรับแล้ว'); }
+    catch (e) { toast(sessionGone(e) ? 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่' : 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง', true); go.disabled = !ok.checked; }
+  };
+  ok.focus();
 }
 // student pages show nothing until the visitor has signed in with Google
 function renderGate(x) {
