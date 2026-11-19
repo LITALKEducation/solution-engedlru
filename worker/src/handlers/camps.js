@@ -10,6 +10,10 @@ export const fail = (request, env, message, status = 400, extra = {}) => json(re
 const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[\u200b-\u200d\u2060\ufeff]/g, "").replace(/[\u00a0\u2007\u202f\u3000]/g, " ").replace(/[ \t]+/g, " ").trim();
 const asciiDigits = (s) => String(s ?? "").replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50));
 export const clean = (s, max = 200) => tidy(s).slice(0, max);
+// bump when the terms or the privacy policy change materially: students are asked to accept the new version
+export const LEGAL_VERSION = "2026-11-19";
+const RETENTION_YEARS = 2;
+const END_REASONS = ["graduated", "left", "dismissed", "transferred", "other"];
 const YEARS = [1, 2, 3, 4];
 const GENDERS = ["M", "F"]; // M = ชาย, F = หญิง
 const STATES = ["pending", "open", "closed"];
@@ -251,13 +255,13 @@ async function me(request, env, url) {
   if (!w.parsed) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
   else {
-    student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,s.name_en,s.birth_date,s.phone,s.guardian_phone,s.food_allergy,s.diet,s.blood_type,s.medical,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
+    student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,s.name_en,s.birth_date,s.phone,s.guardian_phone,s.food_allergy,s.diet,s.blood_type,s.medical,s.health_consent_at,s.terms_ver,s.terms_accepted_at,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
     if (!student) reason = "not_in_roster";
     else if (!student.gender) reason = "no_gender";
     if (student) selection = await env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(student.student_id).first();
   }
   return json(request, env, {
-    email: w.email, googleName: w.user.name || "", isAdmin: admin, adminDeferred: defer, registration: reg, akaState: student ? await akaState(env) : null,
+    email: w.email, googleName: w.user.name || "", legalVersion: LEGAL_VERSION, isAdmin: admin, adminDeferred: defer, registration: reg, akaState: student ? await akaState(env) : null,
     studentId: w.parsed?.studentId || null, student, selection, reason
   });
 }
@@ -278,7 +282,7 @@ const normalizeNameEn = (v) => { const s = clean(v, 200).replace(/\s+/g, " "); i
 async function updateProfile(request, env) {
   const w = await who(request, env); if (w.response) return w.response;
   if (!w.parsed || !w.verified) return fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403);
-  const cur = await env.DB.prepare("SELECT s.student_id,s.name,s.national_id,s.food_allergy,s.diet,s.blood_type,s.medical,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
+  const cur = await env.DB.prepare("SELECT s.student_id,s.name,s.national_id,s.food_allergy,s.diet,s.blood_type,s.medical,s.health_consent_at,s.health_consent_ver,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
   if (!cur) return fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403);
   const b = await request.json().catch(() => null);
   const name = clean(b?.name, 200); if (!name) return fail(request, env, "กรุณาระบุชื่อ-นามสกุล");
@@ -293,15 +297,22 @@ async function updateProfile(request, env) {
   const allergy = opt(b?.foodAllergy, cur.food_allergy, 300), diet = opt(b?.diet, cur.diet, 100), medical = opt(b?.medical, cur.medical, 300);
   let blood = b?.bloodType === undefined ? (cur.blood_type || "") : clean(b.bloodType, 10);
   if (blood && !BLOOD.includes(blood)) return fail(request, env, "กรุ๊ปเลือดไม่ถูกต้อง", 400, { field: "bloodType" });
+  // explicit consent (PDPA s.26) is needed for health details: a ticked box is stored with the time and the policy version; clearing every field withdraws it
+  const anyHealth = !!(allergy || diet || blood || medical);
+  let consentAt = cur.health_consent_at || null, consentVer = cur.health_consent_ver || null;
+  if (anyHealth) {
+    if (b?.healthConsent === true && (!consentAt || consentVer !== LEGAL_VERSION)) { consentAt = new Date().toISOString(); consentVer = LEGAL_VERSION; }
+    else if (!consentAt) return fail(request, env, "ติ๊กยินยอมการเก็บข้อมูลสุขภาพและอาหารก่อนบันทึก", 400, { field: "healthConsent" });
+  } else { consentAt = null; consentVer = null; }
   const open = (await akaState(env)) === "open";
-  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,name_en=?,birth_date=?,phone=?,guardian_phone=?,food_allergy=?,diet=?,blood_type=?,medical=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid, nameEn, birth, phone, gphone, allergy, diet, blood, medical, cur.student_id)];
+  const stmts = [env.DB.prepare("UPDATE camp_students SET name=?,national_id=?,name_en=?,birth_date=?,phone=?,guardian_phone=?,food_allergy=?,diet=?,blood_type=?,medical=?,health_consent_at=?,health_consent_ver=?,updated_at=datetime('now') WHERE student_id=?").bind(name, nid, nameEn, birth, phone, gphone, allergy, diet, blood, medical, consentAt, consentVer, cur.student_id)];
   // nickname + AKA are required while naming is open; once an admin closes naming they stay as they are
   if (open) {
     const names = readNames(b); if (names.error) return fail(request, env, names.error, 400, { field: "nickname" });
     if (names.nickname !== (cur.nickname || "") || names.aka !== (cur.aka || "")) stmts.push(upsertAka(env, cur.student_id, names.nickname, names.aka, w.email));
   }
   await env.DB.batch(stmts);
-  await audit(env, w, "CAMP_PROFILE_SELF", cur.student_id, { nameChanged: name !== cur.name, nationalIdSet: !!nid });
+  await audit(env, w, "CAMP_PROFILE_SELF", cur.student_id, { nameChanged: name !== cur.name, nationalIdSet: !!nid, healthConsent: !!consentAt });
   return json(request, env, { ok: true });
 }
 
@@ -492,7 +503,7 @@ async function adminStudents(request, env, url) {
   if (GENDERS.includes(gender)) { where.push("s.gender=?"); p.push(gender); }
   // everything stored about a student (admins only): names, nickname / AKA, birth date, phones, national ID, department
   const rows = await env.DB.prepare(
-    `SELECT s.student_id,s.name,s.name_en,s.year,s.gender,s.national_id,s.birth_date,s.phone,s.guardian_phone,s.food_allergy,s.diet,s.blood_type,s.medical,a.nickname,a.aka,sel.department_code,d.name department_name
+    `SELECT s.student_id,s.name,s.name_en,s.year,s.gender,s.national_id,s.birth_date,s.phone,s.guardian_phone,(COALESCE(s.food_allergy,'')<>'' OR COALESCE(s.diet,'')<>'' OR COALESCE(s.blood_type,'')<>'' OR COALESCE(s.medical,'')<>'') AS has_health,(COALESCE(s.food_allergy,'')<>'') AS has_allergy,(COALESCE(s.medical,'')<>'') AS has_medical,s.status_end_date,s.status_end_reason,s.terms_ver,a.nickname,a.aka,sel.department_code,d.name department_name
      FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code LEFT JOIN camp_aka a ON a.student_id=s.student_id
      WHERE ${where.join(" AND ")} ORDER BY s.year,s.student_id LIMIT 2000`).bind(...p).all();
   return json(request, env, { students: rows.results || [] });
@@ -636,6 +647,89 @@ async function adminDeleteStudent(request, env) {
   await audit(env, a, "CAMP_STUDENT_DELETE", id);
   return json(request, env, { ok: true });
 }
+
+// ---- accepting the terms + privacy policy (first sign-in and whenever LEGAL_VERSION changes) ----
+async function acceptTerms(request, env) {
+  const w = await who(request, env); if (w.response) return w.response;
+  if (!w.parsed || !w.verified) return fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403);
+  const r = await env.DB.prepare("UPDATE camp_students SET terms_accepted_at=?,terms_ver=? WHERE student_id=?").bind(new Date().toISOString(), LEGAL_VERSION, w.parsed.studentId).run();
+  if (!r.meta?.changes) return fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ`, 403);
+  await audit(env, w, "CAMP_TERMS_ACCEPT", w.parsed.studentId, { version: LEGAL_VERSION });
+  return json(request, env, { ok: true, version: LEGAL_VERSION });
+}
+
+// ---- health and food details: never in the student list; an admin opens one student at a time (logged) or exports them all (logged) ----
+async function adminStudentHealth(request, env, url) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const id = normalizeStudentId(url.searchParams.get("id")); if (!id) return fail(request, env, "รหัสนักศึกษาไม่ถูกต้อง");
+  const s = await env.DB.prepare("SELECT student_id,name,food_allergy,diet,blood_type,medical,health_consent_at FROM camp_students WHERE student_id=?").bind(id).first();
+  if (!s) return fail(request, env, "ไม่พบนักศึกษา", 404);
+  await audit(env, a, "CAMP_HEALTH_VIEW", id);
+  return json(request, env, { health: { foodAllergy: s.food_allergy || "", diet: s.diet || "", bloodType: s.blood_type || "", medical: s.medical || "", consentAt: s.health_consent_at || null } });
+}
+async function adminHealthExport(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const rows = await env.DB.prepare("SELECT student_id,name,year,food_allergy,diet,blood_type,medical,health_consent_at FROM camp_students WHERE COALESCE(food_allergy,'')<>'' OR COALESCE(diet,'')<>'' OR COALESCE(blood_type,'')<>'' OR COALESCE(medical,'')<>'' ORDER BY year,student_id").all();
+  const list = rows.results || [];
+  await audit(env, a, "CAMP_HEALTH_EXPORT", null, { count: list.length });
+  return json(request, env, { students: list });
+}
+
+// ---- retention: personal data is erased RETENTION_YEARS after the student's status ended ----
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const cutoffIso = () => { const d = new Date(); d.setUTCFullYear(d.getUTCFullYear() - RETENTION_YEARS); return d.toISOString().slice(0, 10); };
+// Thai government fiscal year (1 Oct - 30 Sep), as a Gregorian year: 1 Oct 2025 .. 30 Sep 2026 is fiscal year 2026
+const fiscalYear = (d = new Date()) => d.getUTCFullYear() + (d.getUTCMonth() >= 9 ? 1 : 0);
+async function adminSetStatusEnd(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null);
+  const id = normalizeStudentId(b?.studentId); if (!id) return fail(request, env, "รหัสนักศึกษาไม่ถูกต้อง");
+  const end = String(b?.endDate ?? "").trim(), reason = String(b?.reason ?? "").trim();
+  if (end && !/^\d{4}-\d{2}-\d{2}$/.test(end)) return fail(request, env, "วันที่ไม่ถูกต้อง", 400, { field: "endDate" });
+  if (end && Number.isNaN(Date.parse(end))) return fail(request, env, "วันที่ไม่ถูกต้อง", 400, { field: "endDate" });
+  if (end && !END_REASONS.includes(reason)) return fail(request, env, "เลือกเหตุผลที่สิ้นสุดสถานภาพ", 400, { field: "reason" });
+  const r = await env.DB.prepare("UPDATE camp_students SET status_end_date=?,status_end_reason=?,updated_at=datetime('now') WHERE student_id=?").bind(end || null, end ? reason : null, id).run();
+  if (!r.meta?.changes) return fail(request, env, "ไม่พบนักศึกษา", 404);
+  await audit(env, a, "CAMP_STATUS_END", id, { endDate: end || null, reason: end ? reason : null });
+  return json(request, env, { ok: true });
+}
+async function adminRetention(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const cut = cutoffIso();
+  const [due, pending, fin] = await Promise.all([
+    env.DB.prepare("SELECT student_id,name,year,status_end_date,status_end_reason FROM camp_students WHERE COALESCE(status_end_date,'')<>'' AND status_end_date<=? ORDER BY status_end_date,student_id LIMIT 500").bind(cut).all(),
+    env.DB.prepare("SELECT COUNT(*) c FROM camp_students WHERE COALESCE(status_end_date,'')<>'' AND status_end_date>?").bind(cut).first(),
+    env.DB.prepare("SELECT COUNT(*) c, MIN(CAST(strftime('%Y',created_at) AS INTEGER)+(CAST(strftime('%m',created_at) AS INTEGER)>=10)) oldest FROM budget_transactions WHERE CAST(strftime('%Y',created_at) AS INTEGER)+(CAST(strftime('%m',created_at) AS INTEGER)>=10) < ?").bind(fiscalYear() - 10).first().catch(() => ({ c: 0, oldest: null })),
+  ]);
+  return json(request, env, { years: RETENTION_YEARS, cutoff: cut, today: todayIso(), due: due.results || [], pending: pending?.c || 0, finance: { years: 10, dueCount: fin?.c || 0, oldestFiscalYear: fin?.oldest || null, cutoffFiscalYear: fiscalYear() - 10 } });
+}
+// every row that identifies one student (the R2 picture of the shirt design too). Finance rows (budget_*) are kept on their own 10-year rule.
+async function eraseStudent(env, id) {
+  const d = await env.DB.prepare("SELECT id,image_key FROM camp_shirt_designs WHERE student_id=?").bind(id).first();
+  const st = (sql, ...p) => env.DB.prepare(sql).bind(...p);
+  await env.DB.batch([
+    st("DELETE FROM camp_shirt_votes WHERE design_id IN (SELECT id FROM camp_shirt_designs WHERE student_id=?)", id),
+    st("DELETE FROM camp_shirt_votes WHERE student_id=?", id), st("DELETE FROM camp_shirt_designs WHERE student_id=?", id), st("DELETE FROM camp_shirt_blocks WHERE student_id=?", id),
+    st("DELETE FROM camp_aka WHERE student_id=?", id), st("DELETE FROM camp_selections WHERE student_id=?", id),
+    st("DELETE FROM camp_lotto_scan_logs WHERE student_id=?", id), st("DELETE FROM camp_lotto_students WHERE student_id=?", id),
+    st("DELETE FROM camp_qr_results WHERE student_id=?", id), st("DELETE FROM camp_school_survey WHERE student_id=?", id), st("DELETE FROM camp_survey_assignees WHERE student_id=?", id),
+    st("DELETE FROM budget_audit_logs WHERE entity_type='camp' AND entity_uuid=?", id), st("DELETE FROM camp_students WHERE student_id=?", id),
+  ]);
+  if (d?.image_key) { try { await env.FILES.delete(d.image_key); } catch (e) { /* an orphan file is harmless */ } }
+}
+async function adminRetentionPurge(request, env) {
+  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const b = await request.json().catch(() => null);
+  const ids = [...new Set((Array.isArray(b?.studentIds) ? b.studentIds : []).map(normalizeStudentId).filter(Boolean))].slice(0, 500);
+  if (!ids.length) return fail(request, env, "ไม่ได้เลือกรายชื่อ");
+  const cut = cutoffIso(); let n = 0;
+  for (const id of ids) {   // each one is re-checked on the server: only students whose status ended RETENTION_YEARS ago are erased
+    const ok = await env.DB.prepare("SELECT student_id FROM camp_students WHERE student_id=? AND COALESCE(status_end_date,'')<>'' AND status_end_date<=?").bind(id, cut).first();
+    if (!ok) continue; await eraseStudent(env, id); n++;
+  }
+  await audit(env, a, "CAMP_RETENTION_PURGE", null, { requested: ids.length, erased: n });
+  return json(request, env, { ok: true, erased: n, skipped: ids.length - n });
+}
 async function adminClearSelection(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
@@ -653,6 +747,7 @@ export async function camps(request, env, url) {
     { const pm = /^\/camps\/department-photo\/([a-z0-9_-]{1,40})$/.exec(p); if (m === "GET" && pm) return await departmentPhoto(request, env, pm[1]); }
     if (m === "GET" && p === "/camps/me") return await me(request, env, url);
     if (m === "POST" && p === "/camps/me/profile") return await updateProfile(request, env);
+    if (m === "POST" && p === "/camps/me/accept-terms") return await acceptTerms(request, env);
     if (m === "POST" && p === "/camps/select") return await select(request, env);
     if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
@@ -667,6 +762,11 @@ export async function camps(request, env, url) {
     if (m === "GET" && p === "/camps/admin/students") return await adminStudents(request, env, url);
     if (m === "POST" && p === "/camps/admin/students") return await adminUpsertStudent(request, env);
     if (m === "POST" && p === "/camps/admin/students/bulk") return await adminBulkStudents(request, env);
+    if (m === "GET" && p === "/camps/admin/student-health") return await adminStudentHealth(request, env, url);
+    if (m === "GET" && p === "/camps/admin/health-export") return await adminHealthExport(request, env);
+    if (m === "POST" && p === "/camps/admin/students/status") return await adminSetStatusEnd(request, env);
+    if (m === "GET" && p === "/camps/admin/retention") return await adminRetention(request, env);
+    if (m === "POST" && p === "/camps/admin/retention/purge") return await adminRetentionPurge(request, env);
     if (m === "POST" && p === "/camps/admin/students/delete") return await adminDeleteStudent(request, env);
     if (m === "POST" && p === "/camps/admin/selections/clear") return await adminClearSelection(request, env);
     if (m === "POST" && p === "/camps/admin/selections/assign") return await adminAssign(request, env);
