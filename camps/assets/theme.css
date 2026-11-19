@@ -133,3 +133,36 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .skip{background:var(--accent)!important;color:#fff!important}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .tag.bad{background:var(--bad-l)!important;color:var(--bad)!important}
+
+/* ---- motion (transitions.dev tokens: modal, toast, tabs, checkbox, hover, page enter) ---- */
+:root{--duration-quick:150ms;--duration-fast:250ms;--duration-medium:350ms;--duration-slow:400ms;
+ --ease-smooth-out:cubic-bezier(.22,1,.36,1);--ease-bounce:cubic-bezier(.34,1.36,.64,1);--scale-large:.96;--blur-small:2px}
+/* page enter: content rises in once */
+@keyframes t-rise{from{opacity:0;transform:translateY(12px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+main,#view{animation:t-rise var(--duration-slow) var(--ease-smooth-out) both}
+/* modal / dialog: scale up + fade in (open 250ms), backdrop fades */
+@keyframes t-modal-in{from{opacity:0;transform:scale(var(--scale-large))}to{opacity:1;transform:none}}
+@keyframes t-fade{from{opacity:0}to{opacity:1}}
+.dlg,.modal,.scanpop{animation:t-fade var(--duration-fast) var(--ease-smooth-out) both}
+.dlg .box,.modal-card,.scanpop-card{animation:t-modal-in var(--duration-fast) var(--ease-smooth-out) both!important}
+dialog{opacity:0;transform:scale(var(--scale-large));transition:opacity var(--duration-quick) var(--ease-smooth-out),transform var(--duration-quick) var(--ease-smooth-out),overlay var(--duration-quick) allow-discrete,display var(--duration-quick) allow-discrete}
+dialog[open]{opacity:1;transform:none;transition-duration:var(--duration-fast)}
+@starting-style{dialog[open]{opacity:0;transform:scale(var(--scale-large))}}
+dialog::backdrop{opacity:0;transition:opacity var(--duration-quick) var(--ease-smooth-out),overlay var(--duration-quick) allow-discrete,display var(--duration-quick) allow-discrete}
+dialog[open]::backdrop{opacity:1}
+@starting-style{dialog[open]::backdrop{opacity:0}}
+/* toast: rises with a soft blur, slower in than out */
+#toast{filter:blur(var(--blur-small));transition:opacity var(--duration-quick) var(--ease-smooth-out),transform var(--duration-quick) var(--ease-smooth-out),filter var(--duration-quick) var(--ease-smooth-out)!important}
+#toast.show{filter:none;transition-duration:var(--duration-medium)!important}
+/* tabs / segmented: colour and pill slide smoothly */
+.tabs button,.tabs a,.seg button,.hrnav a{transition:background-color var(--duration-fast) var(--ease-smooth-out),color var(--duration-fast) var(--ease-smooth-out),box-shadow var(--duration-fast) var(--ease-smooth-out)}
+/* checkbox / radio: pop when checked */
+@keyframes t-pop{50%{transform:scale(1.25)}}
+input[type=checkbox]:checked,input[type=radio]:checked{animation:t-pop var(--duration-fast) var(--ease-bounce)}
+/* hover / press */
+.card,.dept,.cxtile,.btn,.gbtn{transition-property:transform,box-shadow,background-color,border-color,color;transition-duration:var(--duration-fast);transition-timing-function:var(--ease-smooth-out)}
+.cxtile:active,a.card:active,.dept:active{transform:scale(.99)!important}
+/* skeleton / loading text */
+@keyframes t-shimmer{to{background-position:-200% 0}}
+.skel,.muted-load{background:linear-gradient(90deg,var(--soft) 30%,#fff 50%,var(--soft) 70%) 0 0/200% 100%;animation:t-shimmer 1.4s linear infinite}
+@media(prefers-reduced-motion:reduce){main,#view,.dlg,.modal,.scanpop,.dlg .box,.modal-card,.scanpop-card,dialog,dialog::backdrop,#toast{animation:none!important;transition:none!important;filter:none!important}input[type=checkbox]:checked,input[type=radio]:checked{animation:none}}
