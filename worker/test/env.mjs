@@ -11,6 +11,7 @@ export function makeEnv(){
 }
 export const PEOPLE={
  admin:{sub:'google-oauth2|admin',email:'info@sorasukt.com',email_verified:true,name:'Admin',roles:['camp_admin']},
+ admin2:{sub:'google-oauth2|admin2',email:'admin2@sorasukt.com',email_verified:true,name:'Admin Two',roles:['camp_admin']},
  budgetadmin:{sub:'google-oauth2|ba',email:'ba@gmail.com',email_verified:true,name:'BA',roles:['budget_admin']},
  s1:{sub:'google-oauth2|s1',email:'sb6740102220@lru.ac.th',email_verified:true,name:'Student One',roles:[]},
  s2:{sub:'google-oauth2|s2',email:'sb6740102221@lru.ac.th',email_verified:true,name:'Student Two',roles:[]},

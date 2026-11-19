@@ -1,6 +1,7 @@
 // ระบบ AKA (/aka/): every student gives themselves a nickname (ชื่อเล่น) and a camp name (AKA). Students and departments come from the
 // HR tables (camp_students / camp_selections / camp_departments). Students can change their names at any time until an admin closes naming.
 import { json } from "../lib/cors.js";
+import { permDenied } from "./camps.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 
 const fail = (req, env, error, status = 400, extra = {}) => json(req, env, { error, ...extra }, status);
@@ -21,12 +22,13 @@ async function who(req, env) {
 async function isAdmin(env, user) {
   try { return (await getAuth0Roles(env, user.sub)).some((r) => ADMIN_ROLES.includes(r)); } catch (e) { console.error("[aka] role lookup:", e?.message || e); return false; }
 }
-async function requireAdmin(req, env) {
+async function requireAdmin(req, env, perm = "aka") {
   const w = await who(req, env); if (w.response) return w;
   let ok = false;
   try { ok = (await getAuth0Roles(env, w.user.sub)).some((r) => ADMIN_ROLES.includes(r)); }
   catch (e) { return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
   if (!ok) return { response: fail(req, env, "ต้องเป็นแอดมิน", 403) };
+  const d = await permDenied(req, env, w, perm); if (d) return { response: d };
   return w;
 }
 // ---------- naming state: manual open / closed, plus an optional automatic schedule ----------

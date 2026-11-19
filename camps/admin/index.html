@@ -143,6 +143,18 @@ kbd.kb{font:600 12px/1 inherit;padding:3px 7px;border-radius:6px;background:var(
 .attn .okp{margin:6px 0 0;color:var(--ok)}
 .subn{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:12px;font-weight:700;line-height:1;margin-left:4px;vertical-align:middle}
 @media(pointer:coarse){.btn.sm{min-height:44px}.dtq button{min-height:40px}}
+
+/* admin permissions page */
+.banner{border:2px solid #f59e0b;background:#fffbeb}.banner p{margin:4px 0 12px}
+.plist{display:grid;gap:10px;margin-top:6px}.prow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) auto;gap:10px 16px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.pwho{display:flex;flex-direction:column;gap:2px;min-width:0}.pwho b{overflow-wrap:anywhere}.pwho small{font-size:12px}
+.pchips{display:flex;flex-wrap:wrap;gap:6px}.pchip{padding:2px 10px;border-radius:999px;background:var(--soft);font-size:12px;font-weight:600}.pchip.sens{background:#fef3c7;color:#92400e}
+.pact{display:flex;gap:6px}
+@media(max-width:760px){.prow{grid-template-columns:1fr}.pact .btn{flex:1;min-height:44px}}
+.pre{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.pgrp{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}.pgrp legend{padding:0 6px;font-weight:700;font-size:13px;color:var(--mute)}
+.pgrp .chk{margin:6px 0}.pgrp .chk.sens span{color:#92400e}
+code{padding:1px 6px;border-radius:6px;background:var(--soft);font-size:.9em}
 /* quick student search */
 .qsbtn{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:1.5px solid var(--line);border-radius:999px;background:#fff;color:var(--mute);font:inherit;font-size:14px;cursor:pointer;transition:border-color .2s,color .2s}
 .qsbtn:hover{border-color:var(--dark);color:var(--ink)}.qsbtn svg{width:20px;height:20px;flex:none}.qsbtn kbd{font:600 12px/1 inherit;padding:3px 7px;border-radius:6px;background:var(--soft);color:var(--mute)}
@@ -281,7 +293,7 @@ async function api(path, opt) {
 }
 const post = (p, b) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) });
 const errMsg = async (r) => { try { const d = await r.json(); return d.error || ('เกิดข้อผิดพลาด (' + r.status + ')'); } catch (e) { return 'เกิดข้อผิดพลาด (' + r.status + ')'; } };
-const getJ = async (p) => { const r = await api(p); if (r.status === 403) throw Object.assign(new Error('บัญชีนี้ไม่ใช่แอดมิน'), { forbidden: true }); if (!r.ok) throw new Error(await errMsg(r)); return r.json(); };
+const getJ = async (p) => { const r = await api(p); if (r.status === 403) { const d = await r.json().catch(() => ({})); if (d.code === 'PERM_DENIED') throw Object.assign(new Error(d.error || 'ไม่มีสิทธิ์ทำรายการนี้'), { status: 403, perm: true }); throw Object.assign(new Error('บัญชีนี้ไม่ใช่แอดมิน'), { forbidden: true }); } if (!r.ok) throw new Error(await errMsg(r)); return r.json(); };
 
 // ---------- pages ----------
 const NAV = [
@@ -298,6 +310,7 @@ const NAV = [
   ['aka', 'AKA', '<path d="M20 12a8 8 0 0 1-11.5 7.2L4 20l1-4.2A8 8 0 1 1 20 12z"/>'],
   ['', 'ระบบ'],
   ['og', 'ตัวอย่างลิงก์', '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'],
+  ['admins', 'สิทธิ์แอดมิน', '<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6zM9 12l2 2 4-4"/>'],
   ['maint', 'ปิดปรับปรุงระบบ', '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'],
   ['work', 'โน้ตงาน (เครื่องนี้)', '<path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>'],
   ['', 'ภายนอก'],
@@ -305,11 +318,20 @@ const NAV = [
 ];
 const TITLES = Object.fromEntries(NAV.filter((n) => n[2] && n[0][0] !== '/').map((n) => [n[0], n[1]]));
 let page = 'dash', gen = 0, timer = null;
+// what this admin may do (from /camps/me?admin=1): null = unknown yet, everything is shown; the server enforces it anyway
+let MYP = null, LEGACY = false;
+const can = (k) => !k || !MYP || MYP.has(k);
+const PAGE_PERM = { students: 'students', depts: 'registration', reg: 'registration', survey: 'survey', shirt: 'shirt', lotto: 'lotto', qr: 'qr', aka: 'aka', og: 'og', maint: 'maintenance', admins: 'admins' };
+async function loadPerms() {
+  try { const r = await Promise.race([api('/camps/me?admin=1'), new Promise((_, no) => setTimeout(() => no(new Error('t')), 6000))]); if (!r.ok) return; const d = await r.json(); if (d.adminPerms) { MYP = new Set(d.adminPerms.perms); LEGACY = !!d.adminPerms.legacy; } } catch (e) { /* unknown: show everything, the server still decides */ }
+}
 const view = () => $('view');
 const failBox = (m, retry) => '<div class="card"><p class="mute">' + esc(m) + '</p><button class="btn" type="button" data-retry="1">ลองใหม่</button></div>';
 function drawNav() {
   const open = tasks().filter((t) => !t.done).length;
-  $('nav').innerHTML = NAV.map(([k, l, ic]) => !ic ? '<p class="grp">' + l + '</p>' : '<a href="' + (k[0] === '/' ? k : '#' + k) + '"' + (k === page ? ' class="on" aria-current="page"' : '') + '>' + I(ic) + l + (k === 'work' && open ? '<span class="badge">' + open + '</span>' : '') + '</a>').join('');
+  // a menu group stays only if at least one of its pages is allowed
+  const items = NAV.filter(([k, l, ic], i, arr) => { if (ic) return can(PAGE_PERM[k]); for (let j = i + 1; j < arr.length; j++) { if (!arr[j][2]) return false; if (can(PAGE_PERM[arr[j][0]])) return true; } return false; });
+  $('nav').innerHTML = items.map(([k, l, ic]) => !ic ? '<p class="grp">' + l + '</p>' : '<a href="' + (k[0] === '/' ? k : '#' + k) + '"' + (k === page ? ' class="on" aria-current="page"' : '') + '>' + I(ic) + l + (k === 'work' && open ? '<span class="badge">' + open + '</span>' : '') + '</a>').join('');
 }
 function go() {
   clearTimeout(timer); stopCams(); view().onclick = null; Object.keys(pickers).forEach((k) => delete pickers[k]);
@@ -318,7 +340,8 @@ function go() {
   document.body.classList.remove('menu'); $('burger').setAttribute('aria-expanded', 'false');
   if (!auth) return; if (!signedIn) return signin();
   const pageErr = (e) => { console.error(e); view().innerHTML = failBox('แสดงหน้านี้ไม่สำเร็จ (ข้อมูลที่ได้รับไม่ครบ) ลองใหม่อีกครั้ง'); const b = view().querySelector('[data-retry]'); if (b) b.onclick = go; };
-  try { const r = ({ dash: pDash, work: pWork, students: pStudents, depts: pDepts, reg: pReg, shirt: pShirt, survey: pSurvey, lotto: pLotto, qr: pQr, aka: pAka, og: pOg, maint: pMaint })[page](); if (r && r.catch) r.catch(pageErr); } catch (e) { pageErr(e); }
+  if (!can(PAGE_PERM[page])) return noPerm();
+  try { const r = ({ dash: pDash, work: pWork, students: pStudents, depts: pDepts, reg: pReg, shirt: pShirt, survey: pSurvey, lotto: pLotto, qr: pQr, aka: pAka, og: pOg, maint: pMaint, admins: pAdmins })[page](); if (r && r.catch) r.catch(pageErr); } catch (e) { pageErr(e); }
   window.scrollTo(0, 0);
 }
 const retryable = (fn) => (e) => { view().innerHTML = failBox(e.message || 'เชื่อมต่อไม่ได้'); const b = view().querySelector('[data-retry]'); if (b) b.onclick = fn; };
@@ -421,7 +444,7 @@ async function stList(tb) {
     $('sList').innerHTML = '<div class="tw"><table class="stt"><thead><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>ปี</th><th>เพศ</th><th>ฝ่าย</th><th></th></tr></thead><tbody>' + part.map((s) => '<tr class="clk" data-i="' + esc(s.student_id) + '" tabindex="0" role="button" aria-label="ดูข้อมูล ' + esc(s.name) + '">'
       + '<td data-l="รหัส">' + esc(s.student_id) + '</td><td data-l="ชื่อ"><b>' + esc(s.name) + '</b>' + (s.nickname ? ' <span class="mute">(' + esc(s.nickname) + ')</span>' : '') + (s.aka ? ' ' + tag(esc(s.aka)) : '') + (s.has_health ? ' ' + tag('มีข้อมูลสุขภาพ', 'warnt') : '') + (s.status_end_date ? ' ' + tag('สิ้นสุดสถานภาพ', 'mut') : '') + '</td>'
       + '<td data-l="ปี">ปี ' + s.year + '</td><td data-l="เพศ">' + (s.gender === 'F' ? 'หญิง' : 'ชาย') + '</td><td data-l="ฝ่าย">' + esc((s.department_name || '—').replace(/^ฝ่าย/, '')) + '</td>'
-      + '<td class="act"><button class="btn sm" data-e="' + esc(s.student_id) + '">แก้ไข</button><button class="btn sm danger" data-d="' + esc(s.student_id) + '">ลบ</button></td></tr>').join('') + '</tbody></table></div>'
+      + '<td class="act"><button class="btn sm" data-e="' + esc(s.student_id) + '">แก้ไข</button>' + (can('students.delete') ? '<button class="btn sm danger" data-d="' + esc(s.student_id) + '">ลบ</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
       + (rows.length > shown ? '<div class="row" style="justify-content:center;margin-top:12px"><span class="mute">แสดง ' + fmtN(Math.min(shown, rows.length)) + ' จาก ' + fmtN(rows.length) + '</span><button class="btn" type="button" id="sMore">แสดงเพิ่ม</button></div>' : '');
     if ($('sMore')) $('sMore').onclick = () => { shown += 100; draw(); };
   };
@@ -526,7 +549,7 @@ const send = async (m, p, b) => {
   if (!r.ok) throw Object.assign(new Error(d.error || ('เกิดข้อผิดพลาด (' + r.status + ')')), { status: r.status, data: d });
   return d;
 };
-const fail = (e) => { if (e && e.status === 403) noAdmin(); else toast((e && e.message) || 'เชื่อมต่อไม่ได้', true); };
+const fail = (e) => { if (e && e.status === 403 && !(e.data && e.data.code === 'PERM_DENIED') && !e.perm) noAdmin(); else toast((e && e.message) || 'เชื่อมต่อไม่ได้', true); };
 const fdt = (s) => (s ? fmtWhen(new Date(String(s).replace(' ', 'T') + 'Z').getTime()) : '—');
 const GL = { M: 'ชาย', F: 'หญิง' }, YEARS = [1, 2, 3, 4], GENDERS = ['M', 'F'];
 const tabsHTML = (list, cur) => '<div class="seg tabs" role="tablist">' + list.map(([k, l]) => '<button type="button" role="tab" data-tab="' + k + '" aria-selected="' + (k === cur) + '" class="' + (k === cur ? 'on' : '') + '">' + l + '</button>').join('') + '</div><div id="tb"></div>';
@@ -645,10 +668,10 @@ function stImport(tb) {
 }
 async function stExport(tb) {
   tb.innerHTML = '<div class="card"><h2>ส่งออกรายชื่อ</h2><p class="mute">ข้อมูลทุกคนในรายชื่อ รวมชื่อเล่น AKA ฝ่าย เบอร์โทร</p><div class="row"><button class="btn primary" type="button" id="exX">ดาวน์โหลด Excel</button><button class="btn" type="button" id="exC">ดาวน์โหลด CSV</button></div></div>';
-  tb.insertAdjacentHTML('beforeend', '<div class="card"><h2>ส่งออกข้อมูลสุขภาพและอาหาร</h2><p class="mute">กรุ๊ปเลือด วิธีการกิน แพ้อาหาร โรคประจำตัว ของนักศึกษาที่กรอกไว้ เป็นข้อมูลอ่อนไหว ใช้เพื่อจัดอาหารและดูแลความปลอดภัยในค่ายเท่านั้น <b>ทุกครั้งที่ส่งออกจะมีบันทึกไว้ว่าใครส่งออก</b> เก็บไฟล์ให้ปลอดภัยและลบเมื่อเสร็จงาน</p><div class="row"><button class="btn primary" type="button" id="hxX">ดาวน์โหลด Excel</button><button class="btn" type="button" id="hxC">ดาวน์โหลด CSV</button></div></div>');
+  if (can('health')) tb.insertAdjacentHTML('beforeend', '<div class="card"><h2>ส่งออกข้อมูลสุขภาพและอาหาร</h2><p class="mute">กรุ๊ปเลือด วิธีการกิน แพ้อาหาร โรคประจำตัว ของนักศึกษาที่กรอกไว้ เป็นข้อมูลอ่อนไหว ใช้เพื่อจัดอาหารและดูแลความปลอดภัยในค่ายเท่านั้น <b>ทุกครั้งที่ส่งออกจะมีบันทึกไว้ว่าใครส่งออก</b> เก็บไฟล์ให้ปลอดภัยและลบเมื่อเสร็จงาน</p><div class="row"><button class="btn primary" type="button" id="hxX">ดาวน์โหลด Excel</button><button class="btn" type="button" id="hxC">ดาวน์โหลด CSV</button></div></div>');
   const hrows = async () => { const l = (await getJ('/camps/admin/health-export')).students || []; return [['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'กรุ๊ปเลือด', 'วิธีการกิน', 'แพ้อาหาร', 'โรคประจำตัว', 'ให้ความยินยอมเมื่อ']].concat(l.map((x) => [String(x.student_id), x.name, x.year, x.blood_type === 'unknown' ? 'ไม่ทราบ' : (x.blood_type || ''), x.diet || '', x.food_allergy || '', x.medical || '', x.health_consent_at ? x.health_consent_at.slice(0, 10) : ''])); };
-  $('hxX').onclick = async () => { try { await saveXlsx(await hrows(), 'camp-health-' + stamp() + '.xlsx', [14, 28, 8, 10, 16, 24, 28, 16], 'สุขภาพและอาหาร'); toast('ส่งออกแล้ว (มีบันทึก)'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
-  $('hxC').onclick = async () => { try { const csv = '﻿' + (await hrows()).map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-health-' + stamp() + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('ส่งออกแล้ว (มีบันทึก)'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
+  if (can('health')) $('hxX').onclick = async () => { try { await saveXlsx(await hrows(), 'camp-health-' + stamp() + '.xlsx', [14, 28, 8, 10, 16, 24, 28, 16], 'สุขภาพและอาหาร'); toast('ส่งออกแล้ว (มีบันทึก)'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
+  if (can('health')) $('hxC').onclick = async () => { try { const csv = '﻿' + (await hrows()).map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-health-' + stamp() + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('ส่งออกแล้ว (มีบันทึก)'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
   const rows = async () => { const l = (await getJ('/camps/admin/students')).students || []; return [['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชื่อ-สกุล (อังกฤษ)', 'ชื่อเล่น', 'AKA', 'ชั้นปี', 'เพศ', 'ฝ่าย', 'วันเกิด', 'เบอร์โทรศัพท์', 'เบอร์ผู้ปกครอง', 'เลขบัตรประชาชน', 'สิ้นสุดสถานภาพ']].concat(l.map((s) => [String(s.student_id), s.name, s.name_en || '', s.nickname || '', s.aka || '', s.year, GL[s.gender] || '', s.department_name || '', s.birth_date || '', s.phone || '', s.guardian_phone || '', s.national_id || '', s.status_end_date || ''])); };
   $('exX').onclick = async () => { try { await saveXlsx(await rows(), 'camp-students-' + stamp() + '.xlsx', [14, 28, 26, 12, 16, 8, 8, 20, 14, 14, 14, 16, 14], 'นักศึกษา'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
   $('exC').onclick = async () => { try { const csv = '﻿' + (await rows()).map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students-' + stamp() + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
@@ -668,7 +691,7 @@ async function stRetention(tb) {
     + '<label class="f"><span>เหตุผล</span><select id="rtWhy">' + Object.keys(END_R).map((k) => '<option value="' + k + '">' + END_R[k] + '</option>').join('') + '</select></label></div>'
     + '<div class="row"><button class="btn primary" type="submit">บันทึก</button><button class="btn" type="button" id="rtClr">ล้างวันที่ของรหัสนี้</button></div></form></div>'
     + '<div class="card"><h2>ครบกำหนดลบ <span class="mute">(' + d.due.length + ' คน)</span></h2>' + (d.due.length
-      ? '<p class="mute">สิ้นสุดสถานภาพมาแล้วเกิน ' + d.years + ' ปี (ก่อนหรือเท่ากับ ' + esc(thDate(d.cutoff)) + ') การลบจะลบข้อมูลของคนนั้นทั้งหมด (ข้อมูลส่วนตัว AKA ฝ่าย ผลงานเสื้อ โหวต ผลสแกน แบบสำรวจ) <b>และกู้คืนไม่ได้</b></p><div class="tw"><table><thead><tr><th><input type="checkbox" id="rtAll" aria-label="เลือกทั้งหมด"></th><th>รหัส</th><th>ชื่อ</th><th>ปี</th><th>สิ้นสุด</th><th>เหตุผล</th></tr></thead><tbody>' + d.due.map((x) => '<tr><td><input type="checkbox" class="rtc" value="' + esc(x.student_id) + '" aria-label="เลือก ' + esc(x.name) + '"></td><td>' + esc(x.student_id) + '</td><td>' + esc(x.name) + '</td><td>' + x.year + '</td><td>' + esc(thDate(x.status_end_date)) + '</td><td>' + esc(END_R[x.status_end_reason] || '—') + '</td></tr>').join('') + '</tbody></table></div><div class="row" style="margin-top:12px"><button class="btn danger" type="button" id="rtGo" disabled>ลบที่เลือก</button></div>'
+      ? '<p class="mute">สิ้นสุดสถานภาพมาแล้วเกิน ' + d.years + ' ปี (ก่อนหรือเท่ากับ ' + esc(thDate(d.cutoff)) + ') การลบจะลบข้อมูลของคนนั้นทั้งหมด (ข้อมูลส่วนตัว AKA ฝ่าย ผลงานเสื้อ โหวต ผลสแกน แบบสำรวจ) <b>และกู้คืนไม่ได้</b></p><div class="tw"><table><thead><tr><th>' + (can('retention.purge') ? '<input type="checkbox" id="rtAll" aria-label="เลือกทั้งหมด">' : '') + '</th><th>รหัส</th><th>ชื่อ</th><th>ปี</th><th>สิ้นสุด</th><th>เหตุผล</th></tr></thead><tbody>' + d.due.map((x) => '<tr><td>' + (can('retention.purge') ? '<input type="checkbox" class="rtc" value="' + esc(x.student_id) + '" aria-label="เลือก ' + esc(x.name) + '">' : '') + '</td><td>' + esc(x.student_id) + '</td><td>' + esc(x.name) + '</td><td>' + x.year + '</td><td>' + esc(thDate(x.status_end_date)) + '</td><td>' + esc(END_R[x.status_end_reason] || '—') + '</td></tr>').join('') + '</tbody></table></div>' + (can('retention.purge') ? '<div class="row" style="margin-top:12px"><button class="btn danger" type="button" id="rtGo" disabled>ลบที่เลือก</button></div>' : '<p class="mute" style="margin-top:10px">การลบต้องมีสิทธิ์ “ลบข้อมูลที่ครบกำหนดเก็บ” ติดต่อเจ้าของระบบ</p>')
       : '<p class="empty">ยังไม่มีรายชื่อที่ครบกำหนดลบ</p>') + (d.pending ? '<p class="mute" style="margin-top:10px">รอครบกำหนด: ' + d.pending + ' คน</p>' : '') + '</div>'
     + '<div class="card"><h2>หลักฐานการเงิน</h2><p class="mute">เก็บ ' + fy.years + ' ปี นับจากปีงบประมาณของราชการไทย (1 ต.ค. – 30 ก.ย.) ปีงบประมาณปัจจุบันคือ พ.ศ. ' + (fy.cutoffFiscalYear + fy.years + 543) + '</p>'
     + (fy.dueCount ? '<p>มี <b>' + fmtN(fy.dueCount) + '</b> รายการที่เกินกำหนด (ปีงบประมาณ พ.ศ. ' + (fy.oldestFiscalYear + 543) + (fy.cutoffFiscalYear - 1 > fy.oldestFiscalYear ? ' ถึง พ.ศ. ' + (fy.cutoffFiscalYear - 1 + 543) : '') + ') ตรวจสอบและลบเองที่ระบบงบประมาณ ระบบนี้ไม่ลบหลักฐานการเงินให้อัตโนมัติ</p>' : '<p class="mute">ยังไม่มีรายการเกินกำหนด</p>') + '</div>';
@@ -679,6 +702,42 @@ async function stRetention(tb) {
     $('rtAll').onchange = (e) => { boxes().forEach((b) => { b.checked = e.target.checked; }); upd(); }; boxes().forEach((b) => { b.onchange = upd; });
     $('rtGo').onclick = async () => { const ids = boxes().filter((b) => b.checked).map((b) => b.value); if (!(await confirmDlg('ลบข้อมูล ' + ids.length + ' คน?', 'ลบถาวร กู้คืนไม่ได้ ข้อมูลทั้งหมดของแต่ละคนจะหายไป', 'ลบถาวร'))) return; try { const r = await send('POST', '/camps/admin/retention/purge', { studentIds: ids }); toast('ลบแล้ว ' + r.erased + ' คน' + (r.skipped ? ' · ข้าม ' + r.skipped : '')); if (window.__qsReset) window.__qsReset(); stRetention(tb); } catch (er) { fail(er); } };
   }
+}
+
+
+// ---------- สิทธิ์แอดมิน ----------
+const PERM_ACT = { CAMP_HEALTH_VIEW: 'เปิดดูข้อมูลสุขภาพ', CAMP_HEALTH_EXPORT: 'ส่งออกข้อมูลสุขภาพ', CAMP_STUDENT_DELETE: 'ลบนักศึกษา', CAMP_RETENTION_PURGE: 'ลบข้อมูลที่ครบกำหนด', CAMP_PERMS_SET: 'ตั้งสิทธิ์', CAMP_PERMS_DELETE: 'ลบสิทธิ์', CAMP_PERM_DENIED: 'ถูกปฏิเสธสิทธิ์' };
+const PRESETS = [['พื้นฐาน', (d) => d.defaults], ['ฝ่ายบุคคล', () => ['students', 'registration', 'survey']], ['ดูแลสุขภาพและอาหาร', (d) => d.defaults.concat(['health'])], ['เจ้าของระบบ', (d) => d.scopes.map((x) => x.key)]];
+async function pAdmins() {
+  const my = gen; let d;
+  try { d = await getJ('/camps/admin/perms'); } catch (e) { if (e.forbidden) return noAdmin(); if (e.perm) return noPerm(); return retryable(pAdmins)(e); }
+  if (my !== gen) return;
+  const label = (k) => (d.scopes.find((x) => x.key === k) || { label: k }).label.replace(/\s*\(.*$/, '');
+  const chips = (perms) => perms.length ? perms.map((k) => '<span class="pchip' + ((d.scopes.find((x) => x.key === k) || {}).sensitive ? ' sens' : '') + '">' + esc(label(k)) + '</span>').join('') : '<span class="mute">ไม่มีสิทธิ์ใด</span>';
+  const when = (ts) => { const t = new Date(String(ts).replace(' ', 'T') + 'Z'); return isNaN(t) ? '' : fmtWhen(t.getTime()); };
+  const rows = d.list.map((x) => '<div class="prow"><div class="pwho"><b>' + esc(x.email) + '</b>' + (x.note ? ' <span class="tag">' + esc(x.note) + '</span>' : '') + (x.email === d.me ? ' <span class="tag mut">คุณ</span>' : '') + '<small class="mute">แก้ล่าสุด ' + esc(when(x.updatedAt)) + (x.updatedBy ? ' โดย ' + esc(x.updatedBy) : '') + '</small></div><div class="pchips">' + chips(x.perms) + '</div><div class="pact"><button class="btn sm" data-pe="' + esc(x.email) + '">แก้ไข</button><button class="btn sm danger" data-pd="' + esc(x.email) + '">ลบ</button></div></div>').join('');
+  view().innerHTML = (d.legacy ? '<div class="card banner"><h2>ยังไม่ได้กำหนดเจ้าของระบบ</h2><p>ตอนนี้แอดมินทุกคนทำได้ทุกอย่าง รวมถึงดูข้อมูลสุขภาพ ลบนักศึกษา และลบข้อมูลถาวร กำหนด <b>เจ้าของระบบอย่างน้อย 1 คน</b> เพื่อเปิดใช้การแบ่งสิทธิ์ หลังกำหนดแล้ว แอดมินที่ไม่มีรายการจะได้สิทธิ์พื้นฐาน (ไม่รวมข้อมูลอ่อนไหว)</p><button class="btn primary" type="button" id="pOwn">กำหนดตัวฉันเป็นเจ้าของระบบ</button></div>' : '')
+    + '<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">รายชื่อและสิทธิ์</h2><button class="btn primary" type="button" id="pAdd">+ เพิ่มผู้ใช้</button></div><p class="mute">การเป็นแอดมินได้ต้องมี role <code>camp_admin</code> ใน Auth0 ก่อน หน้านี้กำหนดว่าแต่ละคน <b>ทำอะไรได้บ้าง</b> คนที่ไม่มีรายการได้สิทธิ์พื้นฐาน: ' + d.defaults.map((k) => esc(label(k))).join(' · ') + '</p>'
+    + (rows ? '<div class="plist">' + rows + '</div>' : '<p class="empty">ยังไม่มีรายการ</p>') + '</div>'
+    + '<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">ประวัติการเข้าถึงข้อมูลอ่อนไหว</h2><button class="btn sm" type="button" id="pLog">โหลดประวัติ</button></div><p class="mute">ใครเปิดดูหรือส่งออกข้อมูลสุขภาพ ลบนักศึกษา ลบข้อมูลครบกำหนด เปลี่ยนสิทธิ์ และใครถูกปฏิเสธสิทธิ์ (150 รายการล่าสุด)</p><div id="pLogBox"></div></div>';
+  const form = (x) => {
+    const cur = x || { email: '', perms: d.defaults.slice(), note: '' };
+    const groups = [...new Set(d.scopes.map((s0) => s0.group))];
+    const m = modal('<h2>' + (x ? 'แก้ไขสิทธิ์' : 'เพิ่มผู้ใช้') + '</h2><form id="pf"><label class="f"><span>อีเมลของแอดมิน</span><input type="email" id="peM" required autocomplete="off" value="' + esc(cur.email) + '"' + (x ? ' readonly' : '') + ' placeholder="name@example.com"></label>'
+      + '<label class="f"><span>หมายเหตุ (เช่น ตำแหน่ง)</span><input type="text" id="peN" maxlength="120" value="' + esc(cur.note) + '"></label>'
+      + '<div class="pre">' + PRESETS.map((q, i) => '<button type="button" class="btn sm" data-pre="' + i + '">' + q[0] + '</button>').join('') + '</div>'
+      + groups.map((g) => '<fieldset class="pgrp"><legend>' + esc(g) + '</legend>' + d.scopes.filter((s0) => s0.group === g).map((s0) => '<label class="chk' + (s0.sensitive ? ' sens' : '') + '"><input type="checkbox" class="pck" value="' + esc(s0.key) + '"' + (cur.perms.includes(s0.key) ? ' checked' : '') + '><span>' + esc(s0.label) + '</span></label>').join('') + '</fieldset>').join('')
+      + '<div class="row" style="justify-content:flex-end"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
+    m.querySelectorAll('[data-pre]').forEach((b) => { b.onclick = () => { const set = new Set(PRESETS[+b.dataset.pre][1](d)); m.querySelectorAll('.pck').forEach((c) => { c.checked = set.has(c.value); }); }; });
+    $('pf').onsubmit = async (e) => { e.preventDefault(); try { await send('POST', '/camps/admin/perms', { email: $('peM').value.trim(), note: $('peN').value.trim(), perms: [...m.querySelectorAll('.pck:checked')].map((c) => c.value) }); toast('บันทึกสิทธิ์แล้ว'); m.close(); await loadPerms(); drawNav(); pAdmins(); } catch (er) { toast(er.message || 'บันทึกไม่สำเร็จ', true); } };
+  };
+  $('pAdd').onclick = () => form(null);
+  if ($('pOwn')) $('pOwn').onclick = () => form({ email: d.me, note: 'เจ้าของระบบ', perms: d.scopes.map((x) => x.key) });
+  view().onclick = async (ev) => {
+    const e1 = ev.target.closest('[data-pe]'); if (e1) return form(d.list.find((x) => x.email === e1.dataset.pe));
+    const e2 = ev.target.closest('[data-pd]'); if (e2) { if (!(await confirmDlg('ลบสิทธิ์ของ ' + e2.dataset.pd + '?', 'คนนี้จะกลับไปได้สิทธิ์พื้นฐานเท่านั้น', 'ลบสิทธิ์'))) return; try { await send('POST', '/camps/admin/perms/delete', { email: e2.dataset.pd }); toast('ลบสิทธิ์แล้ว'); await loadPerms(); drawNav(); pAdmins(); } catch (er) { toast(er.message || 'ลบไม่สำเร็จ', true); } }
+  };
+  $('pLog').onclick = async () => { $('pLog').disabled = true; try { const l = (await getJ('/camps/admin/access-log')).log; $('pLogBox').innerHTML = l.length ? '<div class="tw"><table><thead><tr><th>เวลา</th><th>ใคร</th><th>ทำอะไร</th><th>เกี่ยวกับ</th></tr></thead><tbody>' + l.map((x) => '<tr><td data-l="เวลา">' + esc(when(x.at)) + '</td><td data-l="ใคร">' + esc(x.by) + '</td><td data-l="ทำอะไร"><b>' + esc(PERM_ACT[x.action] || x.action) + '</b></td><td data-l="เกี่ยวกับ">' + esc(x.meta && x.meta.perm ? label(x.meta.perm) : x.meta && x.meta.target ? x.meta.target + (x.meta.perms ? ' · ' + x.meta.perms.map(label).join(', ') : '') : x.meta && x.meta.count != null ? x.meta.count + ' รายการ' : x.target || '—') + '</td></tr>').join('') + '</tbody></table></div>' : '<p class="empty">ยังไม่มีประวัติ</p>'; } catch (er) { toast(er.message || 'โหลดไม่สำเร็จ', true); } $('pLog').disabled = false; };
 }
 
 // ---------- ค้นหานักศึกษาแบบเร็ว (/ หรือ Ctrl+K) ----------
@@ -750,7 +809,7 @@ async function stRetention(tb) {
     const nid = nidF(s.national_id), none = '<i class="qn">—</i>';
     const d = document.createElement('div'); d.className = 'qsd';
     d.innerHTML = '<div class="qdh"><button type="button" class="ibtn" data-back aria-label="กลับไปผลการค้นหา" title="กลับ">' + ic('back') + '</button><span class="qav big" aria-hidden="true">' + esc(((s._nm || norm(s.name) || '?')[0] || '?').toUpperCase()) + '</span><div class="qdt"><h2>' + esc(s.name) + '</h2>' + (s.name_en ? '<p>' + esc(s.name_en) + '</p>' : '') + '<div class="qch"><span class="chip2">ปี ' + s.year + '</span><span class="chip2">' + (GL[s.gender] || '—') + '</span>' + (dep(s) ? '<span class="chip2 dk">' + esc(s.department_name) + '</span>' : '<span class="chip2 mu">ยังไม่ได้เลือกฝ่าย</span>') + '</div></div><button type="button" class="ibtn" data-x aria-label="ปิด" title="ปิด">' + ic('x') + '</button></div>'
-      + (s.has_health ? '<div class="qwarn" id="qH" role="note">' + ic('warn') + '<div>มีข้อมูลสุขภาพ / อาหาร' + (s.has_allergy ? ' · แพ้อาหาร' : '') + (s.has_medical ? ' · โรคประจำตัว' : '') + '<br><button type="button" class="qhb" data-health>ดูรายละเอียด (มีบันทึกการเปิดดู)</button></div></div>' : '')
+      + (s.has_health ? '<div class="qwarn" id="qH" role="note">' + ic('warn') + '<div>มีข้อมูลสุขภาพ / อาหาร' + (s.has_allergy ? ' · แพ้อาหาร' : '') + (s.has_medical ? ' · โรคประจำตัว' : '') + '' + (can('health') ? '<br><button type="button" class="qhb" data-health>ดูรายละเอียด (มีบันทึกการเปิดดู)</button>' : '<br><span class="mute">ต้องมีสิทธิ์ดูข้อมูลสุขภาพ</span>') + '</div></div>' : '')
       + '<div class="qdg">' + r('รหัสนักศึกษา', esc(s.student_id) + ' <button type="button" class="qcp" data-copy="' + esc(s.student_id) + '" aria-label="คัดลอกรหัส" title="คัดลอก">' + ic('copy') + '</button>', '')
       + r('ชื่อเล่น', s.nickname ? esc(s.nickname) : none) + r('ชื่อ AKA', s.aka ? esc(s.aka) : none)
       + r('เบอร์โทรศัพท์', tel(s.phone)) + r('เบอร์ผู้ปกครอง', tel(s.guardian_phone))
@@ -1097,6 +1156,7 @@ async function akaSettings(tb) {
 
 // ---------- auth ----------
 let signedIn = false;
+function noPerm() { view().innerHTML = '<div class="card"><h2>ไม่มีสิทธิ์ใช้หน้านี้</h2><p class="mute">บัญชีนี้เป็นแอดมินแต่ยังไม่ได้รับสิทธิ์ “' + esc(TITLES[page] || '') + '” ติดต่อเจ้าของระบบเพื่อขอสิทธิ์</p><a class="btn" href="#dash">กลับแดชบอร์ด</a></div>'; }
 function noAdmin() { view().innerHTML = '<div class="card"><h2>ไม่มีสิทธิ์</h2><p class="mute">บัญชีนี้ไม่ใช่แอดมิน ใช้บัญชีอื่นแทน</p><button class="btn primary" id="oth" type="button">ใช้บัญชี Google อื่น</button></div>'; $('oth').onclick = () => out(true); }
 function signin(msg) { signedIn = false; view().innerHTML = '<div class="card"><h2>เข้าสู่ระบบแอดมิน</h2><p class="mute">' + esc(msg || 'เข้าสู่ระบบด้วยบัญชี Google ที่มีสิทธิ์แอดมิน') + '</p><button class="btn primary" id="li" type="button">เข้าสู่ระบบด้วย Google</button><p class="gatelegal">เมื่อเข้าสู่ระบบ ถือว่ารับทราบ <a href="/legal/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a> และ <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a></p></div>'; $('li').onclick = async () => { try { sessionStorage.setItem('adminHash', location.hash || ''); } catch (e) { /* ignore */ } try { await auth.loginWithRedirect({ authorizationParams: { connection: 'google-oauth2' }, appState: { returnTo: '/admin/' } }); } catch (e) { signin(e.message); } }; $('logout').classList.add('hidden'); $('who').classList.add('hidden'); }
 const out = (other) => { try { if (other) sessionStorage.setItem('chooseGoogle', '1'); } catch (e) { /* ignore */ } auth.logout({ logoutParams: { returnTo: location.origin + '/admin/' } }); };
@@ -1117,7 +1177,7 @@ document.addEventListener('visibilitychange', () => { /* dashboard timer already
     if (location.search.includes('code=') || location.search.includes('error=')) { try { await auth.handleRedirectCallback(); } catch (e) { signedIn = false; auth = auth; return signin(e.message); } }
     try { const h = sessionStorage.getItem('adminHash'); if (h && signedIn !== undefined && !location.hash) { sessionStorage.removeItem('adminHash'); history.replaceState(null, '', location.pathname + h); } } catch (e) { /* ignore */ }
     signedIn = await auth.isAuthenticated();
-    if (signedIn) showWho();
+    if (signedIn) { showWho(); await loadPerms(); }
     go();
   } catch (e) { view().innerHTML = '<div class="card"><p class="mute">' + esc(e.message || 'เข้าใช้งานไม่ได้ชั่วคราว') + '</p></div>'; }
 })();

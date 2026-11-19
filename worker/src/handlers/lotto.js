@@ -1,4 +1,5 @@
 import { json } from "../lib/cors.js";
+import { permDenied } from "./camps.js";
 import { getAuth0UserFromRequest, getAuth0Roles, getAuth0PictureByEmail } from "../lib/auth0.js";
 
 const fail = (req, env, error, status = 400, extra = {}) => json(req, env, { error, ...extra }, status);
@@ -17,7 +18,9 @@ async function actor(req, env) {
   try { roles = await getAuth0Roles(env, a.user.sub); }
   catch (e) { console.error("[lotto] role lookup:", e?.message || e); return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้", 503) }; }
   if (!roles.some(r => allowed.includes(r))) return { response: fail(req, env, "ไม่มีสิทธิ์ใช้งานระบบจับสลาก", 403) };
-  return { user: a.user, email: clean(a.user.email || "unknown", 254).toLowerCase() };
+  const w = { user: a.user, email: clean(a.user.email || "unknown", 254).toLowerCase() };
+  const d = await permDenied(req, env, w, "lotto"); if (d) return { response: d };
+  return w;
 }
 
 async function list(req, env, url) {

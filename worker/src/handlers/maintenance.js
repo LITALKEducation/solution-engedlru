@@ -59,12 +59,12 @@ async function audit(env, w, action, metadata) {
     .bind(crypto.randomUUID(), w.user.sub, w.email || "unknown", action, "maintenance", null, JSON.stringify(metadata)).run();
 }
 async function adminGet(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "maintenance"); if (a.response) return a.response;
   invalidateMaintenance(); const s = await readRaw(env);
   return json(request, env, { ...s, message: s.message, state: phase(s), now: Date.now(), systems: SYSTEMS, defaultMessage: DEFAULT_MSG });
 }
 async function adminSave(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "maintenance"); if (a.response) return a.response;
   const b = await request.json().catch(() => null); if (!b) return fail(request, env, "ข้อมูลไม่ถูกต้อง");
   const from = num(b.from), until = num(b.until);
   for (const v of [from, until]) if (Number.isNaN(v) || (v != null && (v < 1e12 || v > 4.2e12))) return fail(request, env, "วันเวลาไม่ถูกต้อง");

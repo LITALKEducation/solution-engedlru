@@ -160,13 +160,59 @@ async function adminStatus(env, user, strict) {
     return false;
   }
 }
-export async function requireAdmin(request, env) {
+// ---- what an admin may do (the Auth0 role only says "is an admin") ----
+// [scope, label, group, sensitive]. Sensitive scopes are NOT in the default set: an owner has to grant them.
+export const PERMS = [
+  ["students", "จัดการรายชื่อนักศึกษา (เพิ่ม แก้ไข นำเข้า กำหนดฝ่าย บันทึกวันสิ้นสุดสถานภาพ)", "ฝ่ายบุคคล", false],
+  ["registration", "ตั้งค่าลงทะเบียน (เปิด–ปิด เวลา ตำแหน่ง ฝ่ายและโควตา)", "ฝ่ายบุคคล", false],
+  ["survey", "แบบสำรวจโรงเรียน", "ฝ่ายบุคคล", false],
+  ["shirt", "เสื้อค่าย (กำหนดวัน ซ่อน/ไม่ให้เข้าร่วม ลบผลงาน)", "ระบบกิจกรรม", false],
+  ["lotto", "จับสลาก", "ระบบกิจกรรม", false],
+  ["qr", "เช็ก QR (ตั้งรายการตรวจและเจ้าหน้าที่)", "ระบบกิจกรรม", false],
+  ["aka", "ตั้งชื่อ AKA", "ระบบกิจกรรม", false],
+  ["og", "ตัวอย่างลิงก์ที่แชร์", "ระบบ", false],
+  ["maintenance", "ปิดปรับปรุงระบบ", "ระบบ", false],
+  ["health", "ดูและส่งออกข้อมูลสุขภาพและอาหาร", "ข้อมูลอ่อนไหว", true],
+  ["students.delete", "ลบนักศึกษา (ลบข้อมูลทั้งหมดของคนนั้นถาวร)", "ข้อมูลอ่อนไหว", true],
+  ["retention.purge", "ลบข้อมูลที่ครบกำหนดเก็บ (หลายคนพร้อมกัน)", "ข้อมูลอ่อนไหว", true],
+  ["admins", "จัดการสิทธิ์แอดมิน (เจ้าของระบบ)", "ข้อมูลอ่อนไหว", true],
+];
+const PERM_KEYS = PERMS.map((x) => x[0]);
+const DEFAULT_PERMS = PERMS.filter((x) => !x[3]).map((x) => x[0]);
+const permLabel = (k) => (PERMS.find((x) => x[0] === k) || [k, k])[1];
+let legacyCache = { exp: 0, v: true };
+// legacy mode = nobody holds "admins" yet: every admin keeps full rights until an owner is named
+async function isLegacy(env, fresh) {
+  if (!fresh && legacyCache.exp > Date.now()) return legacyCache.v;
+  const row = await env.DB.prepare("SELECT 1 x FROM camp_admin_perms WHERE perms LIKE '%\"admins\"%' LIMIT 1").first();
+  legacyCache = { exp: Date.now() + 5000, v: !row };
+  return legacyCache.v;
+}
+export async function adminPerms(env, email, fresh) {
+  const legacy = await isLegacy(env, fresh);
+  if (legacy) return { legacy: true, perms: new Set(PERM_KEYS) };
+  const row = await env.DB.prepare("SELECT perms FROM camp_admin_perms WHERE email=?").bind(String(email || "").toLowerCase()).first();
+  let list = DEFAULT_PERMS;
+  if (row) { try { const a = JSON.parse(row.perms); if (Array.isArray(a)) list = a.filter((k) => PERM_KEYS.includes(k)); } catch (e) { /* keep defaults */ } }
+  return { legacy: false, perms: new Set(list) };
+}
+// null when allowed, otherwise the 403 response. w = { user, email }
+export async function permDenied(request, env, w, perm) {
+  if (!perm) return null;
+  const { perms } = await adminPerms(env, w.email);
+  if (perms.has(perm)) return null;
+  const sens = PERMS.find((x) => x[0] === perm)?.[3];
+  if (sens) { try { await audit(env, w, "CAMP_PERM_DENIED", null, { perm }); } catch (e) { /* best effort */ } }
+  return fail(request, env, `ไม่มีสิทธิ์ “${permLabel(perm)}” ติดต่อเจ้าของระบบเพื่อขอสิทธิ์`, 403, { code: "PERM_DENIED", perm });
+}
+export async function requireAdmin(request, env, perm) {
   const w = await who(request, env);
   if (w.response) return w;
   let ok;
   try { ok = await adminStatus(env, w.user, true); }
   catch (e) { return { response: fail(request, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ (Auth0 Role) กรุณาลองใหม่", 503, { code: "AUTH0_ROLE_LOOKUP_FAILED" }) }; }
   if (!ok) return { response: fail(request, env, "ต้องใช้สิทธิ์แอดมิน (camp_admin หรือ budget_admin)", 403) };
+  const d = await permDenied(request, env, w, perm); if (d) return { response: d };
   return w;
 }
 
@@ -197,7 +243,7 @@ async function departmentPhoto(request, env, code) {
   return new Response(obj.body, { headers: { ...corsHeaders(request, env), "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable", "Cross-Origin-Resource-Policy": "cross-site", "X-Content-Type-Options": "nosniff" } });
 }
 async function adminSetPhoto(request, env, url) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "registration"); if (a.response) return a.response;
   const code = clean(url.searchParams.get("code"), 40);
   const dep = await env.DB.prepare("SELECT code,head_photo FROM camp_departments WHERE code=?").bind(code).first();
   if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
@@ -213,7 +259,7 @@ async function adminSetPhoto(request, env, url) {
   return json(request, env, { ok: true, photo: photoVersion(key) });
 }
 async function adminDeletePhoto(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "registration"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const code = clean(b?.departmentCode, 40);
   const dep = await env.DB.prepare("SELECT code,head_photo FROM camp_departments WHERE code=?").bind(code).first();
@@ -261,7 +307,7 @@ async function me(request, env, url) {
     if (student) selection = await env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(student.student_id).first();
   }
   return json(request, env, {
-    email: w.email, googleName: w.user.name || "", legalVersion: LEGAL_VERSION, isAdmin: admin, adminDeferred: defer, registration: reg, akaState: student ? await akaState(env) : null,
+    email: w.email, googleName: w.user.name || "", legalVersion: LEGAL_VERSION, isAdmin: admin, adminPerms: admin ? await (async () => { const p = await adminPerms(env, w.email); return { legacy: p.legacy, perms: [...p.perms] }; })() : null, adminDeferred: defer, registration: reg, akaState: student ? await akaState(env) : null,
     studentId: w.parsed?.studentId || null, student, selection, reason
   });
 }
@@ -408,7 +454,7 @@ async function adminLive(request, env) {
 }
 
 async function adminSetState(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "registration"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   if (!STATES.includes(b?.registration)) return fail(request, env, "สถานะไม่ถูกต้อง");
   await env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES ('registration_state',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(b.registration).run();
@@ -419,7 +465,7 @@ async function adminSetState(request, env) {
 // automatic open/close. mode "datetime": { openAt, closeAt } (epoch ms, either may be null);
 // mode "countdown": { startInSec, durationSec } turned into absolute times *now*, so it keeps running without the admin's browser
 async function adminSetSchedule(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "registration"); if (a.response) return a.response;
   const b = await request.json().catch(() => null), now = Date.now(), YEAR = 366 * 86400 * 1000;
   const enabled = b?.enabled === true, mode = b?.mode === "countdown" ? "countdown" : "datetime";
   const cur = await loadSettings(env);
@@ -444,7 +490,7 @@ async function adminSetSchedule(request, env) {
 
 // location check: { enabled, name, lat, lng, radius (metres) }
 async function adminSetGeo(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "registration"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const enabled = b?.enabled === true, lat = num(b?.lat), lng = num(b?.lng), radius = Math.round(num(b?.radius) ?? 200), name = clean(b?.name, 120);
   if (enabled || lat != null || lng != null) {
@@ -459,7 +505,7 @@ async function adminSetGeo(request, env) {
 // body: { departmentCode, quotas: { M: {1:n,2:n,3:n,4:n}, F: {...} } }
 // department info: head (หัวหน้าฝ่าย) name + contact, and the description shown in the student preview
 async function adminSetDepartment(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "registration"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const code = clean(b?.departmentCode, 40);
   const dep = await env.DB.prepare("SELECT code,name,description FROM camp_departments WHERE code=?").bind(code).first();
@@ -471,7 +517,7 @@ async function adminSetDepartment(request, env) {
   return json(request, env, { ok: true });
 }
 async function adminSetQuota(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "registration"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const code = clean(b?.departmentCode, 40);
   const dep = await env.DB.prepare("SELECT code,name FROM camp_departments WHERE code=?").bind(code).first();
@@ -494,7 +540,7 @@ async function adminSetQuota(request, env) {
 }
 
 async function adminStudents(request, env, url) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students"); if (a.response) return a.response;
   const q = clean(url.searchParams.get("q"), 80).toLowerCase();
   const year = Number(url.searchParams.get("year")), gender = url.searchParams.get("gender");
   const where = ["1=1"], p = [];
@@ -516,7 +562,7 @@ function upsertStudentStmt(env, id, name, year, gender, nid) {
 const syncSelectionStmt = (env, id, year, gender) => env.DB.prepare("UPDATE camp_selections SET year=?,gender=? WHERE student_id=?").bind(year, gender, id);
 
 async function adminUpsertStudent(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const id = normalizeStudentId(b?.studentId), name = clean(b?.name, 200), year = Number(b?.year);
   const gender = normalizeGender(b?.gender) || (b?.gender ? null : genderFromName(name));
@@ -535,7 +581,7 @@ async function adminUpsertStudent(request, env) {
 // CSV (or pasted text). Columns: รหัส, ชื่อ, ชั้นปี, เพศ — with or without a header row; header names may be Thai or English
 // and in any order. Without a gender column the gender is read from the Thai title in the name (นาย / นางสาว / นาง).
 async function adminBulkStudents(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const rows = parseCsv(b?.text);
   if (!rows.length) return fail(request, env, "ไม่มีข้อมูล");
@@ -598,7 +644,7 @@ async function countOverQuota(env) {
 // Admin puts students into a department by hand (also moves them from another department).
 // Respects the quota unless force=true. body: { departmentCode, studentIds: [...] | studentId, force }
 async function adminAssign(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const code = clean(b?.departmentCode, 40), force = b?.force === true;
   const dep = await env.DB.prepare("SELECT code,name FROM camp_departments WHERE code=?").bind(code).first();
@@ -640,7 +686,7 @@ async function adminAssign(request, env) {
 }
 
 async function adminDeleteStudent(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students.delete"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const id = normalizeStudentId(b?.studentId); if (!id) return fail(request, env, "รหัสนักศึกษาไม่ถูกต้อง");
   await eraseStudent(env, id);   // the same full erasure as the retention purge: AKA, department, shirt design + picture, votes, scans, surveys, activity-log entries
@@ -660,7 +706,7 @@ async function acceptTerms(request, env) {
 
 // ---- health and food details: never in the student list; an admin opens one student at a time (logged) or exports them all (logged) ----
 async function adminStudentHealth(request, env, url) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "health"); if (a.response) return a.response;
   const id = normalizeStudentId(url.searchParams.get("id")); if (!id) return fail(request, env, "รหัสนักศึกษาไม่ถูกต้อง");
   const s = await env.DB.prepare("SELECT student_id,name,food_allergy,diet,blood_type,medical,health_consent_at FROM camp_students WHERE student_id=?").bind(id).first();
   if (!s) return fail(request, env, "ไม่พบนักศึกษา", 404);
@@ -668,7 +714,7 @@ async function adminStudentHealth(request, env, url) {
   return json(request, env, { health: { foodAllergy: s.food_allergy || "", diet: s.diet || "", bloodType: s.blood_type || "", medical: s.medical || "", consentAt: s.health_consent_at || null } });
 }
 async function adminHealthExport(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "health"); if (a.response) return a.response;
   const rows = await env.DB.prepare("SELECT student_id,name,year,food_allergy,diet,blood_type,medical,health_consent_at FROM camp_students WHERE COALESCE(food_allergy,'')<>'' OR COALESCE(diet,'')<>'' OR COALESCE(blood_type,'')<>'' OR COALESCE(medical,'')<>'' ORDER BY year,student_id").all();
   const list = rows.results || [];
   await audit(env, a, "CAMP_HEALTH_EXPORT", null, { count: list.length });
@@ -681,7 +727,7 @@ const cutoffIso = () => { const d = new Date(); d.setUTCFullYear(d.getUTCFullYea
 // Thai government fiscal year (1 Oct - 30 Sep), as a Gregorian year: 1 Oct 2025 .. 30 Sep 2026 is fiscal year 2026
 const fiscalYear = (d = new Date()) => d.getUTCFullYear() + (d.getUTCMonth() >= 9 ? 1 : 0);
 async function adminSetStatusEnd(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const id = normalizeStudentId(b?.studentId); if (!id) return fail(request, env, "รหัสนักศึกษาไม่ถูกต้อง");
   const end = String(b?.endDate ?? "").trim(), reason = String(b?.reason ?? "").trim();
@@ -694,7 +740,7 @@ async function adminSetStatusEnd(request, env) {
   return json(request, env, { ok: true });
 }
 async function adminRetention(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students"); if (a.response) return a.response;
   const cut = cutoffIso();
   const [due, pending, fin] = await Promise.all([
     env.DB.prepare("SELECT student_id,name,year,status_end_date,status_end_reason FROM camp_students WHERE COALESCE(status_end_date,'')<>'' AND status_end_date<=? ORDER BY status_end_date,student_id LIMIT 500").bind(cut).all(),
@@ -718,7 +764,7 @@ async function eraseStudent(env, id) {
   if (d?.image_key) { try { await env.FILES.delete(d.image_key); } catch (e) { /* an orphan file is harmless */ } }
 }
 async function adminRetentionPurge(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "retention.purge"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const ids = [...new Set((Array.isArray(b?.studentIds) ? b.studentIds : []).map(normalizeStudentId).filter(Boolean))].slice(0, 500);
   if (!ids.length) return fail(request, env, "ไม่ได้เลือกรายชื่อ");
@@ -730,8 +776,55 @@ async function adminRetentionPurge(request, env) {
   await audit(env, a, "CAMP_RETENTION_PURGE", null, { requested: ids.length, erased: n });
   return json(request, env, { ok: true, erased: n, skipped: ids.length - n });
 }
+
+// ---- managing permissions (scope "admins"; in legacy mode any admin) ----
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+async function adminPermsList(request, env) {
+  const a = await requireAdmin(request, env, "admins"); if (a.response) return a.response;
+  const rows = await env.DB.prepare("SELECT email,perms,note,updated_by,updated_at FROM camp_admin_perms ORDER BY email").all();
+  const legacy = await isLegacy(env, true);
+  const list = (rows.results || []).map((r) => { let p = []; try { p = JSON.parse(r.perms); } catch (e) { /* ignore */ } return { email: r.email, perms: Array.isArray(p) ? p : [], note: r.note || "", updatedBy: r.updated_by || "", updatedAt: r.updated_at }; });
+  return json(request, env, { legacy, me: a.email, scopes: PERMS.map((x) => ({ key: x[0], label: x[1], group: x[2], sensitive: x[3] })), defaults: DEFAULT_PERMS, list });
+}
+// after the change at least one owner must remain, or nobody could ever fix permissions again
+async function ownersAfter(env, email, perms) {
+  const rows = await env.DB.prepare("SELECT email,perms FROM camp_admin_perms").all();
+  let n = 0; const seen = new Set();
+  for (const r of rows.results || []) { if (r.email === email) continue; let p = []; try { p = JSON.parse(r.perms); } catch (e) { /* ignore */ } if (Array.isArray(p) && p.includes("admins")) { n++; seen.add(r.email); } }
+  if (perms && perms.includes("admins")) n++;
+  return n;
+}
+async function adminPermsSet(request, env) {
+  const a = await requireAdmin(request, env, "admins"); if (a.response) return a.response;
+  const b = await request.json().catch(() => null);
+  const email = clean(b?.email, 254).toLowerCase();
+  if (!EMAIL_RE.test(email)) return fail(request, env, "อีเมลไม่ถูกต้อง", 400, { field: "email" });
+  const perms = [...new Set((Array.isArray(b?.perms) ? b.perms : []).filter((k) => PERM_KEYS.includes(k)))];
+  if ((await ownersAfter(env, email, perms)) < 1) return fail(request, env, "ต้องมีเจ้าของระบบ (สิทธิ์จัดการสิทธิ์แอดมิน) อย่างน้อย 1 คนเสมอ", 400, { field: "perms" });
+  await env.DB.prepare("INSERT INTO camp_admin_perms (email,perms,note,updated_by,updated_at) VALUES (?,?,?,?,datetime('now')) ON CONFLICT(email) DO UPDATE SET perms=excluded.perms,note=excluded.note,updated_by=excluded.updated_by,updated_at=datetime('now')")
+    .bind(email, JSON.stringify(perms), clean(b?.note, 120), a.email).run();
+  legacyCache.exp = 0;
+  await audit(env, a, "CAMP_PERMS_SET", null, { target: email, perms });
+  return json(request, env, { ok: true });
+}
+async function adminPermsDelete(request, env) {
+  const a = await requireAdmin(request, env, "admins"); if (a.response) return a.response;
+  const b = await request.json().catch(() => null);
+  const email = clean(b?.email, 254).toLowerCase();
+  if ((await ownersAfter(env, email, null)) < 1 && !(await isLegacy(env, true))) return fail(request, env, "ต้องมีเจ้าของระบบอย่างน้อย 1 คนเสมอ", 400);
+  await env.DB.prepare("DELETE FROM camp_admin_perms WHERE email=?").bind(email).run();
+  legacyCache.exp = 0;
+  await audit(env, a, "CAMP_PERMS_DELETE", null, { target: email });
+  return json(request, env, { ok: true });
+}
+// who opened or exported sensitive data, changed permissions, deleted or purged people (owners only)
+async function adminAccessLog(request, env) {
+  const a = await requireAdmin(request, env, "admins"); if (a.response) return a.response;
+  const rows = await env.DB.prepare("SELECT actor_email,action,entity_uuid,metadata,created_at FROM budget_audit_logs WHERE action IN ('CAMP_HEALTH_VIEW','CAMP_HEALTH_EXPORT','CAMP_STUDENT_DELETE','CAMP_RETENTION_PURGE','CAMP_PERMS_SET','CAMP_PERMS_DELETE','CAMP_PERM_DENIED') ORDER BY created_at DESC, rowid DESC LIMIT 150").all();
+  return json(request, env, { log: (rows.results || []).map((r) => { let m = {}; try { m = JSON.parse(r.metadata || "{}"); } catch (e) { /* ignore */ } return { by: r.actor_email, action: r.action, target: r.entity_uuid || m.target || "", meta: m, at: r.created_at }; }) });
+}
 async function adminClearSelection(request, env) {
-  const a = await requireAdmin(request, env); if (a.response) return a.response;
+  const a = await requireAdmin(request, env, "students"); if (a.response) return a.response;
   const b = await request.json().catch(() => null);
   const id = normalizeStudentId(b?.studentId); if (!id) return fail(request, env, "รหัสนักศึกษาไม่ถูกต้อง");
   await env.DB.prepare("DELETE FROM camp_selections WHERE student_id=?").bind(id).run();
@@ -762,6 +855,10 @@ export async function camps(request, env, url) {
     if (m === "GET" && p === "/camps/admin/students") return await adminStudents(request, env, url);
     if (m === "POST" && p === "/camps/admin/students") return await adminUpsertStudent(request, env);
     if (m === "POST" && p === "/camps/admin/students/bulk") return await adminBulkStudents(request, env);
+    if (m === "GET" && p === "/camps/admin/perms") return await adminPermsList(request, env);
+    if (m === "POST" && p === "/camps/admin/perms") return await adminPermsSet(request, env);
+    if (m === "POST" && p === "/camps/admin/perms/delete") return await adminPermsDelete(request, env);
+    if (m === "GET" && p === "/camps/admin/access-log") return await adminAccessLog(request, env);
     if (m === "GET" && p === "/camps/admin/student-health") return await adminStudentHealth(request, env, url);
     if (m === "GET" && p === "/camps/admin/health-export") return await adminHealthExport(request, env);
     if (m === "POST" && p === "/camps/admin/students/status") return await adminSetStatusEnd(request, env);

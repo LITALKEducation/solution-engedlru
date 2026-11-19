@@ -1,20 +1,23 @@
 // Link previews (Open Graph) for the public Camps pages. Public: the merged title / description / image of every page (read by the Pages
 // Function in camps/functions, which puts them into the HTML for crawlers) and the custom image. Admin: edit the text, upload / remove the image.
 import { json } from "../lib/cors.js";
+import { permDenied } from "./camps.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 import { OG_PAGES, OG_LIMITS, OG_SITE, ogDefaultImage, ogPaths } from "../lib/og-pages.js";
 
 const fail = (req, env, error, status = 400, extra = {}) => json(req, env, { error, ...extra }, status);
 const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[​-‍⁠﻿]/g, "").replace(/[   　]/g, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, " ").trim();
 const ADMIN_ROLES = ["camp_admin", "budget_admin"];
-async function requireAdmin(req, env) {
+async function requireAdmin(req, env, perm = "og") {
   const a = await getAuth0UserFromRequest(req, env);
   if (!a.user) return { response: fail(req, env, a.unavailable ? "ยังเข้าสู่ระบบไม่ได้ในขณะนี้ ลองใหม่อีกครั้ง" : "กรุณาเข้าสู่ระบบ", a.unavailable ? 503 : 401) };
   let ok = false;
   try { ok = (await getAuth0Roles(env, a.user.sub)).some((r) => ADMIN_ROLES.includes(r)); }
   catch (e) { return { response: fail(req, env, "ตรวจสอบสิทธิ์แอดมินไม่ได้ ลองใหม่อีกครั้ง", 503) }; }
   if (!ok) return { response: fail(req, env, "ต้องเป็นแอดมิน", 403) };
-  return { user: a.user, email: tidy(a.user.email || "").toLowerCase() };
+  const w = { user: a.user, email: tidy(a.user.email || "").toLowerCase() };
+  const d = await permDenied(req, env, w, perm); if (d) return { response: d };
+  return w;
 }
 async function audit(env, w, action, entityId, metadata = {}) {
   await env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
