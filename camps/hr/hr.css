@@ -565,3 +565,19 @@ nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-li
 .pflock{grid-template-columns:1fr 1fr!important;gap:10px!important}.pflock input{min-height:42px!important}
 
 .shfmt{display:flex;align-items:center;justify-content:center;gap:8px;margin:-6px 0 0;font-size:.8125rem;color:var(--mute)!important}.shfmt .shi{width:16px;height:16px}
+
+/* /hr/shirt round 2: visible card titles, compact waiting rows, sent/rejected/blocked states */
+.shh span{font-size:1.0625rem}
+.shwait{display:flex;align-items:center;gap:12px;margin:0;padding:6px 0;color:var(--mute)!important}.shwait .shi{width:24px;height:24px;opacity:.7}
+.shwaitcard{gap:6px!important}
+.shsent{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:10px 14px;border-radius:var(--r-sm);background:#dcfce7;color:#15803d}.shsent b{color:#15803d}.shsent span{font-size:.875rem;color:#166534}
+.notice.bad p{margin:4px 0 0}.shnote{padding:8px 12px;border-radius:10px;background:#fff;color:var(--ink)!important}.shnote span{display:block;font-size:.75rem;color:var(--mute);margin-bottom:2px}
+.shform.locked{opacity:.5;pointer-events:none;user-select:none}
+.shdropcta{width:auto!important;height:44px!important;padding:0 16px 0 12px;gap:8px;border-radius:999px!important;grid-auto-flow:column;font-weight:600;font-size:.9375rem}
+.shdrop.rej .shpic{opacity:.35;filter:grayscale(1)}
+.shrejb{position:absolute;left:12px;top:12px;display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 8px;border-radius:999px;background:var(--bad);color:#fff;font-weight:700;font-size:.875rem}.shrejb .shi{width:18px;height:18px}
+.shdropin{position:relative}
+.shcap{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;padding:34px 14px 12px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.78));color:#fff;pointer-events:none;line-height:1.35}
+.shcap b{font-size:.9375rem;text-shadow:0 1px 5px rgba(0,0,0,.6)}.shcap span{font-size:.8125rem;opacity:.9}.shcap i{font-style:normal;opacity:.6}
+.shrules{grid-template-columns:1fr!important;gap:6px}
+.shrules li{background:none!important;padding:4px 2px!important;font-weight:500}.shrules li.no{background:none!important;font-weight:700}

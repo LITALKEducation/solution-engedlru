@@ -78,7 +78,16 @@ const SHI = {
 const shIc = (n, c) => '<svg class="shi' + (c ? ' ' + c : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SHI[n] + '</svg>';
 const shShort = (ms) => (ms == null ? '—' : new Date(ms).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
 const shSpan = (a, b) => (a == null || b == null ? '—' : shShort(a) + '\n→ ' + shShort(b));
-const shHead = (icon, label) => '<h2 class="shh">' + shIc(icon) + '<span class="vh">' + label + '</span></h2>';
+const shHead = (icon, label) => '<h2 class="shh">' + shIc(icon) + '<span>' + label + '</span></h2>';
+const shWait = (icon, text) => '<p class="shwait">' + shIc(icon) + '<span>' + text + '</span></p>';
+const shIn = (ms) => { const m = Math.max(1, Math.round((ms - Date.now()) / 60000)), h = Math.floor(m / 60); return 'อีก ' + (h ? h + ' ชม. ' : '') + (m % 60 ? (m % 60) + ' นาที' : '').trim(); };
+// the two waiting lines (submit / vote) when nothing is open yet
+function shWaitText(x) {
+  const sc = x.schedule || {};
+  const sub = x.submit === 'before' ? 'ยังไม่เปิดรับผลงาน · เปิด ' + shShort(sc.submitFrom) : x.submit === 'unset' ? 'ยังไม่กำหนดวันรับผลงาน' : 'ปิดรับผลงานแล้ว';
+  const vote = x.vote === 'before' ? 'ยังไม่เปิดโหวต · เปิด ' + shShort(sc.voteFrom) : x.vote === 'unset' ? 'ยังไม่กำหนดวันโหวต' : 'ปิดโหวตแล้ว';
+  return [['up', sub], ['vote', vote]];
+}
 // two steps, each an icon + a state dot + its dates
 function shFlow(x) {
   const sc = x.schedule || {}, step = (icon, st, label, from, to) => '<div class="shstep ' + (st === 'open' ? 'on' : st === 'after' ? 'done' : '') + '" role="group" aria-label="' + label + ' ' + (SH_STATE[st] || SH_STATE.unset)[0] + '"><span class="shbub">' + shIc(icon) + '<i class="shdot ' + ((SH_STATE[st] || SH_STATE.unset)[1] || '') + '"></i></span><b class="shlbl">' + label + '</b><span class="shst2 ' + ((SH_STATE[st] || SH_STATE.unset)[1] || '') + '">' + (SH_STATE[st] || SH_STATE.unset)[0] + '</span><span class="shdates">' + esc(shSpan(from, to)) + '</span></div>';
@@ -88,47 +97,60 @@ function renderShirt() {
   const box = $('shirtBox'), x = shirtX; if (!box || !x) return;
   if (x.reason) { box.innerHTML = shFlow(x) + '<div class="card acct"><div class="warn">' + esc(x.error || 'ใช้งานไม่ได้') + '</div><button class="btn primary sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div>'; return; }
   shSample = x.sample || shSample;
-  box.innerHTML = shFlow(x) + (shSample.image ? '<div class="card shsec shsample"><img class="shsamplepic" src="' + esc(shSample.image) + '" alt="เสื้อตัวอย่าง"></div>' : '') + '<div id="shSubmit"></div><div id="shVote"></div>';
+  const sampleH = shSample.image ? '<div class="card shsec shsample"><img class="shsamplepic" src="' + esc(shSample.image) + '" alt="เสื้อตัวอย่าง"></div>' : '';
+  if (!x.myDesign && !x.designs && x.submit !== 'open' && x.vote !== 'open') {   // nothing to do yet: one short card instead of two empty ones
+    box.innerHTML = shFlow(x) + sampleH + '<div class="card shsec shwaitcard">' + shWaitText(x).map((r) => shWait(r[0], r[1])).join('') + '</div>'; return;
+  }
+  box.innerHTML = shFlow(x) + sampleH + '<div id="shSubmit"></div><div id="shVote"></div>';
   renderShirtSubmit(); renderShirtVote();
 }
 function renderShirtSubmit() {
   const host = $('shSubmit'), x = shirtX, my = x.myDesign; if (!host) return;
   const editable = x.submit === 'open' && x.vote !== 'open';
   let h = '<div class="card shsec">' + shHead('pen', 'ผลงานของฉัน');
-  if (my && my.rejected) h += '<div class="notice bad" role="alert">' + shIc('ban') + '<div><b>ผลงานนี้เข้าร่วมไม่ได้</b><br>เป็นภาพที่สร้างด้วย AI หรือมีส่วนที่สร้างด้วย AI' + (my.rejected.note ? '<br>' + esc(my.rejected.note) : '') + (editable ? '<br>ส่งรูปใหม่ที่ออกแบบเองได้จนถึง ' + esc(shShort(x.schedule.submitTo)) : '') + '</div></div>';
+  if (my && my.rejected) h += '<div class="notice bad" role="alert">' + shIc('ban') + '<div><b>ผลงานนี้เข้าร่วมไม่ได้</b><p>ตรวจพบว่าเป็นภาพที่สร้างด้วย AI หรือมีส่วนที่สร้างด้วย AI</p>' + (my.rejected.note ? '<p class="shnote"><span>หมายเหตุจากแอดมิน</span>' + esc(my.rejected.note) + '</p>' : '') + (editable ? '<p>ส่งรูปใหม่ที่ออกแบบเองได้ถึง ' + esc(shShort(x.schedule.submitTo)) + '</p>' : '') + '</div></div>';
+  else if (my && editable) h += '<div class="shsent">' + shIc('check') + '<b>ส่งแล้ว</b><span>แก้ไขได้ถึง ' + esc(shShort(x.schedule.submitTo)) + '</span></div>';
   if (!editable) {
     h += my ? '<div class="shmine"><button type="button" class="shimg shthumb" id="shMineBig" aria-label="ขยายรูป">' + shMock(my.image, 'white') + '</button><div><b>' + esc(shName(my)) + '</b>' + shWho(my) + (my.hidden && !my.rejected ? '<p class="warn">' + shIc('eyeoff') + ' ซ่อนโดยแอดมิน</p>' : '') + '</div></div>'
-      : '<p class="shempty">' + shIc(x.submit === 'before' || x.submit === 'unset' ? 'clock' : 'lock') + '<span class="vh">' + (x.submit === 'after' ? 'ปิดรับผลงานแล้ว' : 'ยังไม่เปิดรับผลงาน') + '</span></p>';
+      : shWait(x.submit === 'before' || x.submit === 'unset' ? 'clock' : 'lock', shWaitText(x)[0][1]);
     host.innerHTML = h + '</div>'; if ($('shMineBig')) $('shMineBig').onclick = () => shLightbox(my.image, shName(my), shWho(my)); return;
   }
   const blocked = x.blockedUntil && x.blockedUntil > Date.now();
-  if (blocked) h += '<div class="notice bad" role="alert">' + shIc('lock') + '<div><b>ระงับการส่งชั่วคราว</b><br>ส่งใหม่ได้หลัง ' + esc(shShort(x.blockedUntil)) + '</div></div>';
-  h += '<form id="shForm" class="shform" novalidate autocomplete="off">'
-    + '<label class="shdrop" id="shDrop" for="shFile" aria-label="เลือกรูปลายเสื้อ"><span class="shdropin" id="shLive">' + shIc('img', 'big') + '</span><span class="shdropcta">' + shIc('up') + '<span class="vh">เลือกรูป</span></span></label>'
+  if (blocked) h += '<div class="notice bad" role="alert">' + shIc('lock') + '<div><b>ระงับการส่งชั่วคราว</b><p>ส่งใหม่ได้ ' + esc(shIn(x.blockedUntil)) + ' (หลัง ' + esc(shShort(x.blockedUntil)) + ')</p></div></div>';
+  const rej = !!(my && my.rejected);
+  h += '<form id="shForm" class="shform' + (blocked ? ' locked' : '') + '" novalidate autocomplete="off"' + (blocked ? ' aria-disabled="true"' : '') + '>'
+    + '<label class="shdrop" id="shDrop" for="shFile" aria-label="เลือกรูปลายเสื้อ"><span class="shdropin" id="shLive">' + shIc('img', 'big') + '</span><span class="shdropcta">' + shIc('up') + '<span id="shDropT">เลือกรูป</span></span></label>'
     + '<input id="shFile" class="vh" type="file" accept="image/png,image/jpeg,image/webp">'
-    + '<p class="shfmt">' + shIc('img') + '<span>PNG · JPG · WebP · ไม่เกิน 10 MB</span></p>'
+    + '<p class="shfmt">' + shIc('img') + '<span>PNG · JPG · WebP · ไม่เกิน 10 MB · แนะนำภาพจัตุรัส 1:1</span></p>'
     + '<div class="shfields"><label class="shfield">' + shIc('user') + '<input id="shDesigner" maxlength="80" required aria-label="ชื่อผู้ออกแบบ" placeholder="ชื่อผู้ออกแบบ *"></label>'
     + '<label class="shfield">' + shIc('users') + '<input id="shGroup" maxlength="40" required aria-label="หมู่เรียน" placeholder="หมู่เรียน *"></label></div>'
-    + '<ul class="shrules" aria-label="ข้อควรรู้ก่อนส่ง"><li>' + shIc('pen') + '<span>ออกแบบเอง</span></li><li class="no">' + shIc('noai') + '<span>ห้ามใช้ AI</span></li><li>' + shIc('clock') + '<span>พบ AI ระงับ 24 ชม.</span></li><li>' + shIc('one') + '<span>ส่งได้ 1 ผลงาน</span></li></ul>'
-    + '<label class="shok"><input type="checkbox" id="shOk"> <span>ฉันออกแบบเอง ไม่ใช้ AI ข้อมูลถูกต้อง</span></label>'
-    + '<div class="shbtns"><button class="btn primary" type="submit" id="shSave">' + shIc(my ? 'check' : 'up') + '<span>' + (my ? 'บันทึก' : 'ส่งผลงาน') + '</span></button>' + (my ? '<button class="btn danger" type="button" id="shDel" aria-label="ลบผลงาน" title="ลบผลงาน">' + shIc('trash') + '</button>' : '') + '</div></form>';
+    + '<ul class="shrules" aria-label="ข้อกำหนดก่อนส่ง"><li class="no">' + shIc('noai') + '<span>ออกแบบเอง ห้ามใช้ AI</span></li><li>' + shIc('clock') + '<span>พบ AI ระงับการส่ง 24 ชม.</span></li><li>' + shIc('one') + '<span>ส่งได้ 1 ผลงาน</span></li></ul>'
+    + '<label class="shok"><input type="checkbox" id="shOk"> <span>ฉันยืนยันว่าเป็นไปตามข้อกำหนดข้างบน</span></label>'
+    + '<div class="shbtns"><button class="btn primary" type="submit" id="shSave">' + shIc(rej || !my ? 'up' : 'check') + '<span>' + (rej ? 'ส่งรูปใหม่' : my ? 'บันทึกการแก้ไข' : 'ส่งผลงาน') + '</span></button>' + (my ? '<button class="btn danger" type="button" id="shDel" aria-label="ลบผลงาน" title="ลบผลงาน">' + shIc('trash') + '</button>' : '') + '</div></form>';
   host.innerHTML = h + '</div>';
   $('shDesigner').value = my ? my.designer : (x.student && x.student.name) || ''; $('shGroup').value = my ? my.classGroup : '';
   let meta = [], blob = null, blobUrl = null;
-  const live = () => { const src = blobUrl || (my && my.image) || ''; $('shLive').innerHTML = src ? '<img class="shpic" src="' + esc(src) + '" alt="ตัวอย่างผลงาน">' : shIc('img', 'big'); $('shDrop').classList.toggle('has', !!src); };
+  // what other students will see: the picture with the designer and class group over it
+  const live = () => {
+    const src = blobUrl || (my && my.image) || '', d = $('shDesigner').value.trim(), g = $('shGroup').value.trim();
+    $('shLive').innerHTML = src ? '<img class="shpic" src="' + esc(src) + '" alt="ตัวอย่างผลงาน"><span class="shcap"><b>' + (d ? esc(d) : '<i>ชื่อผู้ออกแบบ</i>') + '</b><span>' + (g ? esc(g) : '<i>หมู่เรียน</i>') + '</span></span>' + (rej && !blobUrl ? '<span class="shrejb">' + shIc('ban') + 'ไม่ผ่าน</span>' : '') : shIc('img', 'big');
+    $('shDrop').classList.toggle('has', !!src); $('shDrop').classList.toggle('rej', !!(rej && !blobUrl)); $('shDropT').textContent = src ? 'เปลี่ยนรูป' : 'เลือกรูป';
+    if (rej && !blocked) $('shSave').disabled = !blobUrl;   // a rejected design needs a new picture
+  };
+  ['shDesigner', 'shGroup'].forEach((id) => { $(id).addEventListener('input', live); });
   live();
   $('shFile').onchange = async (e) => {
     const f = e.target.files[0]; blob = null; meta = []; if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; } if (!f) return live();
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { e.target.value = ''; live(); return toast('ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น', true); }
     try { meta = await shMeta(f); blob = await shResize(f); blobUrl = URL.createObjectURL(blob); live(); } catch (err) { e.target.value = ''; live(); toast('เปิดไฟล์รูปไม่ได้', true); }
   };
-  if (blocked) { $('shSave').disabled = true; $('shFile').disabled = true; }
+  if (blocked) ['shSave', 'shFile', 'shDesigner', 'shGroup', 'shOk'].forEach((id) => { $(id).disabled = true; });
   $('shForm').onsubmit = async (e) => {
     e.preventDefault();
     const designer = $('shDesigner').value.trim(), group = $('shGroup').value.trim();
     if (!designer) { $('shDesigner').focus(); return toast('กรอกชื่อผู้ออกแบบ', true); }
     if (!group) { $('shGroup').focus(); return toast('กรอกหมู่เรียน', true); }
-    if (!my && !blob) { $('shFile').focus(); return toast('เลือกรูปลายเสื้อ', true); }
+    if ((!my || rej) && !blob) { $('shFile').focus(); return toast(rej ? 'เลือกรูปใหม่ที่ออกแบบเอง' : 'เลือกรูปลายเสื้อ', true); }
     if (!$('shOk').checked) { $('shOk').focus(); return toast('ติ๊กยืนยันก่อนส่งผลงานว่าออกแบบเอง ไม่ได้สร้างด้วย AI', true); }
     $('shSave').disabled = true;
     try {
@@ -146,7 +168,7 @@ function renderShirtSubmit() {
 function renderShirtVote() {
   const host = $('shVote'), x = shirtX; if (!host) return;
   let h = '<div class="card shsec">' + shHead('vote', 'โหวตเสื้อค่าย');
-  if (!x.designs) { host.innerHTML = h + '<p class="shempty">' + shIc(x.vote === 'after' ? 'lock' : 'clock') + '<span class="vh">ยังไม่เปิดให้โหวต</span></p></div>'; return; }
+  if (!x.designs) { host.innerHTML = h + shWait(x.vote === 'after' ? 'lock' : 'clock', shWaitText(x)[1][1]) + '</div>'; return; }
   const open = x.vote === 'open';
   let list = x.designs.slice();
   if (x.resultsPublic) list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
