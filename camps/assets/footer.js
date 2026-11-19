@@ -18,6 +18,7 @@
     + '#siteFoot .sf-photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#f1f1f3 0%,rgba(241,241,243,.55) 28%,rgba(241,241,243,0) 60%)}'
     + '#siteFoot .sf-mark{position:absolute;left:50%;bottom:-6%;transform:translateX(-50%);width:min(86vw,640px);height:auto;opacity:.92;filter:drop-shadow(0 6px 30px rgba(0,0,0,.25));pointer-events:none}'
     + '@media(min-width:860px){#siteFoot .sf-in{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);align-items:start}#siteFoot nav{grid-template-columns:repeat(4,minmax(0,1fr))}}'
+    + '@media(max-width:600px){#siteFoot .sf-mark{display:none}#siteFoot .sf-photo{height:180px}}'
     + '@media print{#siteFoot{display:none!important}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var COLS = [
