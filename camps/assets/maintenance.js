@@ -22,13 +22,18 @@
     + '#maintOv .ml{font:inherit;color:#5f5f68;text-decoration:underline;text-underline-offset:3px;display:inline-flex;align-items:center;min-height:48px;padding:0 14px}'
     + '#maintOv .mlogo{height:30px;width:auto;margin-top:26px;opacity:.75}'
     + '#maintOv .z{animation:mz 3.2s ease-in-out infinite;opacity:0;transform-box:fill-box;transform-origin:center}#maintOv .z2{animation-delay:.9s}#maintOv .z3{animation-delay:1.8s}'
+    + '#maintOv .mbed{transform-box:fill-box;transform-origin:50% 100%;animation:mbreath 3.6s ease-in-out infinite}#maintOv .msh{transform-box:fill-box;transform-origin:center;animation:mshadow 3.6s ease-in-out infinite}'
+    + '@keyframes mbreath{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.012,1.02)}}@keyframes mshadow{0%,100%{transform:scale(1);opacity:.07}50%{transform:scale(.94);opacity:.045}}'
+    + '@keyframes min{from{opacity:0;transform:translateY(14px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}@keyframes mart{from{opacity:0;transform:translateY(-18px) scale(.92)}to{opacity:1;transform:none}}'
+    + '#maintOv .mart{animation:mart .7s cubic-bezier(.22,1,.36,1) both}#maintOv .mc>:not(.mart){animation:min .6s cubic-bezier(.22,1,.36,1) both}'
+    + '#maintOv .mc>:nth-child(2){animation-delay:.15s}#maintOv .mc>:nth-child(3){animation-delay:.25s}#maintOv .mc>:nth-child(4){animation-delay:.35s}#maintOv .mc>:nth-child(5){animation-delay:.45s}#maintOv .mc>:nth-child(6){animation-delay:.55s}'
     + '@keyframes mz{0%{opacity:0;transform:translate(0,8px) scale(.7)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-18px) scale(1.15)}}'
     + '@keyframes mpulse{50%{opacity:.35}}'
-    + '@media(prefers-reduced-motion:reduce){#maintOv .z,#maintOv .mu span::before{animation:none}#maintOv .z{opacity:1}}'
+    + '@media(prefers-reduced-motion:reduce){#maintOv .mbed,#maintOv .msh,#maintOv .mart,#maintOv .mc>*,#maintOv .z,#maintOv .mu span::before{animation:none}#maintOv .z{opacity:1}}'
     + '#maintBn{position:relative;z-index:2147482000;background:#fff7d6;color:#6b4e00;border-bottom:2px solid #f0c000;padding:10px 16px;font:15px/1.6 "Noto Sans Thai",system-ui,sans-serif;text-align:center;white-space:pre-line}#maintBn b{color:#161616}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var ART = '<svg class="mart" viewBox="0 0 320 220" role="img" aria-label="กำลังปิดปรับปรุงระบบ" xmlns="http://www.w3.org/2000/svg">'
-    + '<ellipse cx="160" cy="196" rx="112" ry="12" fill="#18181b" opacity=".07"/>'
+    + '<ellipse class="msh" cx="160" cy="196" rx="112" ry="12" fill="#18181b" opacity=".07"/><g class="mbed">'
     + '<rect x="58" y="132" width="5" height="50" rx="2.5" fill="#18181b"/><rect x="258" y="132" width="5" height="50" rx="2.5" fill="#18181b"/><rect x="156" y="150" width="5" height="40" rx="2.5" fill="#18181b"/>'
     + '<path d="M52 112 L160 70 L268 112 L268 150 Q160 196 52 150 Z" fill="#38bdf8"/>'
     + '<path d="M52 112 L160 70 L268 112 L160 158 Z" fill="#7dd3fc"/>'
@@ -39,7 +44,7 @@
     + '<path d="M190 102 q4 3 8 0" stroke="#18181b" stroke-width="1.6" fill="none" stroke-linecap="round"/>'
     + '<path d="M72 120 L196 112 L240 128 L160 168 L84 140 Z" fill="#a5e4fc" opacity=".9"/>'
     + '<path d="M96 126 Q150 112 214 124" stroke="#fff" stroke-width="1.5" fill="none" opacity=".7"/>'
-    + '<text class="z z1" x="214" y="62" font-size="22" font-weight="600" fill="#18181b">z</text><text class="z z2" x="234" y="44" font-size="28" font-weight="600" fill="#18181b">Z</text><text class="z z3" x="258" y="30" font-size="34" font-weight="600" fill="#18181b">Z</text></svg>';
+    + '</g><text class="z z1" x="214" y="62" font-size="22" font-weight="600" fill="#18181b">z</text><text class="z z2" x="234" y="44" font-size="28" font-weight="600" fill="#18181b">Z</text><text class="z z3" x="258" y="30" font-size="34" font-weight="600" fill="#18181b">Z</text></svg>';
   var wasActive = false;
   function overlay(d) {
     var el = document.getElementById('maintOv');
