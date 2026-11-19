@@ -120,6 +120,34 @@ details>summary{list-style:revert}
 .dact{display:flex;gap:6px;padding:6px 10px 10px}.dact .ibtn{flex:1;width:auto;height:40px}
 .shwinA{margin:6px 0 12px}.shwh{display:flex;align-items:center;gap:10px;margin-bottom:6px}.shbubA{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--soft);color:var(--mute)}.shbubA.open{background:var(--dark);color:#fff}.shbubA.closed{background:#dff5e8;color:#136b3a}
 .chk .ic{color:var(--mute);margin-top:1px}
+
+/* quick student search */
+.qsbtn{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:1.5px solid var(--line);border-radius:999px;background:#fff;color:var(--mute);font:inherit;font-size:14px;cursor:pointer;transition:border-color .2s,color .2s}
+.qsbtn:hover{border-color:var(--dark);color:var(--ink)}.qsbtn svg{width:20px;height:20px;flex:none}.qsbtn kbd{font:600 12px/1 inherit;padding:3px 7px;border-radius:6px;background:var(--soft);color:var(--mute)}
+@media(max-width:760px){.qsbtn span,.qsbtn kbd{display:none}.qsbtn{width:44px;padding:0;justify-content:center}}
+.qs{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45);display:flex;justify-content:center;align-items:flex-start;padding:max(12px,env(safe-area-inset-top)) 12px 12px;animation:t-fade var(--duration-fast) var(--ease-smooth-out) both}
+.qsb{position:relative;width:min(640px,100%);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;background:#fff;border-radius:20px;box-shadow:0 24px 60px -16px rgba(0,0,0,.5);overflow:hidden;margin-top:6vh;animation:t-modal-in var(--duration-fast) var(--ease-smooth-out) both}
+@media(max-width:760px){.qsb{margin-top:0;max-height:calc(100dvh - 24px)}}
+.qsh{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 16px;border-bottom:1px solid var(--line)}.qsi{color:var(--mute);display:grid}.qsi .ic{width:22px;height:22px}
+.qsh input::-webkit-search-cancel-button{display:none}.qsh input{flex:1;min-width:0;border:0!important;outline:0!important;box-shadow:none!important;background:none!important;font-size:17px;min-height:48px;padding:0 4px}
+.qsx,.ibtn[data-x]{flex:none}.qsx{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:var(--soft);color:var(--ink);cursor:pointer}
+.qsl{overflow-y:auto;padding:8px;min-height:80px}.qse{margin:0;padding:28px 12px;text-align:center;color:var(--mute)}
+.qsr{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:8px 12px;border:0;border-radius:14px;background:none;font:inherit;text-align:left;cursor:pointer;transition:background-color .15s}
+.qsr:hover,.qsr.on{background:var(--soft)}
+.qav{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:var(--dark);color:#fff;font-weight:700}.qav.big{width:56px;height:56px;font-size:22px}
+.qmain{flex:1;min-width:0;display:flex;flex-direction:column}.qmain b{font-size:15px;overflow-wrap:anywhere}.qmain i{font-style:normal;font-weight:500;color:var(--mute)}.qmain small{color:var(--mute);font-size:13px}
+.qflag{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fef3c7;color:#92400e}.qflag .ic{width:16px;height:16px}
+.qsb.isd .qsh,.qsb.isd .qsl{display:none}
+.qsd{display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+.qdh{display:flex;align-items:center;gap:12px;padding:14px 14px 10px;position:sticky;top:0;background:#fff;z-index:1}.qdt{flex:1;min-width:0}.qdt h2{margin:0;font-size:18px;overflow-wrap:anywhere}.qdt p{margin:0;color:var(--mute);font-size:14px}
+.qch{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.chip2{padding:2px 10px;border-radius:999px;background:var(--soft);font-size:13px;font-weight:600}.chip2.dk{background:var(--dark);color:#fff}.chip2.mu{color:var(--mute);font-weight:500}
+.qwarn{display:flex;gap:10px;margin:4px 14px 8px;padding:12px 14px;border-radius:14px;background:#fef3c7;color:#78350f;font-size:14px;line-height:1.6}.qwarn .ic{margin-top:2px}
+.qdg{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:6px 14px 12px}.qdr{background:var(--soft);border-radius:12px;padding:10px 12px;min-width:0}.qdr span{display:block;font-size:12px;color:var(--mute)}.qdr b{display:flex;align-items:center;gap:6px;font-size:15px;overflow-wrap:anywhere;flex-wrap:wrap}.qn{font-style:normal;color:var(--mute);font-weight:400}
+@media(max-width:340px){.qdg{grid-template-columns:1fr}}
+.qtel{display:inline-flex;align-items:center;gap:6px;color:var(--ink);text-decoration:none;min-height:32px}.qtel .ic{width:16px;height:16px;color:var(--mute)}.qtel:hover{text-decoration:underline}
+.qcp{display:inline-grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:#fff;color:var(--mute);cursor:pointer}.qcp:hover{color:var(--ink)}.qcp .ic{width:16px;height:16px}
+.qdf{padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));display:flex;position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line)}.qdf .btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+@media(prefers-reduced-motion:reduce){.qs,.qsb{animation:none}}
 /* ---- motion (transitions.dev tokens: modal, toast, tabs, checkbox, hover, page enter) ---- */
 :root{--duration-quick:150ms;--duration-fast:250ms;--duration-medium:350ms;--duration-slow:400ms;
  --ease-smooth-out:cubic-bezier(.22,1,.36,1);--ease-bounce:cubic-bezier(.34,1.36,.64,1);--scale-large:.96;--blur-small:2px}
@@ -162,7 +190,7 @@ input[type=checkbox]:checked,input[type=radio]:checked{animation:t-pop var(--dur
   <div class="sidefoot"><a href="/"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>หน้าแรกกิจกรรมค่าย</a><button class="lk hidden" id="logout" type="button"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-7M21 12H9"/></svg>ออกจากระบบ</button></div>
  </aside>
  <div class="main">
-  <header class="top"><button class="burger" id="burger" type="button" aria-label="เมนู" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><h1 id="ttl">แดชบอร์ด</h1><span class="who hidden" id="who"></span></header>
+  <header class="top"><button class="burger" id="burger" type="button" aria-label="เมนู" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><h1 id="ttl">แดชบอร์ด</h1><button class="qsbtn" id="qsBtn" type="button" aria-label="ค้นหานักศึกษา" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>ค้นหานักศึกษา</span><kbd>/</kbd></button><span class="who hidden" id="who"></span></header>
   <main id="view" tabindex="-1" aria-live="polite"><div class="card"><p class="mute">กำลังโหลด…</p></div></main>
   <footer class="foot">&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</footer>
  </div>
@@ -562,6 +590,96 @@ async function stExport(tb) {
   $('exX').onclick = async () => { try { await saveXlsx(await rows(), 'camp-students-' + stamp() + '.xlsx', [14, 28, 26, 12, 16, 8, 8, 20, 14, 14, 14, 16, 10, 16, 24, 24], 'นักศึกษา'); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
   $('exC').onclick = async () => { try { const csv = '﻿' + (await rows()).map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'camp-students-' + stamp() + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } catch (e) { toast('ส่งออกไม่สำเร็จ', true); } };
 }
+
+// ---------- ค้นหานักศึกษาแบบเร็ว (/ หรือ Ctrl+K) ----------
+// Loads the whole roster once, then filters in the browser on every keystroke: name (Thai / English), nickname, AKA, student id, phone.
+(function () {
+  const IC = { search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', back: '<path d="M15 18l-6-6 6-6"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/>', copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>', eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', warn: '<path d="M12 3l10 18H2zM12 10v5M12 18v.01"/>', list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>' };
+  const ic = (n, c) => '<svg class="ic' + (c ? ' ' + c : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
+  const THM = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const bdate = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? (+m[3]) + ' ' + THM[+m[2] - 1] + ' ' + (+m[1] + 543) : '—'; };
+  const phoneF = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.length === 10 ? d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6) : d.length === 9 ? d.slice(0, 2) + '-' + d.slice(2, 5) + '-' + d.slice(5) : d; };
+  const nidF = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.length === 13 ? [d[0], d.slice(1, 5), d.slice(5, 10), d.slice(10, 12), d[12]].join('-') : d; };
+  const norm = (t) => String(t || '').toLowerCase().replace(/^(นางสาว|นาย|นาง|น\.ส\.)\s*/, '').replace(/\s+/g, ' ').trim();
+  const digits = (t) => String(t || '').replace(/\D/g, '');
+  let roster = null, loading = null, loadedAt = 0, ov = null, sel = 0, shown = [];
+  async function loadRoster(force) {
+    if (!force && roster && Date.now() - loadedAt < 300000) return roster;
+    if (!loading) loading = getJ('/camps/admin/students').then((d) => { roster = (d.students || []).map((x) => Object.assign(x, { _k: [x.name, x.name_en, x.nickname, x.aka].map(norm).join('|'), _n: norm(x.nickname), _a: norm(x.aka), _nm: norm(x.name) })); loadedAt = Date.now(); return roster; }).finally(() => { loading = null; });
+    return loading;
+  }
+  function score(s, q, qd) {
+    if (qd && s.student_id === qd) return 100;
+    if (qd && s.student_id.startsWith(qd)) return 90 - (s.student_id.length - qd.length);
+    if (qd && qd.length >= 3 && s.student_id.endsWith(qd)) return 72;
+    if (qd && qd.length >= 3 && s.student_id.includes(qd)) return 66;
+    if (qd && qd.length >= 4 && (digits(s.phone).includes(qd) || digits(s.guardian_phone).includes(qd))) return 64;
+    if (s._n === q || s._a === q) return 85;
+    if (s._n.startsWith(q) || s._a.startsWith(q)) return 80;
+    if (s._nm.startsWith(q)) return 75;
+    if (s._k.includes(q)) return 60;
+    return 0;
+  }
+  const search = (qraw) => { const q = norm(qraw), qd = digits(qraw); if (!q) return []; return roster.map((s) => [score(s, q, qd.length === q.length ? qd : ''), s]).filter((x) => x[0] > 0).sort((a, b) => b[0] - a[0] || a[1].student_id.localeCompare(b[1].student_id)).slice(0, 12).map((x) => x[1]); };
+  const dep = (s) => (s.department_name || '').replace(/^ฝ่าย/, '');
+  const row = (s, i) => '<button type="button" class="qsr' + (i === sel ? ' on' : '') + '" role="option" data-i="' + i + '" aria-selected="' + (i === sel) + '"><span class="qav" aria-hidden="true">' + esc((s._nm[0] || '?').toUpperCase()) + '</span><span class="qmain"><b>' + esc(s.name) + (s.nickname ? ' <i>(' + esc(s.nickname) + ')</i>' : '') + '</b><small>' + esc(s.student_id) + ' · ปี ' + s.year + (s.aka ? ' · ' + esc(s.aka) : '') + (dep(s) ? ' · ' + esc(dep(s)) : '') + '</small></span>' + (s.food_allergy || s.medical ? '<span class="qflag" title="มีข้อมูลแพ้อาหาร / โรคประจำตัว">' + ic('warn') + '</span>' : '') + '</button>';
+  function close() { if (!ov) return; ov.remove(); ov = null; document.documentElement.style.overflow = ''; const b = $('qsBtn'); if (b) b.focus(); }
+  function open() {
+    if (ov) return;
+    ov = document.createElement('div'); ov.className = 'qs'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'ค้นหานักศึกษา');
+    ov.innerHTML = '<div class="qsb"><div class="qsh"><span class="qsi">' + ic('search') + '</span><input id="qsI" type="search" inputmode="search" placeholder="ชื่อ · ชื่อเล่น · AKA · รหัสนักศึกษา · เบอร์" autocomplete="off" enterkeyhint="go" aria-controls="qsL" aria-label="ค้นหานักศึกษา"><button type="button" class="qsx" aria-label="ปิด" data-x>' + ic('x') + '</button></div><div class="qsl" id="qsL" role="listbox" aria-live="polite"><p class="qse">พิมพ์เพื่อค้นหา</p></div></div>';
+    document.body.appendChild(ov); document.documentElement.style.overflow = 'hidden';
+    const inp = $('qsI'), list = $('qsL');
+    const render = () => {
+      const q = inp.value.trim();
+      if (!q) { shown = []; list.innerHTML = '<p class="qse">พิมพ์เพื่อค้นหา</p>'; return; }
+      if (!roster) { list.innerHTML = '<p class="qse">กำลังโหลดรายชื่อ…</p>'; return; }
+      shown = search(q); if (sel >= shown.length) sel = 0;
+      list.innerHTML = shown.length ? shown.map(row).join('') : '<p class="qse">ไม่พบ “' + esc(q) + '”</p>';
+    };
+    inp.oninput = () => { sel = 0; render(); };
+    loadRoster().then(render).catch((e) => { list.innerHTML = '<p class="qse">' + esc(e.forbidden ? 'ไม่มีสิทธิ์แอดมิน' : (e.message || 'โหลดรายชื่อไม่สำเร็จ')) + '</p>'; });
+    ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(); });
+    ov.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) return close(); const r = e.target.closest('.qsr'); if (r) detail(shown[+r.dataset.i]); });
+    ov.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); if (ov.querySelector('.qsd')) { back(); } else close(); return; }
+      if (ov.querySelector('.qsd')) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!shown.length) return; e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : shown.length - 1)) % shown.length; render(); const on = list.querySelector('.qsr.on'); if (on) on.scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'Enter' && shown[sel]) { e.preventDefault(); detail(shown[sel]); }
+    });
+    inp.focus();
+  }
+  function back() { const b = ov.querySelector('.qsb'); b.classList.remove('isd'); const d = ov.querySelector('.qsd'); if (d) d.remove(); const i = $('qsI'); i.focus(); }
+  function detail(s) {
+    if (!s || !ov) return;
+    const b = ov.querySelector('.qsb'); b.classList.add('isd');
+    const r = (k, v, cls) => '<div class="qdr ' + (cls || '') + '"><span>' + k + '</span><b>' + v + '</b></div>';
+    const tel = (v) => v ? '<a class="qtel" href="tel:' + esc(String(v).replace(/\D/g, '')) + '">' + ic('phone') + esc(phoneF(v)) + '</a>' : '<i class="qn">—</i>';
+    const nid = nidF(s.national_id), none = '<i class="qn">—</i>';
+    const d = document.createElement('div'); d.className = 'qsd';
+    d.innerHTML = '<div class="qdh"><button type="button" class="ibtn" data-back aria-label="กลับไปผลการค้นหา" title="กลับ">' + ic('back') + '</button><span class="qav big" aria-hidden="true">' + esc((s._nm[0] || '?').toUpperCase()) + '</span><div class="qdt"><h2>' + esc(s.name) + '</h2>' + (s.name_en ? '<p>' + esc(s.name_en) + '</p>' : '') + '<div class="qch"><span class="chip2">ปี ' + s.year + '</span><span class="chip2">' + (GL[s.gender] || '—') + '</span>' + (dep(s) ? '<span class="chip2 dk">' + esc(s.department_name) + '</span>' : '<span class="chip2 mu">ยังไม่ได้เลือกฝ่าย</span>') + '</div></div><button type="button" class="ibtn" data-x aria-label="ปิด" title="ปิด">' + ic('x') + '</button></div>'
+      + ((s.food_allergy || s.medical) ? '<div class="qwarn" role="note">' + ic('warn') + '<div>' + (s.food_allergy ? '<b>แพ้อาหาร</b> ' + esc(s.food_allergy) : '') + (s.food_allergy && s.medical ? '<br>' : '') + (s.medical ? '<b>โรคประจำตัว</b> ' + esc(s.medical) : '') + '</div></div>' : '')
+      + '<div class="qdg">' + r('รหัสนักศึกษา', esc(s.student_id) + ' <button type="button" class="qcp" data-copy="' + esc(s.student_id) + '" aria-label="คัดลอกรหัส" title="คัดลอก">' + ic('copy') + '</button>', '')
+      + r('ชื่อเล่น', s.nickname ? esc(s.nickname) : none) + r('ชื่อ AKA', s.aka ? esc(s.aka) : none)
+      + r('เบอร์โทรศัพท์', tel(s.phone)) + r('เบอร์ผู้ปกครอง', tel(s.guardian_phone))
+      + r('วันเกิด', esc(bdate(s.birth_date))) + r('รหัสบัตรประชาชน', nid ? '<span id="qNid" data-full="' + esc(nid) + '">' + esc(nid.replace(/\d(?=(?:-?\d){3})/g, '•')) + '</span> <button type="button" class="qcp" data-eye aria-pressed="false" aria-label="แสดงเลขบัตร" title="แสดง / ซ่อน">' + ic('eye') + '</button>' : none)
+      + r('กรุ๊ปเลือด', s.blood_type ? esc(s.blood_type === 'unknown' ? 'ไม่ทราบ' : s.blood_type) : none) + r('วิธีการกิน', s.diet ? esc(s.diet) : none) + '</div>'
+      + '<div class="qdf"><button type="button" class="btn" data-open>' + ic('list') + ' ดูในรายชื่อ / แก้ไข</button></div>';
+    b.appendChild(d);
+    d.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-back]')) return back();
+      const cp = e.target.closest('[data-copy]'); if (cp) { try { await navigator.clipboard.writeText(cp.dataset.copy); toast('คัดลอกรหัสแล้ว'); } catch (x) { toast('คัดลอกไม่ได้', true); } return; }
+      const ey = e.target.closest('[data-eye]'); if (ey) { const el = $('qNid'), on = ey.getAttribute('aria-pressed') !== 'true'; ey.setAttribute('aria-pressed', on ? 'true' : 'false'); el.textContent = on ? el.dataset.full : el.dataset.full.replace(/\d(?=(?:-?\d){3})/g, '•'); return; }
+      if (e.target.closest('[data-open]')) { stQ = s.student_id; close(); if (location.hash === '#students') go(); else location.hash = '#students'; }
+    });
+    d.querySelector('[data-back]').focus();
+  }
+  $('qsBtn').addEventListener('click', open);
+  document.addEventListener('keydown', (e) => {
+    const t = e.target, typing = t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+    if (((e.key === '/' && !typing) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) && !ov && !document.querySelector('dialog[open]')) { e.preventDefault(); open(); }
+  });
+})();
 
 // ---------- เสื้อค่าย ----------
 const SH_ST = { unset: ['ยังไม่กำหนดวัน', ''], before: ['ยังไม่ถึงเวลา', ''], open: ['เปิดอยู่', 'open'], after: ['ปิดแล้ว', 'closed'] };
