@@ -14,8 +14,8 @@ let toastT;
 function toast(msg,err){const t=$('toast');t.classList.remove('is-open');t.textContent=msg;t.className='t-toast'+(err?' err':'');void t.offsetWidth;t.classList.add('is-open');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('is-open'),3200)}
 const _libs={};
 function loadScript(src){return _libs[src]||(_libs[src]=new Promise((ok,no)=>{const x=document.createElement('script');x.src=src;x.onload=ok;x.onerror=()=>{delete _libs[src];no(new Error('โหลดไลบรารีไม่สำเร็จ'))};document.head.appendChild(x)}))}
-async function needXlsx(){await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js')}
-async function needPdf(){await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js');await loadScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js')}
+async function needXlsx(){await loadScript('/assets/vendor/xlsx-0.18.5.full.min.js')}
+async function needPdf(){await loadScript('/assets/vendor/jspdf-2.5.2.umd.min.js');await loadScript('/assets/vendor/jspdf-autotable-3.8.4.min.js')}
 function updateOnline(){$('offline').classList.toggle('hidden',navigator.onLine)}
 addEventListener('online',updateOnline);addEventListener('offline',updateOnline);
 // ?test=true : demo mode with local fake data. No Auth0 login and no API calls are made.
