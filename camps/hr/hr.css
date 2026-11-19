@@ -453,3 +453,6 @@ body[data-page] .uc{border-radius:18px}
 /* /admin/hr/maintenance */
 .mth{margin:14px 0 6px;font-size:14px;font-weight:700}.mtsys{display:grid;gap:8px}.mtsys .chk{align-items:flex-start}
 .mtprev{border:2px dashed var(--line,#e4e2e6);border-radius:16px;padding:18px;text-align:center}.mtprev h2{margin:0 0 6px;font-size:22px}.mtm{white-space:pre-line;margin:0 0 6px}.mtu{margin:0;font-weight:700;color:#c62828}
+/* เสื้อค่าย: คำเตือนก่อนกดส่งผลงาน */
+.shchk{margin:6px 0 10px;padding-left:20px;font-size:14px}.shchk li{margin:3px 0}
+.shok{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:10px;text-align:left;font-weight:600;margin-top:8px}.shok input{width:22px;height:22px;flex:none;margin:2px 0 0}.shok span{flex:1}

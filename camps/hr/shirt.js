@@ -88,6 +88,8 @@ function renderShirtSubmit() {
   h += '<p class="muted">ส่งได้ 1 ผลงาน แก้ไขได้จนถึง ' + esc(shWhen(x.schedule.submitTo)) + '</p><div class="shup"><form id="shForm" class="form" novalidate autocomplete="off">'
     + '<label><span>ชื่อผู้ออกแบบ <em class="req">*</em></span><input id="shDesigner" maxlength="80" required></label><label><span>หมู่เรียน <em class="req">*</em></span><input id="shGroup" maxlength="40" required placeholder="เช่น ปี 2 หมู่ 1"></label>'
     + '<label><span>รูปลายเสื้อ ' + (my ? '(เลือกใหม่ถ้าต้องการเปลี่ยน)' : '<em class="req">*</em>') + '<small class="hint"> PNG / JPG / WebP ไม่เกิน 10 MB (ย่อเป็นไม่เกิน 1080 × 1080 px อัตโนมัติ)</small></span><input id="shFile" type="file" accept="image/png,image/jpeg,image/webp"></label>'
+    + '<div class="notice" role="note"><b>⚠ ตรวจให้ครบก่อนกดส่งผลงาน</b><ul class="shchk"><li>รูปต้อง<b>ออกแบบเอง</b> ห้ามใช้ภาพที่สร้างด้วย AI (เช่น Midjourney, DALL·E, ChatGPT, Gemini) หรือมีส่วนที่สร้างด้วย AI</li><li>ระบบตรวจอัตโนมัติ ถ้าพบว่าเป็น AI จะ<b>ไม่รับผลงานและระงับการส่ง 24 ชั่วโมง</b> และแอดมินอาจตัดสิทธิ์ผลงานที่ตรวจพบภายหลัง</li><li>กรอก<b>ชื่อผู้ออกแบบ</b>และ<b>หมู่เรียน</b>ให้ถูกต้อง และเลือกรูป PNG / JPG / WebP ไม่เกิน 10 MB</li><li>ส่งได้ <b>1 ผลงาน</b> ดูตัวอย่างผลงานให้ตรงกับที่ต้องการก่อนกดส่ง</li></ul>'
+    + '<label class="shok"><input type="checkbox" id="shOk"> <span>ฉันยืนยันว่าผลงานนี้ออกแบบเอง ไม่ได้สร้างด้วย AI และข้อมูลถูกต้องครบถ้วน</span></label></div>'
     + '<div class="filerow"><button class="btn primary" type="submit" id="shSave">' + (my ? 'บันทึกการแก้ไข' : 'ส่งผลงาน') + '</button>' + (my ? '<button class="btn danger" type="button" id="shDel">ลบผลงาน</button>' : '') + '</div></form>'
     + '<div class="shlive" id="shLive" aria-live="polite"></div></div>';
   host.innerHTML = h + '</div>';
@@ -107,6 +109,7 @@ function renderShirtSubmit() {
     if (!designer) { $('shDesigner').focus(); return toast('กรอกชื่อผู้ออกแบบ', true); }
     if (!group) { $('shGroup').focus(); return toast('กรอกหมู่เรียน', true); }
     if (!my && !blob) { $('shFile').focus(); return toast('เลือกรูปลายเสื้อ', true); }
+    if (!$('shOk').checked) { $('shOk').focus(); return toast('ติ๊กยืนยันก่อนส่งผลงานว่าออกแบบเอง ไม่ได้สร้างด้วย AI', true); }
     $('shSave').disabled = true;
     try {
       const q = new URLSearchParams({ designer, group, title: my ? my.title : '', description: my ? my.description : '', meta: blob ? meta.join(',') : '' });   // no title / description fields any more: keep what an old design has
