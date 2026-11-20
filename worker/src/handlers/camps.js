@@ -4,6 +4,7 @@ import { json, corsHeaders } from "../lib/cors.js";
 import { putFile } from "../lib/files.js";
 import { akaState, readNames, upsertAka, tidy as tidyAka } from "./aka.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
+import { erasePhotos } from "./survey.js";
 
 export const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
 // Thai-safe text: NFC, no zero-width marks, NBSP -> space, collapsed spaces; Thai digits (๐-๙) -> 0-9 for ids / years
@@ -751,6 +752,7 @@ async function adminRetention(request, env) {
 }
 // every row that identifies one student (the R2 picture of the shirt design too). Finance rows (budget_*) are kept on their own 10-year rule.
 async function eraseStudent(env, id) {
+  await erasePhotos(env, id);   // survey photos (rows + R2 files)
   const d = await env.DB.prepare("SELECT id,image_key FROM camp_shirt_designs WHERE student_id=?").bind(id).first();
   const st = (sql, ...p) => env.DB.prepare(sql).bind(...p);
   await env.DB.batch([

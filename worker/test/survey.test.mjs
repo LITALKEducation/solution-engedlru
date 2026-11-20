@@ -110,4 +110,38 @@ r = await call('s1', 'POST', '/camps/survey/save', form(16)); ok(r.s === 403 && 
 r = await call('s1', 'GET', '/camps/survey/me'); ok(r.d.assigned === false, 'after removal the student sees no form');
 ok(db.prepare("select count(*) c from budget_audit_logs where action in ('SURVEY_ASSIGN','SURVEY_UNASSIGN')").get().c >= 4, 'assignments are audited');
 
+// ---- photos on the form ----
+async function raw(who, method, path, bytes) {
+  const url = new URL('https://api.x' + path); const h = { Origin: 'https://enged.sorasukt.com' }; if (who) h.Authorization = 'Bearer ' + who;
+  const r = await survey(new Request(url, { method, headers: h, body: bytes }), env, url);
+  const ct = r.headers.get('content-type') || ''; return { s: r.status, ct, d: ct.includes('json') ? await r.json() : new Uint8Array(await r.arrayBuffer()), h: r.headers };
+}
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]), JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+await call('admin', 'POST', '/camps/survey/admin/assign', { studentId: '6740102220' });
+r = await raw(null, 'POST', '/camps/survey/photo', PNG); ok(r.s === 401, 'photo: anonymous refused');
+r = await raw('s2', 'POST', '/camps/survey/photo', PNG); ok(r.s === 403 && r.d.code === 'NOT_ASSIGNED', 'photo: unassigned student refused');
+r = await raw('s1', 'POST', '/camps/survey/admin/photo?studentId=6740102220', PNG); ok(r.s === 403, 'admin photo upload: student refused');
+r = await raw('s1', 'POST', '/camps/survey/photo', new Uint8Array(0)); ok(r.s === 400, 'photo: empty body');
+r = await raw('s1', 'POST', '/camps/survey/photo', new TextEncoder().encode('<svg onload=alert(1)>')); ok(r.s === 400, 'photo: only PNG/JPG/WebP (no svg/html)');
+r = await raw('s1', 'POST', '/camps/survey/photo', new Uint8Array(8 * 1024 * 1024 + 1).fill(0xff)); ok(r.s === 413, 'photo: over 8 MB refused');
+r = await raw('s1', 'POST', '/camps/survey/photo?caption=' + encodeURIComponent('ห้องสมุด'), PNG); const p1 = r.d.photo?.id;
+ok(r.s === 200 && p1 && r.d.photos.length === 1 && r.d.photos[0].caption === 'ห้องสมุด', 'student adds a photo with a caption');
+r = await raw('admin', 'POST', '/camps/survey/admin/photo?studentId=6740102220', JPG); const p2 = r.d.photo?.id; ok(r.s === 200 && r.d.photos.length === 2, 'admin adds a photo for the student');
+r = await call('s1', 'GET', '/camps/survey/me'); ok(r.d.photos.length === 2 && r.d.maxPhotos === 10, 'student sees the photos list');
+r = await call('admin', 'GET', '/camps/survey/admin/student?id=6740102220'); ok(r.d.photos.length === 2, 'admin sees the photos list');
+r = await raw('s1', 'GET', '/camps/survey/photo/' + p1); ok(r.s === 200 && r.ct === 'image/png' && r.d.length === PNG.length && r.h.get('x-content-type-options') === 'nosniff' && /private/.test(r.h.get('cache-control')), 'owner opens the picture (private, nosniff)');
+r = await raw('admin', 'GET', '/camps/survey/photo/' + p2); ok(r.s === 200 && r.ct === 'image/jpeg', 'admin opens the picture');
+r = await raw('s2', 'GET', '/camps/survey/photo/' + p1); ok(r.s === 403, 'another student cannot open it');
+r = await raw(null, 'GET', '/camps/survey/photo/' + p1); ok(r.s === 401, 'anonymous cannot open it');
+r = await raw('admin', 'GET', '/camps/survey/photo/nope'); ok(r.s === 404, 'unknown picture 404');
+for (let i = 0; i < 8; i++) await raw('s1', 'POST', '/camps/survey/photo', PNG);
+r = await raw('s1', 'POST', '/camps/survey/photo', PNG); ok(r.s === 409 && r.d.code === 'PHOTO_LIMIT', 'at most 10 photos per student');
+r = await call('s2', 'POST', '/camps/survey/photo/delete', { id: p1 }); ok(r.s === 403, 'another student cannot delete');
+r = await call('s1', 'POST', '/camps/survey/photo/delete', { id: p1 }); ok(r.s === 200 && r.d.photos.length === 9 && !env.FILES._m.has(Object.keys(Object.fromEntries(env.FILES._m)).find((k) => k.includes(p1)) || '-'), 'student deletes a photo (row and file)');
+r = await call('admin', 'POST', '/camps/survey/admin/photo/delete', { studentId: '6740102220', id: 'nope' }); ok(r.s === 404, 'delete unknown photo 404');
+ok(db.prepare("select count(*) c from budget_audit_logs where action in ('SURVEY_PHOTO_ADD','SURVEY_PHOTO_DELETE')").get().c >= 11, 'photo changes are audited');
+// deleting the form removes its pictures
+r = await call('admin', 'POST', '/camps/survey/admin/save', form(16)); r = await call('admin', 'POST', '/camps/survey/admin/delete', { studentId: '6740102220' });
+ok(r.s === 200 && db.prepare("select count(*) c from camp_survey_photos where student_id='6740102220'").get().c === 0 && ![...env.FILES._m.keys()].some((k) => k.startsWith('camps/survey/6740102220')), 'deleting the form deletes its photos');
+
 console.log(`survey: ${pass} passed, ${fl} failed`); process.exit(fl ? 1 : 0);
