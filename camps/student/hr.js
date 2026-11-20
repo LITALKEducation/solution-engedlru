@@ -191,6 +191,19 @@ function selBind(root, onPick) {
   });
 }
 const fmtTyped = { nid: (v) => { const d = v.replace(/\D/g, '').slice(0, 13); return [d.slice(0, 1), d.slice(1, 5), d.slice(5, 10), d.slice(10, 12), d.slice(12)].filter(Boolean).join('-'); }, phone: (v) => (/^\s*\+/.test(v) ? v : (() => { const d = v.replace(/\D/g, '').slice(0, 10); return [d.slice(0, 3), d.slice(3, 6), d.slice(6)].filter(Boolean).join('-'); })()) };
+// birth date as three pick-lists: day, full month name, Buddhist year ("9 กันยายน 2548"); a hidden #pfBirth keeps the ISO date the server wants
+function birthPicker(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''), by = new Date().getFullYear() + 543, yrs = [];
+  for (let y = by - 8; y >= by - 70; y--) yrs.push(y); if (m && !yrs.includes(+m[1] + 543)) yrs.push(+m[1] + 543);
+  const ph = (t) => ['', t], d = [ph('วัน')].concat(Array.from({ length: 31 }, (_, i) => [String(i + 1), String(i + 1)])), mo = [ph('เดือน')].concat(TH_MONTHS.map((x, i) => [String(i + 1), x])), y = [ph('ปี พ.ศ.')].concat(yrs.map((x) => [String(x), String(x)]));
+  return '<div class="span2 pfbirth" id="pfBirthW" tabindex="-1" role="group" aria-labelledby="pfBirthT"><span id="pfBirthT" class="pfbt">วันเกิด <em class="req" aria-hidden="true">*</em></span><div class="pfbg">'
+    + selHTML('pfBD', 'วัน', d, m ? String(+m[3]) : '') + selHTML('pfBM', 'เดือน', mo, m ? String(+m[2]) : '') + selHTML('pfBY', 'ปี พ.ศ.', y, m ? String(+m[1] + 543) : '') + '</div><input type="hidden" id="pfBirth" value="' + esc(iso || '') + '"><span class="pferr" id="pfBirthWE" role="alert"></span></div>';
+}
+function birthSync() {
+  const d = +$('pfBD').value, mo = +$('pfBM').value, y = +$('pfBY').value - 543; let v = '';
+  if (d && mo && y) { const t = new Date(Date.UTC(y, mo - 1, d)); if (t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d) v = y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  $('pfBirth').value = v; return v;
+}
 function editProfile() {
   const st = me && me.student; if (!st) return;
   const akaOpen = !me.akaState || me.akaState === 'open';   // once an admin closes naming, nickname and AKA stay as they are
@@ -203,7 +216,7 @@ function editProfile() {
     + '<p class="pfsec">ข้อมูลที่แก้ไม่ได้ <span class="pfopt">ติดต่อแอดมินหากต้องแก้</span></p><div class="pfg pflock">' + [['รหัสนักศึกษา', st.student_id], ['ชั้นปี', 'ปี ' + st.year], ['เพศ', GL[st.gender]], ['ฝ่าย', (me.selection && me.selection.department_name) || 'ยังไม่ได้เลือก']].map((x) => '<label><span>' + x[0] + '</span><input value="' + esc(x[1]) + '" disabled aria-disabled="true"></label>').join('') + '</div>'
     + '<p class="pfsec">ชื่อ</p><div class="pfg">' + f('pfName', 'ชื่อ-นามสกุล (ไทย)', 'maxlength="200"', true, true) + f('pfNameEn', 'ชื่อ-สกุล (อังกฤษ)', 'maxlength="200" pattern="[A-Za-z][A-Za-z .\'\\-]*" title="ตัวอักษรภาษาอังกฤษเท่านั้น" placeholder="Somchai Jaidee" autocapitalize="words"', true, true)
     + f('pfNick', 'ชื่อเล่น', 'maxlength="30"' + (akaOpen ? '' : ' disabled'), akaOpen) + f('pfAka', 'ชื่อ AKA', 'maxlength="40"' + (akaOpen ? '' : ' disabled'), akaOpen) + '</div>'
-    + '<p class="pfsec">ข้อมูลส่วนตัว</p><div class="pfg">' + f('pfBirth', 'วันเกิด', 'type="date" min="1900-01-01" max="' + new Date().toISOString().slice(0, 10) + '"') + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก" placeholder="x-xxxx-xxxxx-xx-x"')
+    + '<p class="pfsec">ข้อมูลส่วนตัว</p><div class="pfg">' + birthPicker(st.birth_date) + f('pfNid', 'รหัสบัตรประชาชน 13 หลัก', 'inputmode="numeric" maxlength="17" pattern="[0-9 \\-]{13,17}" title="ตัวเลข 13 หลัก" placeholder="x-xxxx-xxxxx-xx-x"')
     + f('pfPhone', 'เบอร์โทรศัพท์', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + f('pfGPhone', 'เบอร์ผู้ปกครอง', 'type="tel" inputmode="tel" maxlength="16" pattern="[0-9+ \\-()]{9,16}" title="ตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" placeholder="08x-xxx-xxxx"') + '</div>'
     + '<p class="pfsec">สุขภาพและอาหาร <span class="pfopt">ไม่บังคับกรอก</span></p><p class="pfnote">ใช้ดูแลเรื่องอาหารและความปลอดภัยในค่ายเท่านั้น เห็นได้เฉพาะคุณและแอดมิน ทุกครั้งที่แอดมินเปิดดูจะมีบันทึกไว้</p><div class="pfg">'
     + selHTML('pfBlood', 'กรุ๊ปเลือด', bloodOpts, st.blood_type || '') + selHTML('pfDiet', 'วิธีการกิน', dietOpts, dietVal)
@@ -212,10 +225,10 @@ function editProfile() {
     + '<div class="span2 pfcons"><label class="shok"><input type="checkbox" id="pfConsent"> <span>ฉันยินยอมให้เก็บและใช้ข้อมูลสุขภาพและอาหารข้างบนตาม <a href="/legal/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> (ล้างทุกช่องเพื่อถอนความยินยอม)</span></label><span class="pferr" id="pfConsentE" role="alert"></span></div></div>'
     + '</div><div class="pfdf"><button class="btn" type="button" data-x>ยกเลิก</button><button class="btn primary" type="submit">บันทึก</button></div></form>');
   d.firstElementChild.classList.add('pfbox');
-  $('pfName').value = st.name || ''; $('pfNameEn').value = st.name_en || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; $('pfBirth').value = st.birth_date || '';
+  $('pfName').value = st.name || ''; $('pfNameEn').value = st.name_en || ''; $('pfNick').value = st.nickname || ''; $('pfAka').value = st.aka || ''; 
   $('pfNid').value = fmtNid(st.national_id).replace(/ /g, '-') || ''; $('pfPhone').value = fmtPhone(st.phone) || ''; $('pfGPhone').value = fmtPhone(st.guardian_phone) || '';
   $('pfAllergy').value = st.food_allergy || ''; $('pfMedical').value = st.medical || ''; $('pfConsent').checked = !!st.health_consent_at; if (dietVal === '__other') $('pfDietO').value = st.diet;
-  selBind(d, (id, v) => { dirty = true; if (id === 'pfDiet') { $('pfDietOW').classList.toggle('hidden', v !== '__other'); if (v === '__other') $('pfDietO').focus(); } });
+  selBind(d, (id, v) => { dirty = true; if (id === 'pfBD' || id === 'pfBM' || id === 'pfBY') { birthSync(); $('pfBirthW').classList.remove('bad'); $('pfBirthWE').textContent = ''; } if (id === 'pfDiet') { $('pfDietOW').classList.toggle('hidden', v !== '__other'); if (v === '__other') $('pfDietO').focus(); } });
   // type-ahead formatting for the id card and phone numbers
   const fmtOn = (id, fn) => { $(id).addEventListener('input', () => { const v = $(id).value, o = fn(v); if (o !== v) $(id).value = o; }); };
   fmtOn('pfNid', fmtTyped.nid); fmtOn('pfPhone', fmtTyped.phone); fmtOn('pfGPhone', fmtTyped.phone);
@@ -223,13 +236,14 @@ function editProfile() {
   // a tap on the backdrop must not throw away typed changes
   d.addEventListener('mousedown', (e) => { if (e.target === d && dirty) e.stopImmediatePropagation(); }, true);
   d.addEventListener('click', async (e) => { if (e.target.closest('[data-x]')) { if (dirty && !(await confirmDlg('ทิ้งการแก้ไข?', 'ข้อมูลที่แก้ไว้จะไม่ถูกบันทึก', 'ทิ้ง'))) return; d.remove(); } });
-  const FIELD = { name: 'pfName', nameEn: 'pfNameEn', nickname: 'pfNick', aka: 'pfAka', birthDate: 'pfBirth', nationalId: 'pfNid', phone: 'pfPhone', guardianPhone: 'pfGPhone', bloodType: 'pfBlood', healthConsent: 'pfConsent' };
+  const FIELD = { name: 'pfName', nameEn: 'pfNameEn', nickname: 'pfNick', aka: 'pfAka', birthDate: 'pfBirthW', nationalId: 'pfNid', phone: 'pfPhone', guardianPhone: 'pfGPhone', bloodType: 'pfBlood', healthConsent: 'pfConsent' };
   const clearErr = () => d.querySelectorAll('.pferr').forEach((x) => { x.textContent = ''; x.parentElement.classList.remove('bad'); }); 
   const showErr = (id, msg) => { const inp = $(id); if (!inp) return false; const e = $(id + 'E'); if (e) { e.textContent = msg; inp.parentElement.classList.add('bad'); } inp.setAttribute('aria-invalid', 'true'); inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (inp.focus) inp.focus({ preventScroll: true }); return true; };
   $('pfForm').addEventListener('submit', async (e) => {
     e.preventDefault(); clearErr();
     const bad = [...d.querySelectorAll('#pfForm input[required]')].find((i) => !i.disabled && !i.validity.valid);
     if (bad) { showErr(bad.id, bad.validity.valueMissing ? 'กรุณากรอกช่องนี้' : (bad.title || 'รูปแบบไม่ถูกต้อง')); return; }
+    { const bd = birthSync(); if (!bd) { showErr('pfBirthW', $('pfBD').value && $('pfBM').value && $('pfBY').value ? 'วันที่นี้ไม่มีในปฏิทิน' : 'เลือกวัน เดือน และปีเกิดให้ครบ'); return; } }
     const anyH = $('pfBlood').value || $('pfDiet').value || $('pfAllergy').value.trim() || $('pfMedical').value.trim();
     if (anyH && !$('pfConsent').checked) { showErr('pfConsent', 'ติ๊กยินยอมก่อน หากกรอกข้อมูลสุขภาพและอาหาร'); return; }
     const btn = e.submitter; if (btn) btn.disabled = true;
