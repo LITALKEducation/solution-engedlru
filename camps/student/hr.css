@@ -587,3 +587,8 @@ nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-li
 .talinks{margin:4px 0 12px;padding-left:1.3em;line-height:2}.talinks a{color:var(--ink)!important;text-decoration:underline;text-underline-offset:3px;font-weight:600}
 #termsAsk{z-index:90}
 .pfcons{margin-top:2px}.pfcons .shok{margin:0}.pfcons a{color:var(--ink)!important;text-decoration:underline}
+/* birth date: day / full month / Buddhist year pick-lists */
+.pfbirth{display:flex;flex-direction:column;gap:6px}.pfbt{font-size:13px;font-weight:600}
+.pfbg{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.5fr) minmax(0,1fr);gap:8px}
+.pfbg .sel-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pfbirth:focus{outline:none}.pfbirth.bad .sel-btn{border-color:var(--bad,#b42318)}

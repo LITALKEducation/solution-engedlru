@@ -47,7 +47,10 @@ r=await call('admin','GET','/camps/admin/health-export');ok(r.s===200&&r.d.stude
 r=await call('s1','GET','/camps/admin/health-export');ok(r.s===403,'a student cannot export health details');
 {const lg=await env.DB.prepare("SELECT action FROM budget_audit_logs WHERE action IN ('CAMP_HEALTH_VIEW','CAMP_HEALTH_EXPORT')").all();const acts=(lg.results||[]).map(x=>x.action);ok(acts.includes('CAMP_HEALTH_VIEW')&&acts.includes('CAMP_HEALTH_EXPORT'),'opening and exporting health details is audited');}
 r=await call('s1','POST','/camps/me/profile',P({foodAllergy:'',diet:'',bloodType:'',medical:''}));r=await call('s1','GET','/camps/me');ok(!r.d.student.food_allergy&&!r.d.student.diet&&!r.d.student.blood_type&&!r.d.student.medical&&!r.d.student.health_consent_at,'clearing every health field withdraws the consent');
+for(const g of ['A','B','AB','O']){r=await call('s1','POST','/camps/me/profile',P({bloodType:g,healthConsent:true}));ok(r.s===200,'plain blood group '+g+' (no + / -) accepted');}
+r=await call('s1','GET','/camps/me');ok(r.d.student.blood_type==='O','plain blood group is stored as given');
 r=await call('s1','POST','/camps/me/accept-terms',{});ok(r.s===200&&r.d.version==='2026-11-19','student accepts terms');
+r=await call('s1','POST','/camps/me/profile',P({bloodType:'',healthConsent:true}));
 r=await call('s1','GET','/camps/me');ok(r.d.student.terms_ver==='2026-11-19'&&!!r.d.student.terms_accepted_at,'acceptance stored with version and time');
 // deleting a student erases everything about them, not just the roster row
 r=await call('admin','POST','/camps/admin/students',{studentId:'6740108888',name:'Delete Me',year:2,gender:'M'});

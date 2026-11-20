@@ -1,79 +1,29 @@
-# Camps Lotto · ระบบจัดการการจับสลาก
+# Camps · จับสลาก · เช็กชื่อ (`/lotto/`)
 
-หน้าเว็บอยู่ที่ `/camps/lotto/` และ API อยู่ภายใต้ `/camps/lotto/*` ใน Cloudflare Worker `engedlru-api`
+Registration at the entrance: an officer scans the student's QR (the student id), the student is **checked in** and the **draw number** is shown in huge type. The page is built to move a crowd: scan fast, nothing to tap on a normal scan.
 
-## ความสามารถ
+The roster, draw numbers, QR printing, Excel/CSV import and the officer list are managed in the admin page (`/admin/#lotto`); `/lotto/` itself is only the scan page (it links to the admin page for admins).
 
-- ผู้ดูแลจัดการรหัสนักศึกษา ชื่อ และเลขจับสลากรายบุคคล
-- นำเข้ารายชื่อจำนวนมากจาก CSV: `รหัสนักศึกษา,ชื่อ-นามสกุล,เลขจับสลาก`
-- สร้าง QR Code จากรหัสนักศึกษาเพื่อพิมพ์/นำไปแสดง
-- ผู้ดูแลกำหนดอีเมลเจ้าหน้าที่ที่มีสิทธิ์สแกนได้จากเมนู “เจ้าหน้าที่สแกน”
-- เจ้าหน้าที่สแกนผ่านกล้องมือถือหรือกรอกรหัสด้วยตนเอง
-- บันทึกเวลาที่ตัดสิทธิ์และอีเมลเจ้าหน้าที่ การสแกนซ้ำไม่สามารถตัดสิทธิ์ซ้ำได้
-- หน้าตรวจสอบแสดงสถานะและประวัติการตัดสิทธิ์ของแต่ละคน
+## How a scan works
+1. **The camera is on from the start** (only the "ปิดกล้อง" button turns it off); a scan only pauses the picture behind the pop-up. Torch / switch-camera buttons appear on phones that have them. If the camera cannot open, a box explains how to allow it. The same QR in front of the camera is ignored for 3 s.
+2. **The number appears at once.** The phone keeps a copy of the roster (`GET /camps/lotto/scanner/roster`, refreshed every 2 min), so the pop-up shows the number and name the instant the QR is read ("กำลังบันทึก…"); the server answer then turns it green (checked in), amber (already checked, with who / when) or red (not on the list).
+3. **A successful check-in closes its own pop-up after 3 s** (a bar counts down; touching the pop-up keeps it open). Duplicates and errors stay until closed. A short tone tells pass / warning / problem without looking (toggle: *เสียง*), and the phone vibrates.
+4. **Undo:** "ยกเลิกการเช็กชื่อ" removes a wrong check-in (the officer who made it, or an admin; logged as `undone`). Same button when a name is opened from the recent list.
+5. **Progress:** "เช็กชื่อแล้ว N / total", how many *you* checked and how many are left, and the latest check-ins (tap one to open it).
+6. **No signal:** the roster on the phone still answers; check-ins wait in the phone (`localStorage`), a banner shows how many, and they are sent when the signal is back. Anything the server then refuses (e.g. someone else checked the same student in) is listed. The page itself must already be open (a cold start with no signal is not cached).
+7. The student's Auth0 photo is fetched separately (`GET /camps/lotto/scanner/picture`) and fills in when it arrives, so it never slows a scan.
 
-## สิทธิ์การใช้งาน
+Speed on the server: a scan is one atomic `UPDATE … RETURNING` (a second scan matches no row) plus one log row; an officer assigned by an admin needs no Auth0 role lookup, and there is no photo lookup.
 
-- ผู้จัดการระบบ: Auth0 Role `camp_admin` หรือ `budget_admin`
-- เจ้าหน้าที่สแกน: บัญชี Auth0 ที่ผู้จัดการเพิ่มอีเมลไว้ใน `camp_lotto_scanners`
-- เจ้าหน้าที่ต้องเข้าสู่ระบบด้วยบัญชีที่ยืนยันอีเมลแล้ว
+The draw number is not a secret: it is given to the person at the gate. (The earlier "open the gift" step is gone from the pages; `POST /camps/lotto/scanner/gift/open` and the gift columns remain in the Worker but nothing calls them.)
 
-## ติดตั้งฐานข้อมูล
+## Who can use it
+- Admins: Auth0 role `camp_admin` or `budget_admin` (and the `lotto` admin permission).
+- Officers: accounts with a verified email an admin added (`camp_lotto_scanners`).
 
-เพิ่ม migration ที่ `worker/migrations/0007_camps_lotto.sql` แล้วรันจากโฟลเดอร์ `worker`:
+## API (`/camps/lotto/*`, Worker handler `handlers/lotto.js`, migrations `0007_camps_lotto.sql`, `0010_camps_lotto_gift.sql`)
+Officers and admins: `GET scanner/me` · `GET scanner/roster` · `GET scanner/stats` · `GET scanner/picture?studentId=` · `GET scanner/verify?studentId=` (read-only) · `GET scanner/lookup?q=` · `POST admin/scan` (check in; 409 if already checked) · `POST scanner/undo`.
+Admins: `GET admin/overview` · `GET|POST admin/students` · `POST admin/students/import` · `DELETE admin/students/:id` · `GET|POST admin/scanners` · `DELETE admin/scanners/:email`.
 
-```bash
-npx wrangler d1 migrations apply engedlru-db --remote
-```
-
-จากนั้น deploy Worker ตาม workflow ปกติ:
-
-```bash
-npm run deploy
-```
-
-ไม่ต้องสร้าง D1 database หรือ Worker ใหม่ ระบบใช้ binding `DB` และ Auth0 configuration ที่มีอยู่
-
-## API
-
-| Method | Endpoint | สิทธิ์ |
-|---|---|---|
-| GET | `/camps/lotto/scanner/me` | ผู้ดูแลหรือเจ้าหน้าที่ที่ได้รับมอบหมาย |
-| GET | `/camps/lotto/scanner/lookup?q=` | ผู้ดูแลหรือเจ้าหน้าที่ที่ได้รับมอบหมาย |
-| POST | `/camps/lotto/admin/scan` | ผู้ดูแลหรือเจ้าหน้าที่ที่ได้รับมอบหมาย |
-| GET | `/camps/lotto/admin/overview` | ผู้ดูแล |
-| GET | `/camps/lotto/admin/students?q=` | ผู้ดูแล |
-| POST | `/camps/lotto/admin/students` | ผู้ดูแล |
-| POST | `/camps/lotto/admin/students/import` | ผู้ดูแล |
-| DELETE | `/camps/lotto/admin/students/:studentId` | ผู้ดูแล |
-| GET/POST | `/camps/lotto/admin/scanners` | ผู้ดูแล |
-| DELETE | `/camps/lotto/admin/scanners/:email` | ผู้ดูแล |
-
-## ข้อควรทราบ
-
-- เลขจับสลากไม่ซ้ำกันในชุดข้อมูลนี้
-- รหัสนักศึกษาเป็น Primary Key และ QR Code เก็บเพียงรหัสนักศึกษา ไม่ฝังข้อมูลส่วนบุคคล
-- เมื่อถูกตัดสิทธิ์แล้ว จะไม่สามารถลบรายชื่อนั้นผ่านหน้าเว็บได้ เพื่อรักษาความถูกต้องของผลการตรวจสอบ
-- การบันทึกใช้ SQL conditional update (`checked_at IS NULL`) เพื่อป้องกันการสแกนพร้อมกันแล้วบันทึกซ้ำ
-
-## Scan popup (ตัวเลขใหญ่ + รูปจาก Auth0)
-After every scan a popup shows the **draw number in huge type**, the student's name and their **Auth0 profile photo** (green = checked in, amber = already scanned with time and officer, red = error). "สแกนคนต่อไป" (or Enter / Esc / tapping outside) closes it and re-opens the camera when the scan came from the camera.
-
-The photo is looked up by the university email `sb<student id>@lru.ac.th` with the Auth0 Management API (`GET /api/v2/users-by-email`). The M2M application used by the Worker therefore needs the **`read:users`** scope. A student who has never signed in (no Auth0 user) or a lookup failure just shows the student's initial; scanning is never blocked or slowed more than 2.5 s by it.
-
-## Roster import from a file
-`รายชื่อและเลขสลาก` → *นำเข้ารายชื่อหลายคน*: choose an **.xlsx / .xls / .csv** file (first sheet) or paste text, check the count, then press นำเข้า. Columns: รหัสนักศึกษา, ชื่อ-นามสกุล, เลขจับสลาก — with a header row they can be in any order and may include คำนำหน้า / ชื่อ / นามสกุล as separate columns; without a header the order is id, name, draw number. Thai digits (๑๐๑), `sb<id>@lru.ac.th` ids, quoted names containing commas, UTF-8 / UTF-16 / Windows-874 files and zero-width / non-breaking spaces are handled. Up to 1,000 rows per import (5 MB); rows that are invalid or repeat a student id / draw number are skipped and listed with the reason. A template (.xlsx) can be downloaded. Excel files are read in the browser with a vendored SheetJS copy (`lotto/vendor/`), loaded only when needed.
-
-## QR verification (ตรวจสอบ QR) — read-only
-The **ตรวจสอบสถานะ** tab has its own camera / manual input. Scanning a QR there only *looks it up* (`GET /camps/lotto/scanner/verify?studentId=…`, assigned scanners and admins) and never checks anyone in:
-- **red "เช็คแล้ว · ตัดสิทธิ์แล้ว"** — the draw number in huge type, the student, when it was checked and by which officer;
-- **green "ยังไม่ได้เช็ค · ใช้สิทธิ์ได้"** — with an optional "เช็คชื่อตอนนี้" button that does the normal check-in;
-- red error for a QR that is not in the roster or is not a student id.
-The camera restarts after each popup, like on the check-in tab, and is stopped when you change tab.
-
-## Scan → found in the database → check in → open the gift
-The **ตรวจสอบสถานะ** tab (switch "เช็คชื่อและเปิดของขวัญอัตโนมัติ", on by default) does everything in one scan:
-1. the QR is looked up in the roster (`camp_lotto_students`) — a QR that is not there gives a red **"ไม่พบในฐานข้อมูล"**;
-2. if it is there the student is **checked in right away** (green "พบในฐานข้อมูล · เช็คชื่อสำเร็จ"; "เช็คชื่อไปแล้ว" if scanned before);
-3. a gift box 🎁 is shown and the draw number stays hidden until someone taps **เปิดของขวัญ**, which reveals the number in huge type. A gift can be opened **once** (`POST /camps/lotto/scanner/gift/open`, only after check-in; who and when are stored in `gift_opened_at` / `gift_opened_by`, migration `0010`, and logged as `gift_opened` in `camp_lotto_scan_logs`). Scanning again shows it as already opened, with the number, time and officer.
-Switching the toggle off gives the read-only status lookup described above (no check-in, no gift). The stats row has a fourth card, "เปิดของขวัญแล้ว", and the roster shows a 🎁 chip for opened gifts.
+## Files
+`index.html`, `app.js` (its own Client ID constant, or `window.LOTTO_AUTH0_CLIENT_ID`), `style.css`. Camera scanning uses `html5-qrcode` (`/assets/vendor/`).

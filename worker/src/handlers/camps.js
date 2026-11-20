@@ -339,7 +339,7 @@ async function updateProfile(request, env) {
   const phone = normalizePhone(b?.phone); if (!phone) return fail(request, env, phone === null ? "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" : "กรอกเบอร์โทรศัพท์", 400, { field: "phone" });
   const gphone = normalizePhone(b?.guardianPhone); if (!gphone) return fail(request, env, gphone === null ? "เบอร์ผู้ปกครองต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" : "กรอกเบอร์ผู้ปกครอง", 400, { field: "guardianPhone" });
   // optional health / food details: absent = keep what is stored, "" = clear
-  const BLOOD = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "unknown"];
+  const BLOOD = ["A", "A+", "A-", "B", "B+", "B-", "AB", "AB+", "AB-", "O", "O+", "O-", "unknown"];   // plain A / B / AB / O = the Rh sign is not known or not given
   const opt = (v, keep, max) => (v === undefined ? (keep || "") : clean(v, max));
   const allergy = opt(b?.foodAllergy, cur.food_allergy, 300), diet = opt(b?.diet, cur.diet, 100), medical = opt(b?.medical, cur.medical, 300);
   let blood = b?.bloodType === undefined ? (cur.blood_type || "") : clean(b.bloodType, 10);

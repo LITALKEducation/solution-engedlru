@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#18181b"><meta name="robots" content="noindex,nofollow">
 <title>ระบบเช็ค QR · Camps</title>
 <link rel="icon" href="/icons/branch-64.png"><link rel="preload" href="/assets/fonts/noto-sans-thai-thai-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="./style.css?v=bad00478">
+<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="./style.css?v=58615742">
 <link rel="stylesheet" href="/assets/theme.css?v=934a1793">
 <script src="/assets/worker-auth.js?v=54da5084" defer></script>
 <script src="/assets/vendor/html5-qrcode-2.3.8.min.js" defer></script>
@@ -34,8 +34,7 @@
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
 <header class="top">
  <div class="top-in">
-  <a class="back" href="/" aria-label="กลับไปหน้ากิจกรรมค่าย">‹ กิจกรรมค่าย</a>
-  <div class="title"><h1>ระบบเช็ค QR</h1><small>English Education · LRU</small></div>
+  <h1>ระบบเช็ก QR</h1>
   <span id="account" class="account">กำลังโหลด…</span>
  </div>
 </header>
@@ -47,82 +46,42 @@
  </section>
 
  <div id="app" class="hidden">
-  <nav class="tabs" id="tabs" aria-label="เมนู">
-   <button data-tab="scan" class="on" aria-current="true">ตรวจ QR</button>
-   <button data-tab="results" class="adm">ผลการตรวจ</button>
-   <button data-tab="settings" class="adm">ตั้งค่า</button>
-  </nav>
-
-  <!-- 1. scan -->
-  <section id="view-scan" class="view">
-   <div class="grid2">
-    <div class="card">
-     <div class="block">
-      <h2><span class="step">1</span> เลือกรายการตรวจ</h2>
-      <label for="checkSel" class="sr">รายการตรวจ</label>
-      <select id="checkSel"></select>
-      <p id="checkInfo" class="hint"></p>
-     </div>
-     <div class="block">
-      <h2><span class="step">2</span> สแกน QR หรือกรอกรหัสนักศึกษา</h2>
-      <p class="hint">สแกนแล้วถือว่า<b>ตรวจแล้ว</b> ไม่ต้องกดอะไรเพิ่ม</p>
-      <div id="reader"></div>
-      <div class="row"><button id="camStart" class="btn primary">เปิดกล้องสแกน</button><button id="camStop" class="btn hidden">ปิดกล้อง</button></div>
-      <div class="or"><span>หรือ</span></div>
-      <label for="sid">รหัสนักศึกษา</label>
-      <div class="row"><input id="sid" inputmode="numeric" autocomplete="off" placeholder="เช่น 6740102220"><button id="sidGo" class="btn">ตรวจสอบ</button></div>
-     </div>
+  <div class="scanwrap">
+   <div id="offBar" class="offbar hidden" role="status" aria-live="polite"></div>
+   <section class="round" id="round" aria-label="รายการตรวจที่กำลังตรวจ">
+    <label for="checkSel" class="round-k">กำลังตรวจ</label>
+    <select id="checkSel"></select>
+    <p id="checkInfo" class="round-info"></p>
+   </section>
+   <section class="camcard" aria-label="สแกน QR">
+    <div id="reader"></div>
+    <div id="camErr" class="camerr hidden" role="alert"></div>
+    <div class="camtools">
+     <button id="camStart" class="btn primary" type="button">เปิดกล้อง</button>
+     <button id="camStop" class="btn hidden" type="button">ปิดกล้อง</button>
+     <button id="camTorch" class="btn hidden" type="button" aria-pressed="false">ไฟฉาย</button>
+     <button id="camFlip" class="btn hidden" type="button">สลับกล้อง</button>
+     <button id="sndBtn" class="btn" type="button" aria-pressed="true" aria-label="เสียงแจ้งผล">เสียง: เปิด</button>
     </div>
-    <dialog id="resDlg" class="resdlg" aria-label="ผลการตรวจ">
+    <form id="sidForm" class="sidform" autocomplete="off">
+     <label for="sid" class="sr">รหัสนักศึกษา</label>
+     <input id="sid" inputmode="numeric" autocomplete="off" placeholder="หรือกรอกรหัสนักศึกษา เช่น 6740102220">
+     <button id="sidGo" class="btn" type="submit">ตรวจ</button>
+    </form>
+   </section>
+   <section class="prog" id="prog" aria-label="ความคืบหน้า">
+    <div class="progtop"><b id="progN">ตรวจแล้ว –</b><span id="progSub"></span></div>
+    <div class="progbar" aria-hidden="true"><i id="progFill"></i></div>
+    <ul id="recent" class="recent" aria-label="สแกนล่าสุด"></ul>
+   </section>
+   <p id="adminLink" class="adminlink hidden"><a href="/admin/#qr">ผลการตรวจและตั้งค่า ›</a></p>
+   <dialog id="resDlg" class="resdlg" aria-label="ผลการตรวจ">
      <button type="button" class="resx" id="resX" aria-label="ปิด"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
      <div id="result" aria-live="polite"></div>
     </dialog>
-   </div>
-  </section>
-
-  <!-- 2. results (admin) -->
-  <section id="view-results" class="view hidden">
-   <div class="card">
-    <h2>สรุปผลการตรวจ</h2>
-    <div class="table-wrap" tabindex="0" role="region" aria-label="สรุปผลการตรวจ"><table id="sumTable"></table></div>
-   </div>
-   <div class="card">
-    <div class="head-row"><h2>รายการผลการตรวจ</h2><button id="exportBtn" class="btn">ดาวน์โหลด Excel</button></div>
-    <div class="filters">
-     <label>รายการตรวจ<select id="fCheck"></select></label>
-     <label>ผล<select id="fResult"><option value="">ทั้งหมด</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></label>
-     <label>ค้นหา<input id="fQ" placeholder="ชื่อ / รหัส / ข้อความบนป้าย"></label>
-    </div>
-    <div class="table-wrap" tabindex="0" role="region" aria-label="รายการผลการตรวจ"><table id="resTable"></table></div>
-   </div>
-  </section>
-
-  <!-- 3. settings (admin) -->
-  <section id="view-settings" class="view hidden">
-   <div class="card">
-    <h2>รายการตรวจ</h2>
-    <p class="hint">เพิ่มสิ่งที่ต้องตรวจ เช่น ตรวจครั้งที่ 1 หรือ ตรวจป้ายกับ AKA เลือกรายการก่อนสแกน ผลของแต่ละรายการแยกกัน</p>
-    <div class="table-wrap" tabindex="0" role="region" aria-label="รายการตรวจ"><table id="checksTable"></table></div>
-    <form id="checkForm" class="formgrid">
-     <h3>เพิ่มรายการตรวจ</h3>
-     <label>ชื่อรายการ<input id="cName" required maxlength="80" placeholder="เช่น ตรวจครั้งที่ 3"></label>
-     <label>คำอธิบาย (ไม่บังคับ)<input id="cDesc" maxlength="300" placeholder="สั้น ๆ ให้เจ้าหน้าที่เข้าใจ"></label>
-     <label>ประเภท<select id="cKind"><option value="manual">ตรวจทั่วไป</option><option value="aka">เทียบป้ายกับ AKA</option></select></label>
-     <label class="chk"><input type="checkbox" id="cReq" checked> ต้องเลือกฝ่ายแล้วถึงจะตรวจได้</label>
-     <div><button class="btn primary" type="submit">เพิ่มรายการตรวจ</button></div>
-    </form>
-    <p class="hint">รายการแบบ “เทียบป้ายกับ AKA” จะโชว์ชื่อ AKA ของนักศึกษา ให้ดูเทียบกับป้ายที่ใส่อยู่ แล้วกดผลได้เลย ถ้าไม่ตรงพิมพ์สิ่งที่เห็นบนป้ายไว้ได้</p>
-   </div>
-   <div class="card">
-    <h2>คนช่วยตรวจ</h2>
-    <p class="hint">ใส่อีเมลมหาวิทยาลัยของคนที่จะช่วยตรวจ (แอดมินใช้ได้อยู่แล้ว)</p>
-    <form id="officerForm" class="row"><input id="oEmail" type="email" required placeholder="อีเมล เช่น sb6740102221@lru.ac.th"><button class="btn primary" type="submit">เพิ่ม</button></form>
-    <div class="table-wrap" tabindex="0" role="region" aria-label="คนช่วยตรวจ"><table id="officersTable"></table></div>
-   </div>
-  </section>
- </div>
+  </div>
  <footer>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=37cbbe7a" defer></script>
+<script src="./app.js?v=5e6e7913" defer></script>
 </body></html>

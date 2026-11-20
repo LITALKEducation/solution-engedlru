@@ -103,12 +103,13 @@ async function remove(req, env, idValue) {
   return json(req, env, { ok: true });
 }
 
-async function scanActor(req, env) {
+async function scanActor(req, env, { needAdmin = false } = {}) {
   const auth = await getAuth0UserFromRequest(req, env);
   if (!auth.user) return { response: fail(req, env, auth.unavailable ? "ระบบยืนยันตัวตนไม่พร้อมใช้งาน" : "กรุณาเข้าสู่ระบบ", auth.unavailable ? 503 : 401) };
   const email = clean(auth.user.email || "", 254).toLowerCase();
   if (!email || auth.user.email_verified !== true) return { response: fail(req, env, "บัญชีต้องยืนยันอีเมลก่อนสแกน", 403) };
   const assigned = await env.DB.prepare("SELECT email FROM camp_lotto_scanners WHERE email=? AND active=1").bind(email).first();
+  if (assigned && !needAdmin) return { email, isAdmin: false };   // the hot path (every scan): no Auth0 role lookup
   let isAdmin = false;
   try { const roles = await getAuth0Roles(env, auth.user.sub); isAdmin = roles.some(r => allowed.includes(r)); }
   catch (e) { console.error("[lotto] scanner role lookup:", e?.message || e); }
@@ -136,7 +137,7 @@ async function removeScanner(req, env, value) {
 }
 
 async function scannerMe(req, env) {
-  const a = await scanActor(req, env); if (a.response) return a.response;
+  const a = await scanActor(req, env, { needAdmin: true }); if (a.response) return a.response;
   return json(req, env, { ok: true, email: a.email, isAdmin: a.isAdmin });
 }
 async function scannerLookup(req, env, url) {
@@ -163,28 +164,59 @@ async function verify(req, env, url) {
   if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
   const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
   if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
-  const picture = await studentPicture(env, id);
-  return json(req, env, { ok: true, checked: !!row.checked_at, student: row, picture });
+  return json(req, env, { ok: true, checked: !!row.checked_at, student: row });
 }
 
+// The hot path: ONE atomic UPDATE ... RETURNING checks the student in (a second scan matches no row), then one log row. No Auth0 call, no photo.
+const COLS = "student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by";
 async function scan(req, env) {
   const a = await scanActor(req, env); if (a.response) return a.response;
   const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
   if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
-  const row = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
-  if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
-  const picture = await studentPicture(env, id);
-  if (row.checked_at) return json(req, env, { ok: false, alreadyChecked: true, student: row, picture }, 409);
-  const result = await env.DB.prepare(
-    "UPDATE camp_lotto_students SET checked_at=datetime('now'),checked_by=?,updated_at=datetime('now') WHERE student_id=? AND checked_at IS NULL"
-  ).bind(a.email, id).run();
-  if (!result?.meta?.changes) {
-    const latest = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
-    return json(req, env, { ok: false, alreadyChecked: true, student: latest, picture }, 409);
+  const done = await env.DB.prepare(`UPDATE camp_lotto_students SET checked_at=datetime('now'),checked_by=?,updated_at=datetime('now') WHERE student_id=? AND checked_at IS NULL RETURNING ${COLS}`).bind(a.email, id).first();
+  if (done) {
+    await env.DB.prepare("INSERT INTO camp_lotto_scan_logs (student_id,draw_number,actor_email,result) VALUES (?,?,?,'checked')").bind(id, done.draw_number, a.email).run();
+    return json(req, env, { ok: true, student: done });
   }
-  const updated = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by,gift_opened_at,gift_opened_by FROM camp_lotto_students WHERE student_id=?").bind(id).first();
-  await env.DB.prepare("INSERT INTO camp_lotto_scan_logs (student_id,draw_number,actor_email,result) VALUES (?,?,?,'checked')").bind(id,row.draw_number,a.email).run();
-  return json(req, env, { ok: true, student: updated, picture });
+  const row = await env.DB.prepare(`SELECT ${COLS} FROM camp_lotto_students WHERE student_id=?`).bind(id).first();
+  if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
+  return json(req, env, { ok: false, alreadyChecked: true, student: row }, 409);
+}
+// The photo (Auth0 Management API, can take seconds) is fetched on its own so it never slows a scan; the page fills it in when it arrives.
+async function picture(req, env, url) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
+  const id = studentId(url.searchParams.get("studentId"));
+  if (!id) return fail(req, env, "รหัสนักศึกษาไม่ถูกต้อง");
+  return json(req, env, { picture: await studentPicture(env, id) });
+}
+// Everyone on the list with their draw number and check-in state, so the scan page can show the number the instant a QR is read and keep working without a signal.
+async function roster(req, env) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
+  const r = await env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students ORDER BY CAST(draw_number AS INTEGER), draw_number LIMIT 5000").all();
+  return json(req, env, { students: (r.results || []).map((x) => ({ id: x.student_id, name: x.student_name, number: x.draw_number, checkedAt: x.checked_at, checkedBy: x.checked_by })) });
+}
+async function stats(req, env) {
+  const a = await scanActor(req, env); if (a.response) return a.response;
+  const [t, mine, recent] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) total, COALESCE(SUM(checked_at IS NOT NULL),0) checked FROM camp_lotto_students").first(),
+    env.DB.prepare("SELECT COUNT(*) n FROM camp_lotto_students WHERE checked_at IS NOT NULL AND lower(checked_by)=?").bind(a.email).first(),
+    env.DB.prepare("SELECT student_id,student_name,draw_number,checked_at,checked_by FROM camp_lotto_students WHERE checked_at IS NOT NULL ORDER BY checked_at DESC, rowid DESC LIMIT 8").all()
+  ]);
+  return json(req, env, { total: t?.total || 0, checked: t?.checked || 0, mine: mine?.n || 0,
+    recent: (recent.results || []).map((r) => ({ id: r.student_id, name: r.student_name, number: r.draw_number, checkedAt: r.checked_at, mine: String(r.checked_by).toLowerCase() === a.email })) });
+}
+// Undo a wrong scan: the officer who checked the person in, or an admin. The student counts as "not checked" again.
+async function undo(req, env) {
+  const a = await scanActor(req, env, { needAdmin: true }); if (a.response) return a.response;
+  const b = await req.json().catch(() => null), id = studentId(b?.studentId ?? b?.value);
+  if (!id) return fail(req, env, "QR Code ไม่ใช่รหัสนักศึกษาที่ถูกต้อง");
+  const row = await env.DB.prepare(`SELECT ${COLS} FROM camp_lotto_students WHERE student_id=?`).bind(id).first();
+  if (!row) return fail(req, env, "ไม่พบรหัสนักศึกษาในรายชื่อจับสลาก", 404, { code: "NOT_FOUND" });
+  if (!row.checked_at) return fail(req, env, "ยังไม่ได้เช็กชื่อ จึงไม่มีอะไรให้ยกเลิก", 409, { code: "NOT_CHECKED_IN" });
+  if (!a.isAdmin && String(row.checked_by).toLowerCase() !== a.email) return fail(req, env, "ยกเลิกได้เฉพาะรายการที่คุณเช็กชื่อเอง (หรือแอดมิน)", 403);
+  await env.DB.prepare("UPDATE camp_lotto_students SET checked_at=NULL,checked_by=NULL,gift_opened_at=NULL,gift_opened_by=NULL,updated_at=datetime('now') WHERE student_id=?").bind(id).run();
+  await env.DB.prepare("INSERT INTO camp_lotto_scan_logs (student_id,draw_number,actor_email,result) VALUES (?,?,?,'undone')").bind(id, row.draw_number, a.email).run();
+  return json(req, env, { ok: true });
 }
 
 // Open the gift (reveals the draw number): only after check-in, once. A second call just reports who opened it and when.
@@ -213,6 +245,10 @@ export async function lotto(req, env, url) {
     if (m==="GET" && p==="/camps/lotto/scanner/me") return await scannerMe(req,env);
     if (m==="GET" && p==="/camps/lotto/scanner/verify") return await verify(req,env,url);
     if (m==="GET" && p==="/camps/lotto/scanner/lookup") return await scannerLookup(req,env,url);
+    if (m==="GET" && p==="/camps/lotto/scanner/roster") return await roster(req,env);
+    if (m==="GET" && p==="/camps/lotto/scanner/stats") return await stats(req,env);
+    if (m==="GET" && p==="/camps/lotto/scanner/picture") return await picture(req,env,url);
+    if (m==="POST" && p==="/camps/lotto/scanner/undo") return await undo(req,env);
     if (m==="GET" && p==="/camps/lotto/admin/overview") return await overview(req,env);
     if (m==="GET" && p==="/camps/lotto/admin/students") return await list(req,env,url);
     if (m==="POST" && p==="/camps/lotto/admin/students") return await upsert(req,env);

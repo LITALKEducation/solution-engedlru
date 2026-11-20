@@ -15,10 +15,12 @@ r=await call('admin','POST','/camps/lotto/admin/scanners',{email:'not-an-email'}
 r=await call('admin','GET','/camps/lotto/admin/scanners');ok(r.d.scanners.length===1,'scanner listed');
 r=await call('s1','GET','/camps/lotto/scanner/me');ok(r.s===200&&r.d.isAdmin===false,'assigned scanner allowed (not admin)');
 r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===200&&r.d.ok,'scan checks in');
-ok(r.d.picture==='https://lh3.googleusercontent.com/a/s1','scan returns the student Auth0 picture: '+r.d.picture);
-r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===409&&r.d.alreadyChecked&&r.d.picture,'second scan 409 already checked (still returns the picture)');
+ok(r.d.picture===undefined&&r.d.student.draw_number==='001'&&!!r.d.student.checked_at,'scan is the fast path: the draw number, no photo lookup');
+r=await call('s1','GET','/camps/lotto/scanner/picture?studentId=6740102220');ok(r.s===200&&r.d.picture==='https://lh3.googleusercontent.com/a/s1','the photo comes from its own endpoint: '+r.d.picture);
+r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'6740102220'});ok(r.s===409&&r.d.alreadyChecked&&r.d.student.checked_by,'second scan 409 already checked (who / when)');
 await call('admin','POST','/camps/lotto/admin/students',{studentId:'6840100005',name:'Never Signed In',drawNumber:'77'});
-r=await call('admin','POST','/camps/lotto/admin/scan',{studentId:'6840100005'});ok(r.s===200&&r.d.picture===null,'student who never signed in: picture null, scan still works');
+r=await call('admin','POST','/camps/lotto/admin/scan',{studentId:'6840100005'});ok(r.s===200,'student who never signed in: scan works');
+r=await call('admin','GET','/camps/lotto/scanner/picture?studentId=6840100005');ok(r.s===200&&r.d.picture===null,'student who never signed in: picture null');
 r=await call('s1','POST','/camps/lotto/admin/scan',{studentId:'9999999999'});ok(r.s===404,'unknown id 404');
 r=await call('s1','GET','/camps/lotto/scanner/lookup?q=สมชาย');ok(r.d.students.length===1,'scanner lookup');
 r=await call('s1','POST','/camps/lotto/admin/students',{studentId:'6740102229',name:'x',drawNumber:'9'});ok(r.s===403,'scanner cannot edit roster');
@@ -30,7 +32,7 @@ r=await call('admin','GET','/camps/lotto/admin/overview');ok(r.d.total===2&&r.d.
 // read-only QR verification
 r=await call(null,'GET','/camps/lotto/scanner/verify?studentId=6740102220');ok(r.s===401,'verify: anonymous 401');
 await call('admin','POST','/camps/lotto/admin/scanners',{email:'sb6740102221@lru.ac.th'});
-r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=6740102220');ok(r.s===200&&r.d.checked===true&&r.d.student.checked_by&&r.d.picture,'verify (assigned scanner): already checked, with who/when and photo');
+r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=6740102220');ok(r.s===200&&r.d.checked===true&&r.d.student.checked_by,'verify (assigned scanner): already checked, with who/when');
 await call('admin','POST','/camps/lotto/admin/students',{studentId:'6840300001',name:'Not Yet',drawNumber:'88'});
 r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=6840300001');ok(r.s===200&&r.d.checked===false&&r.d.student.draw_number==='88','verify: not checked yet');
 r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=6840300001');ok(r.d.checked===false,'verifying twice does not check the student in');
@@ -38,7 +40,24 @@ r=await call('admin','GET','/camps/lotto/admin/students?q=6840300001');ok(r.d.st
 r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=9999999999');ok(r.s===404,'verify: unknown id 404');
 r=await call('s2','GET','/camps/lotto/scanner/verify?studentId=hello');ok(r.s===400,'verify: not a student QR 400');
 r=await call('s3','GET','/camps/lotto/scanner/verify?studentId=6840300001');ok(r.s===403,'verify: unassigned account refused');
-await call('admin','DELETE','/camps/lotto/admin/students/6840300001');await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102221%40lru.ac.th');
+await call('admin','DELETE','/camps/lotto/admin/students/6840300001');// ---- crowd flow: roster for instant/offline display, progress, undo ----
+r=await call(null,'GET','/camps/lotto/scanner/roster');ok(r.s===401,'roster: anonymous refused');
+r=await call('s3','GET','/camps/lotto/scanner/roster');ok(r.s===403,'roster: unassigned account refused');
+r=await call('s2','GET','/camps/lotto/scanner/roster');ok(r.s===200&&r.d.students.length>=2&&r.d.students.every(x=>x.id&&x.number)&&r.d.students.some(x=>x.id==='6740102220'&&x.number==='001'&&x.checkedAt),'roster: id, name, draw number, check-in state');
+r=await call('s2','GET','/camps/lotto/scanner/stats');ok(r.s===200&&r.d.total>=2&&r.d.checked>=2&&r.d.recent.length>=1&&r.d.recent[0].number&&typeof r.d.recent[0].mine==='boolean','stats: total, checked, latest scans');
+const mine0=r.d.mine;
+r=await call('admin','POST','/camps/lotto/admin/students',{studentId:'6840100009',name:'Undo Me',drawNumber:'88'});
+r=await call('s2','POST','/camps/lotto/admin/scan',{studentId:'6840100009'});ok(r.s===200,'scan for the undo test');
+r=await call('s2','GET','/camps/lotto/scanner/stats');ok(r.d.mine===mine0+1&&r.d.recent[0].id==='6840100009'&&r.d.recent[0].mine===true,'stats: counts my scans, latest first');
+r=await call('s1','POST','/camps/lotto/scanner/undo',{studentId:'6840100009'});ok(r.s===403,'undo: another officer cannot undo it');
+r=await call(null,'POST','/camps/lotto/scanner/undo',{studentId:'6840100009'});ok(r.s===401,'undo: anonymous refused');
+r=await call('s2','POST','/camps/lotto/scanner/undo',{studentId:'9999999999'});ok(r.s===404,'undo: unknown id');
+r=await call('s2','POST','/camps/lotto/scanner/undo',{studentId:'6840100009'});ok(r.s===200,'undo: the officer who checked can undo');
+r=await call('s2','POST','/camps/lotto/scanner/undo',{studentId:'6840100009'});ok(r.s===409&&r.d.code==='NOT_CHECKED_IN','undo twice: nothing to undo');
+r=await call('s2','POST','/camps/lotto/admin/scan',{studentId:'6840100009'});ok(r.s===200,'after an undo the student can be checked in again');
+r=await call('admin','POST','/camps/lotto/scanner/undo',{studentId:'6840100009'});ok(r.s===200,'undo: an admin can undo anyone');
+{const logs=await env.DB.prepare("SELECT result FROM camp_lotto_scan_logs WHERE student_id='6840100009' ORDER BY id").all();ok(logs.results.map(x=>x.result).join()==='checked,undone,checked,undone','scan log keeps checked / undone');}
+await call('admin','DELETE','/camps/lotto/admin/scanners/sb6740102221%40lru.ac.th');
 // gift: open once, only after check-in
 await call('admin','POST','/camps/lotto/admin/scanners',{email:'sb6740102221@lru.ac.th'});
 await call('admin','POST','/camps/lotto/admin/students',{studentId:'6840400001',name:'Gift Tester',drawNumber:'555'});

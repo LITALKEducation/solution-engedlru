@@ -1,4 +1,4 @@
-// ระบบเช็ค QR API: lookup against the HR registration data, admin-defined checks, one result per student per check.
+// ระบบเช็ก QR API: lookup against the HR registration data, admin-defined checks, one result per student per check.
 import { makeEnv, installFetch } from './env.mjs';
 const { qrcheck } = await import('../src/handlers/qrcheck.js');
 installFetch(); const { db, env } = makeEnv();
@@ -90,6 +90,25 @@ r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '6740102221' })
 r = await call('gmail', 'POST', '/camps/qrcheck/scan', { studentId: '6740102221', checkId: CAKA }); ok(r.s === 403, 'scan: unassigned account refused');
 r = await call('s2', 'POST', '/camps/qrcheck/scan', { studentId: '6840100001', checkId: C2 });
 ok(r.s === 400, 'scan: an inactive check cannot be used');
+// ---- progress + undo (scan page) ----
+r = await call(null, 'GET', '/camps/qrcheck/stats?checkId=' + C1); ok(r.s === 401, 'stats: anonymous refused');
+r = await call('s1', 'GET', '/camps/qrcheck/stats?checkId=999'); ok(r.s === 400 && r.d.code === 'NO_CHECK', 'stats: unknown check');
+db.exec("INSERT INTO camp_students (student_id,name,year,gender) VALUES ('6740102229','นายทดสอบ ผู้ตรวจ',2,'M'); INSERT INTO camp_selections (student_id,department_code,year,gender) VALUES ('6740102229','welfare',2,'M');");
+const before = (await call('s1', 'GET', '/camps/qrcheck/stats?checkId=' + C1)).d;
+r = await call('s1', 'POST', '/camps/qrcheck/scan', { studentId: '6740102229', checkId: C1, queuedAt: '2026-11-20T10:00:00.000Z' }); ok(r.s === 200 && r.d.justRecorded === true, 'scan with a queuedAt time records');
+ok(JSON.parse(db.prepare("select metadata m from budget_audit_logs where action='QR_CHECK_RECORD' and entity_uuid='6740102229' order by rowid desc limit 1").get().m).queuedAt === '2026-11-20T10:00:00.000Z', 'queued scans keep their original time in the audit log');
+r = await call('s1', 'GET', '/camps/qrcheck/stats?checkId=' + C1);
+ok(r.s === 200 && r.d.done === before.done + 1 && r.d.mine === before.mine + 1 && r.d.passed === before.passed + 1 && r.d.total >= 2 && r.d.recent[0].studentId === '6740102229' && r.d.recent[0].mine === true && r.d.recent[0].name === 'นายทดสอบ ผู้ตรวจ', 'stats: counts + latest scan first (mine)');
+r = await call('s2', 'GET', '/camps/qrcheck/stats?checkId=' + C1); ok(r.d.recent[0].mine === false && r.d.mine === 0, 'stats: another officer sees it as not theirs');
+r = await call('s2', 'POST', '/camps/qrcheck/undo', { studentId: '6740102229', checkId: C1 }); ok(r.s === 403, 'undo: an officer cannot undo someone else\'s scan');
+r = await call(null, 'POST', '/camps/qrcheck/undo', { studentId: '6740102229', checkId: C1 }); ok(r.s === 401, 'undo: anonymous refused');
+r = await call('s1', 'POST', '/camps/qrcheck/undo', { studentId: 'abc', checkId: C1 }); ok(r.s === 400, 'undo: bad id');
+r = await call('s1', 'POST', '/camps/qrcheck/undo', { studentId: '6740102229', checkId: C1 }); ok(r.s === 200, 'undo: the officer who scanned can undo');
+ok(!db.prepare("select 1 x from camp_qr_results where check_id=? and student_id='6740102229'").get(C1), 'undo removes the result');
+r = await call('s1', 'POST', '/camps/qrcheck/undo', { studentId: '6740102229', checkId: C1 }); ok(r.s === 404 && r.d.code === 'NOTHING_TO_UNDO', 'undo twice: nothing to undo');
+r = await call('s1', 'POST', '/camps/qrcheck/scan', { studentId: '6740102229', checkId: C1 }); ok(r.d.justRecorded === true, 'after an undo the student can be scanned again');
+r = await call('admin', 'POST', '/camps/qrcheck/undo', { studentId: '6740102229', checkId: C1 }); ok(r.s === 200, 'undo: an admin can undo anyone\'s scan');
+ok(db.prepare("select count(*) c from budget_audit_logs where action='QR_CHECK_UNDO'").get().c === 2, 'undo is audited');
 r = await call('admin', 'DELETE', '/camps/qrcheck/admin/officers/sb6740102220%40lru.ac.th'); ok(r.s === 200, 'remove officer');
 r = await call('s1', 'GET', '/camps/qrcheck/me'); ok(r.s === 403, 'removed officer is blocked');
 ok(db.prepare("select count(*) c from budget_audit_logs where entity_type='qrcheck'").get().c >= 8, 'actions are audited');
