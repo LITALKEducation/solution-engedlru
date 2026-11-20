@@ -16,10 +16,9 @@
     + '#siteFoot .sf-legal p{margin:0}'
     + '#siteFoot .sf-photo{position:relative;height:clamp(200px,34vw,340px);background:#cfd8dc url(/assets/hero-hills.jpg) center 62%/cover no-repeat}'
     + '#siteFoot .sf-photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#f1f1f3 0%,rgba(241,241,243,.55) 28%,rgba(241,241,243,0) 60%)}'
-    + '#siteFoot .sf-mark{position:absolute;left:50%;bottom:-6%;transform:translateX(-50%);width:min(86vw,640px);height:auto;opacity:.92;filter:drop-shadow(0 6px 30px rgba(0,0,0,.25));pointer-events:none}'
     + '@media(min-width:860px){#siteFoot .sf-in{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);align-items:start}#siteFoot nav{grid-template-columns:repeat(3,minmax(0,1fr))}}'
     + '#siteFoot .sf-links{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;margin-bottom:12px!important}#siteFoot .sf-links a{display:inline-flex;align-items:center;min-height:40px;color:#18181b;text-decoration:underline;text-underline-offset:3px;font-weight:500}'
-    + '@media(max-width:600px){#siteFoot .sf-mark{display:none}#siteFoot .sf-photo{height:180px}}'
+    + '@media(max-width:600px){#siteFoot .sf-photo{height:180px}}'
     + '@media print{#siteFoot{display:none!important}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var COLS = [
@@ -35,7 +34,7 @@
   f.innerHTML = '<div class="sf-in"><div class="sf-brand"><a href="/" aria-label="English Camp On Tour"><img src="/assets/logo-english-education.png" alt="English Education · Faculty of Education"></a>'
     + '<p>ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9</p></div><nav aria-label="ลิงก์ท้ายหน้า">' + nav + '</nav></div>'
     + '<div class="sf-legal"><p class="sf-links"><a href="/legal/terms">ข้อกำหนดการใช้งาน</a><a href="/legal/privacy">นโยบายความเป็นส่วนตัว</a><a href="/legal/third-party">บริการของบุคคลที่สาม</a></p><p>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</p></div>'
-    + '<div class="sf-photo" aria-hidden="true"><img class="sf-mark" src="/assets/english-camp-logo.png" alt="" width="1000" height="399" loading="lazy"></div>';
+    + '<div class="sf-photo" aria-hidden="true"></div>';
   Array.prototype.forEach.call(document.querySelectorAll('footer'), function (o) { o.parentNode.removeChild(o); });
   (document.querySelector('.shell') || document.body).appendChild(f);
 })();
