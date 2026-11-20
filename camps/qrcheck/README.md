@@ -1,4 +1,4 @@
-# Camps · ระบบเช็ค QR (`/qrcheck/`)
+# Camps · ระบบเช็ก QR (`/qrcheck/`)
 
 A formal, plain tool for checking a student's QR code against the data the other Camps systems already hold, and recording the result of each check. It is **separate from the lottery system** (`/lotto/`): own page, own Auth0 application and callback (`https://enged.sorasukt.com/qrcheck/`), own tables. The two share the student data model (QR = student id) but not their results.
 
@@ -26,17 +26,19 @@ The check type **"เทียบป้ายกับ AKA"** shows the student'
 - **Admins** (`camp_admin` / `budget_admin`): everything, including the tabs below.
 - **Officers**: accounts with a verified email that an admin added under *ตั้งค่า → เจ้าหน้าที่ผู้ตรวจ* (`camp_qr_officers`). They only see the *ตรวจ QR* tab. This list is independent from the lottery scanners.
 
-## Tabs
-| Tab | For | Content |
-|---|---|---|
-| ตรวจ QR | everyone | the three steps above |
-| ผลการตรวจ | admins | summary per check (checked / passed / failed / still to check among registered students), filterable result list (check, result, name / id / badge code), **Excel export** |
-| ตั้งค่า | admins | add / rename / reorder / deactivate / delete checks (a check with results can only be deactivated), manage officers |
+## The scan page (officers and admins)
+- **Round chip:** the round being checked is a big chip above the camera. It is chosen again every day (yesterday's choice is never reused silently); until it is chosen, scans are refused with a shake + message. With a single active check it is selected for you.
+- **Camera always on:** it starts by itself, a scan only pauses the picture behind the pop-up, closing the pop-up resumes scanning. Buttons: *ปิดกล้อง*, *ไฟฉาย* and *สลับกล้อง* (only when the phone has them), *เสียง* (a short tone: pass, warning, problem). If the camera cannot open, a persistent box explains how to allow it, with a retry button. The same QR held in front of the camera is ignored for 3 s.
+- **Fast pop-up:** a successful scan closes its own pop-up after 2.5 s (a bar counts down; touching the pop-up keeps it open). Problems (not passed, not found, blocked, already checked) and AKA checks (which may need a badge code) stay until closed.
+- **Undo:** *ยกเลิกการตรวจ* in the pop-up removes a wrong scan (the officer who made it, or an admin; logged as `QR_CHECK_UNDO`). The same button is there when a name is opened from the recent list.
+- **Progress:** "ตรวจแล้ว N / total" for the round, how many *you* checked, and the latest scans (tap one to open it).
+- **No signal:** scans made offline wait on the phone (`localStorage`), a banner shows how many, and they are sent when the signal is back (original time kept in the audit log as `queuedAt`); anything the server then refuses is listed. The page itself must already be open (it is not cached for a cold start offline).
+- Results, rounds and officers are managed in the admin page (`/admin/#qr`); the scan page links to it for admins.
 
 ## API (`/camps/qrcheck/*`, Worker handler `handlers/qrcheck.js`, migration `0011_camps_qrcheck.sql`)
-`GET me` · `GET checks` (`?all=1` for admins) · `POST scan` (look up + record) · `POST lookup` (read-only) · `POST record` (add a note / badge code, change the result) · admin: `GET|POST admin/checks`, `PATCH|DELETE admin/checks/:id`, `GET admin/results`, `GET|POST admin/officers`, `DELETE admin/officers/:email`. Every write is audited in `budget_audit_logs` (`entity_type = qrcheck`). The migration seeds the two example checks; admins can rename or remove them.
+`GET me` · `GET checks` (`?all=1` for admins) · `POST scan` (look up + record) · `POST lookup` (read-only) · `POST record` (add a note / badge code, change the result) · `POST undo` · `GET stats?checkId=` · admin: `GET|POST admin/checks`, `PATCH|DELETE admin/checks/:id`, `GET admin/results`, `GET|POST admin/officers`, `DELETE admin/officers/:email`. Every write is audited in `budget_audit_logs` (`entity_type = qrcheck`). The migration seeds the two example checks; admins can rename or remove them.
 
 ## Files
-`index.html`, `app.js` (its own Client ID constant `CLIENT`, or `window.QRCHECK_AUTH0_CLIENT_ID`), `style.css`, `vendor/xlsx.mini.min.js` (Excel export, loaded on demand). Camera scanning uses `html5-qrcode` from unpkg.
+`index.html`, `app.js` (its own Client ID constant `CLIENT`, or `window.QRCHECK_AUTH0_CLIENT_ID`), `style.css`. Camera scanning uses `html5-qrcode` from unpkg.
 
 **Camera always on:** the camera starts by itself when the scan tab opens. A scan only pauses the picture behind the result pop-up; closing the pop-up resumes scanning (no need to press anything). It is turned off only by the "ปิดกล้อง" button, and it restarts when the page comes back to the foreground.
