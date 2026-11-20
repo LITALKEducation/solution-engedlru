@@ -898,7 +898,66 @@ async function pSurvey() {
   view().innerHTML = '<div class="card"><h2>เลือกนักศึกษา</h2><form id="svF" autocomplete="off"><label class="f"><span>รหัสนักศึกษา</span><div class="row"><input type="text" id="svId" inputmode="numeric" maxlength="14" placeholder="เช่น 6740102220" style="flex:1;min-width:0"><button class="btn primary" type="submit">เปิดแบบสำรวจ</button></div></label><p class="mute">ใช้แบบสำรวจของฝ่ายที่นักศึกษาคนนั้นลงทะเบียนไว้</p></form><div id="svPick" role="status"></div></div><div id="svSheetWrap"></div><div class="card" id="svList"><p class="mute">กำลังโหลด…</p></div>';
   $('svF').onsubmit = (e) => { e.preventDefault(); svOpen($('svId').value); };
   try { svTpl = await getJ('/camps/survey/admin/templates'); } catch (e) { if (e.forbidden) return noAdmin(); return retryable(pSurvey)(e); }
-  if (my !== gen) return; svList();
+  if (my !== gen) return; svBlankCard(); svList();
+}
+
+// ---- blank (unfilled) survey forms for every ฝ่าย, as A4 PDFs the teams can print and fill in by hand ----
+function svBlankCard() {
+  const forms = Object.entries(svTpl.forms || {}); if (!forms.length || !view()) return;
+  view().insertAdjacentHTML('afterbegin', '<div class="card" id="svBlank"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">แบบสำรวจเปล่า <small class="mute">' + forms.length + ' ฝ่าย</small></h2><button class="btn primary" type="button" id="svBlankAll">ดาวน์โหลด PDF ทุกฝ่าย</button></div>'
+    + '<p class="mute">แบบฟอร์มเปล่าที่ยังไม่กรอก ขนาด A4 ไว้พิมพ์ให้ทีมสำรวจกรอกด้วยมือ ไฟล์เดียวรวมทุกฝ่าย (ฝ่ายละ 1–2 หน้า) หรือเลือกดาวน์โหลดทีละฝ่าย</p>'
+    + '<div class="plist">' + forms.map(([k, f]) => '<div class="prow" style="grid-template-columns:minmax(0,1fr) auto"><div class="pwho"><b>' + esc(f.name) + '</b><small class="mute">' + esc(f.en) + ' · ' + f.items.length + ' รายการ</small></div><div class="pact"><button class="btn sm" type="button" data-bf="' + esc(k) + '">ดาวน์โหลด PDF</button></div></div>').join('') + '</div></div>');
+  const box = $('svBlank');
+  $('svBlankAll').onclick = (e) => svBlankPdf(forms.map((x) => x[0]), 'survey-blank-all-' + stamp() + '.pdf', e.currentTarget);
+  box.querySelectorAll('[data-bf]').forEach((b) => { b.onclick = () => svBlankPdf([b.dataset.bf], 'survey-blank-' + b.dataset.bf + '-' + stamp() + '.pdf', b); });
+}
+async function svBlankPdf(codes, file, btn) {
+  const label = btn && btn.textContent; if (btn) { btn.disabled = true; btn.textContent = 'กำลังสร้าง PDF…'; }
+  try {
+    if (!window.jspdf) { await loadJs('/assets/vendor/jspdf-2.5.2.umd.min.js'); await loadJs('/assets/vendor/jspdf-autotable-3.8.4.min.js'); }
+    const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
+    if (!fonts) fonts = { n: await b64('/assets/fonts/SarabunTH-Regular.ttf'), b: await b64('/assets/fonts/SarabunTH-Bold.ttf') };
+    if (!window.thaiShape) await loadJs('/assets/thai-shape.js');   // jsPDF has no Thai shaping: pick the vowel / tone-mark glyph variants ourselves
+    const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const T = window.thaiShape, rawText = doc.text.bind(doc), rawTable = doc.autoTable.bind(doc);
+    doc.text = (t, ...a) => rawText(Array.isArray(t) ? t.map(T) : T(t), ...a);
+    doc.autoTable = (o) => rawTable({ ...o, didParseCell: (d) => { d.cell.text = d.cell.text.map(T); if (o.didParseCell) o.didParseCell(d); } });
+    doc.addFileToVFS('Sarabun-Regular.ttf', fonts.n); doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal'); doc.addFileToVFS('Sarabun-Bold.ttf', fonts.b); doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold');
+    const W = 210, M = 14, inner = W - 2 * M, text = (s, x, y, o) => doc.text(s, x, y, o);
+    const wrap = (s, w) => doc.splitTextToSize(s, w);
+    codes.forEach((k, idx) => {
+      const f = svTpl.forms[k]; if (!f) return; if (idx) doc.addPage();
+      doc.setFont('Sarabun', 'bold'); doc.setFontSize(18); text(svTpl.title, W / 2, 18, { align: 'center' });
+      doc.setFont('Sarabun', 'normal'); doc.setFontSize(10.5); text(svTpl.subtitle, W / 2, 24.5, { align: 'center' });
+      // department banner
+      doc.setDrawColor(0); doc.setLineWidth(0.4); doc.rect(M, 29, inner, 15);
+      doc.setFont('Sarabun', 'bold'); doc.setFontSize(13); text(f.name + ' | ' + f.en, M + 3, 35.5);
+      doc.setFont('Sarabun', 'normal'); doc.setFontSize(10); wrap(f.blurb, inner - 6).slice(0, 2).forEach((ln, i) => text(ln, M + 3, 40.5 + i * 4.2));
+      // header fields: dotted lines to write on
+      const field = (label, x, y, w) => { doc.setFont('Sarabun', 'bold'); doc.setFontSize(11); text(label, x, y); const lw = doc.getTextWidth(label) + 2; doc.setLineDashPattern([0.6, 0.9], 0); doc.setLineWidth(0.2); doc.line(x + lw, y + 0.6, x + w, y + 0.6); doc.setLineDashPattern([], 0); };
+      field('ชื่อโรงเรียน', M, 53, inner); field('วันที่สำรวจ', M, 61, inner / 2 - 4); field('เบอร์โทรศัพท์', M + inner / 2 + 4, 61, inner / 2 - 4); field('ผู้ประสานงาน', M, 69, inner);
+      doc.setFont('Sarabun', 'normal'); doc.setFontSize(10); wrap(svTpl.instruction, inner).forEach((ln, i) => text(ln, M, 77 + i * 4.4));
+      const y0 = 77 + wrap(svTpl.instruction, inner).length * 4.4 + 2;
+      doc.autoTable({
+        startY: y0, margin: { left: M, right: M, bottom: 18 },
+        head: [['ลำดับ', 'ทำแล้ว', 'รายการสำรวจ', 'หมายเหตุ']], body: f.items.map((it, i) => [String(i + 1), '', it, '']),
+        styles: { font: 'Sarabun', fontSize: 10.5, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.25, textColor: 0, minCellHeight: 8.4, valign: 'middle' },
+        headStyles: { font: 'Sarabun', fontStyle: 'bold', fillColor: [235, 235, 235], textColor: 0, halign: 'center' },
+        columnStyles: { 0: { cellWidth: 14, halign: 'center' }, 1: { cellWidth: 16 }, 3: { cellWidth: 52 } },
+        didDrawCell: (d) => { if (d.section === 'body' && d.column.index === 1) { const s0 = 4.6; doc.setLineWidth(0.3); doc.setDrawColor(0); doc.rect(d.cell.x + (d.cell.width - s0) / 2, d.cell.y + (d.cell.height - s0) / 2, s0, s0); } },
+      });
+      let y = doc.lastAutoTable.finalY + 7;
+      if (y + 32 > 283) { doc.addPage(); y = 20; }   // the summary box never gets split from its heading
+      doc.setFont('Sarabun', 'bold'); doc.setFontSize(11); text('สรุปผลการสำรวจ / สิ่งที่ต้องดำเนินการเพิ่มเติม', M, y);
+      doc.setLineDashPattern([0.6, 0.9], 0); doc.setLineWidth(0.2); for (let i = 1; i <= 3; i++) doc.line(M, y + i * 7.5, W - M, y + i * 7.5); doc.setLineDashPattern([], 0);
+      field('ผู้สำรวจ', M, y + 3 * 7.5 + 9, inner * 0.6);
+    });
+    const n = doc.getNumberOfPages();
+    for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); text('แบบสำรวจโรงเรียน (เปล่า) · หน้า ' + i + ' / ' + n, W - M, 290, { align: 'right' }); }
+    doc.save(file);
+    toast('ดาวน์โหลดแล้ว');
+  } catch (e) { console.error(e); toast('สร้าง PDF ไม่สำเร็จ ลองใหม่อีกครั้ง', true); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = label; } }
 }
 async function svList() {
   const box = $('svList'); if (!box) return; let d; try { d = await getJ('/camps/survey/admin/list'); } catch (e) { box.innerHTML = '<p class="mute">' + esc(e.message) + '</p>'; return; }
