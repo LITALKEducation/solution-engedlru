@@ -85,13 +85,19 @@ $('checkSel').onchange = () => { checkId = Number($('checkSel').value) || null; 
 
 // The camera stays on: a scan only PAUSES the picture (it freezes behind the pop-up), closing the pop-up resumes it. Only the "ปิดกล้อง" button turns it off.
 let camBusy = false, scanning = false;
+// tuned for speed: 25 fps; no mirrored second pass (half the decoding work per frame); a 720p picture and continuous autofocus (a sharp QR decodes sooner);
+// the phone's built-in barcode detector when the browser has one (much faster than decoding in JavaScript); the scan box stays 240 px (a bigger box made
+// the JavaScript decoder slower in tests) but is never larger than the picture, which would stop the camera on small screens
+const SCAN_CFG = { fps: 25, qrbox: (w, h) => { const m = Math.min(240, Math.floor(Math.min(w, h) * 0.9)); return { width: m, height: m }; }, disableFlip: true,
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' }] } };
 async function startCamera() {
   if (camera || camBusy) return;
   if (!window.Html5Qrcode) return toast('โหลดตัวสแกนไม่สำเร็จ ลองรีเฟรชหน้า', true);
   camBusy = true; camWant = true;
   try {
     const c = new Html5Qrcode('reader'); camera = c;   // set first: a scan can arrive the moment the stream starts
-    await c.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, (text) => {
+    await c.start({ facingMode: 'environment' }, SCAN_CFG, (text) => {
       if ($('resDlg').open || scanning) return;   // one scan at a time
       pauseCamera(); lookup(text, true);
     }, () => {});
