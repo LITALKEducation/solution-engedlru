@@ -69,7 +69,7 @@ r = await call('admin', 'GET', '/camps/survey/admin/list'); ok(r.d.forms.length 
 r = await call('admin', 'GET', '/camps/survey/nope'); ok(r.s === 404, 'unknown route 404');
 
 
-// ---------- assigned students fill in their own form (public page /hr/survey) ----------
+// ---------- assigned students fill in their own form (public page /student/survey) ----------
 const { parseStudentEmail } = await import('../src/handlers/survey.js');
 ok(parseStudentEmail('sb6740102220@lru.ac.th') === '6740102220' && parseStudentEmail('x@gmail.com') === null, 'student id comes from the university email');
 r = await call(null, 'GET', '/camps/survey/me'); ok(r.s === 401, 'me: anonymous 401');

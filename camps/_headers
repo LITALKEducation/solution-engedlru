@@ -2,8 +2,10 @@
   Cache-Control: public, max-age=0, must-revalidate
 /assets/*
   Cache-Control: public, max-age=0, must-revalidate
-/hr/*
+/student/*
   Cache-Control: public, max-age=0, must-revalidate
+/hr/sw.js
+  Cache-Control: no-cache
 /lotto/*
   Cache-Control: public, max-age=0, must-revalidate
 /qrcheck/*

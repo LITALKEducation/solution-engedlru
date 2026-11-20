@@ -3,7 +3,7 @@
 (function () {
   if (document.getElementById('brandBar')) return;
   var STUDENT = [['/aka/', 'ตั้งชื่อ AKA'], ['/lotto/', 'จับสลาก'], ['/qrcheck/', 'เช็ก QR'], ['/budget/', 'งบประมาณ']];
-  var CTA_STUDENT = ['/hr/', 'ข้อมูลส่วนตัว'];
+  var CTA_STUDENT = ['/student/', 'ข้อมูลส่วนตัว'];
   // the admin section has its own menu and no links into the student pages
   var ADMIN_RE = /^\/admin(\/|$)/;
   var isAdmin = ADMIN_RE.test(location.pathname.replace(/\/+$/, '') + '/') || ADMIN_RE.test(location.pathname);

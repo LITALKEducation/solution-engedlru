@@ -25,3 +25,31 @@
 /admin/lotto/ /admin/#lotto 302
 /admin/qrcheck/ /admin/#qr 302
 /admin/aka/ /admin/#aka 302
+
+# the student pages moved from /hr/ to /student/ (old links, QR codes and in-flight sign-ins keep working; the query string is kept)
+# /hr/sw.js is NOT redirected: it is a service worker that removes the old /hr/ offline cache (browsers refuse to update a worker through a redirect)
+/hr /student/ 301
+/hr/ /student/ 301
+/hr/index /student/ 301
+/hr/aka /student/aka 301
+/hr/aka/ /student/aka 301
+/hr/choose /student/choose 301
+/hr/choose/ /student/choose 301
+/hr/departments /student/departments 301
+/hr/departments/ /student/departments 301
+/hr/select /student/select 301
+/hr/select/ /student/select 301
+/hr/shirt /student/shirt 301
+/hr/shirt/ /student/shirt 301
+/hr/survey /student/survey 301
+/hr/survey/ /student/survey 301
+/hr/vendor/* /student/vendor/:splat 301
+/hr/logo-english-education.png /student/logo-english-education.png 301
+/hr/hr.css /student/hr.css 301
+/hr/hr.js /student/hr.js 301
+/hr/survey.css /student/survey.css 301
+/hr/survey.js /student/survey.js 301
+/hr/shirt.js /student/shirt.js 301
+/hr/og.css /student/og.css 301
+/hr/og.js /student/og.js 301
+/hr/maintenance.js /student/maintenance.js 301

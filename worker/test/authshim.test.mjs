@@ -5,7 +5,7 @@ const src=fs.readFileSync(new URL('../../camps/assets/worker-auth.js',import.met
 function boot(){const store=new Map(),calls=[],nav=[];let refreshN=0,mode='ok';
  const win={CAMPS_API:'https://api.x'};
  const ss=new Map();const ctx={window:win,navigator:{},sessionStorage:{getItem:k=>ss.has(k)?ss.get(k):null,setItem:(k,v)=>ss.set(k,String(v)),removeItem:k=>ss.delete(k)},crypto:{getRandomValues:a=>{for(let i=0;i<a.length;i++)a[i]=(i*7+3)%256;return a}},Uint8Array,btoa:(x)=>Buffer.from(x,'latin1').toString('base64'),localStorage:{getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)},
-  location:{origin:'https://enged.sorasukt.com',pathname:'/hr/choose',search:'',hash:'',assign:u=>nav.push(u)},history:{replaceState:(a,b,u)=>{ctx.location.search='';ctx.location.replaced=u}},document:{title:''},
+  location:{origin:'https://enged.sorasukt.com',pathname:'/student/choose',search:'',hash:'',assign:u=>nav.push(u)},history:{replaceState:(a,b,u)=>{ctx.location.search='';ctx.location.replaced=u}},document:{title:''},
   fetch:async(u,o)=>{calls.push([u,o&&JSON.parse(o.body)]);const j=(x,s=200)=>({ok:s<300,status:s,json:async()=>x});
    if(u.endsWith('/auth/exchange'))return JSON.parse(o.body).code==='good'?j({access_token:'A1',refresh_token:'R1',expires_in:3600,user:{email:'e@lru.ac.th',picture:'https://p'}}):j({error:'invalid_grant'},400);
    if(u.endsWith('/auth/refresh')){if(mode==='revoked')return j({error:'invalid_grant'},401);if(mode==='down')throw new Error('net');if(mode==='5xx')return j({},503);await new Promise(r=>setTimeout(r,20));refreshN++;return j({access_token:'A'+(refreshN+1),refresh_token:'R'+(refreshN+1),expires_in:3600})}
@@ -16,7 +16,7 @@ let b=boot(),a=await mk(b);
 ok(await a.isAuthenticated()===false,'not authenticated at first');
 let e=null;try{await a.getTokenSilently()}catch(x){e=x}ok(e&&e.error==='login_required','getTokenSilently without a session throws login_required');
 b.ctx.location.search='?code=good&state=x';const cb=await a.handleRedirectCallback();
-ok(cb.appState.returnTo==='/hr/choose'&&b.ctx.location.replaced==='/hr/choose','callback keeps the page, strips ?code=');
+ok(cb.appState.returnTo==='/student/choose'&&b.ctx.location.replaced==='/student/choose','callback keeps the page, strips ?code=');
 ok(await a.isAuthenticated()&&(await a.getUser()).picture==='https://p'&&await a.getTokenSilently()==='A1','session stored, user + token available');
 b.ctx.location.search='?code=bad';e=null;try{await a.handleRedirectCallback()}catch(x){e=x}ok(e&&e.error==='invalid_grant','bad code -> error');
 b.ctx.location.search='?error=access_denied&error_description=no';e=null;try{await a.handleRedirectCallback()}catch(x){e=x}ok(e&&e.error==='access_denied'&&e.message==='no','?error= -> thrown');

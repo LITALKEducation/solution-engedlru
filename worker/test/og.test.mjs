@@ -17,8 +17,8 @@ const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
 // the page list
 ok(Object.keys(OG_PAGES).join() === 'home,hr,aka,lotto,qrcheck,shirt,survey', 'seven public pages');
 ok(Object.values(OG_PAGES).every((p) => p.title && p.description && [...p.title].length <= 70 && [...p.description].length <= 200 && p.files.length), 'defaults fit the limits');
-ok(ogKeyForPath('/') === 'home' && ogKeyForPath('/hr') === 'hr' && ogKeyForPath('/hr/') === 'hr' && ogKeyForPath('/hr/choose') === 'hr' && ogKeyForPath('/hr/select.html') === 'hr' && ogKeyForPath('/hr/survey') === 'survey' && ogKeyForPath('/shirt') === 'shirt' && ogKeyForPath('/hr/shirt') === 'shirt' && ogKeyForPath('/aka/') === 'aka' && ogKeyForPath('/lotto') === 'lotto' && ogKeyForPath('/qrcheck/index.html') === 'qrcheck', 'paths map to page keys');
-ok(ogKeyForPath('/admin/hr/overview') === null && ogKeyForPath('/budget/') === null && ogKeyForPath('/hr/overview') === null, 'admin, budget and other pages have no preview');
+ok(ogKeyForPath('/') === 'home' && ogKeyForPath('/student') === 'hr' && ogKeyForPath('/student/') === 'hr' && ogKeyForPath('/student/choose') === 'hr' && ogKeyForPath('/student/select.html') === 'hr' && ogKeyForPath('/student/survey') === 'survey' && ogKeyForPath('/shirt') === 'shirt' && ogKeyForPath('/student/shirt') === 'shirt' && ogKeyForPath('/aka/') === 'aka' && ogKeyForPath('/lotto') === 'lotto' && ogKeyForPath('/qrcheck/index.html') === 'qrcheck', 'paths map to page keys');
+ok(ogKeyForPath('/admin/hr/overview') === null && ogKeyForPath('/budget/') === null && ogKeyForPath('/student/overview') === null, 'admin, budget and other pages have no preview');
 
 // public list: defaults until an admin changes something
 let r = await call(null, 'GET', '/camps/og/pages');

@@ -26,6 +26,7 @@ ok(au.searchParams.get('scope').includes('offline_access')&&au.searchParams.get(
 r=await call('GET',L('prompt=select_account&returnTo='+encodeURIComponent(RET)));ok(new URL(r.loc).searchParams.get('prompt')==='select_account','select_account prompt passed');
 r=await call('GET',L('prompt=none&returnTo='+encodeURIComponent(RET)));ok(!new URL(r.loc).searchParams.has('prompt'),'other prompts dropped');
 for(const bad of ['https://evil.com/hr/','https://enged.sorasukt.com/evil','https://enged.sorasukt.com/../x','javascript:alert(1)','','/hr/']){r=await call('GET',L('returnTo='+encodeURIComponent(bad)));ok(r.s===400&&!r.loc,'returnTo rejected: '+bad)}
+r=await call('GET',L('returnTo='+encodeURIComponent('https://enged.sorasukt.com/student/survey')));ok(r.s===302&&!!r.loc,'returnTo under /student/ accepted (old /hr/ links still accepted too)');
 console.log('2. callback');
 r=await call('GET',L('returnTo='+encodeURIComponent(RET)));const state=new URL(r.loc).searchParams.get('state');
 r=await call('GET','/auth/callback?code=abc&state='+state);

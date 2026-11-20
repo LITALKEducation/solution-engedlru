@@ -35,5 +35,5 @@ bucket_name = "engedlru-files"
 # Secrets ที่ต้องตั้งด้วย `wrangler secret put <ชื่อ>` (ห้ามใส่ในไฟล์นี้):
 #   AUTH0_M2M_CLIENT_ID
 #   AUTH0_M2M_CLIENT_SECRET
-#   SIGHTENGINE_SECRET   (SIGHTENGINE_USER is in [vars] above; optional: AI-generated image detection for /hr/shirt uploads; without them only embedded-tag checks run)
+#   SIGHTENGINE_SECRET   (SIGHTENGINE_USER is in [vars] above; optional: AI-generated image detection for /student/shirt uploads; without them only embedded-tag checks run)
 #   VAPID_PRIVATE_KEY   (Web Push, from scripts/generate-vapid.mjs)

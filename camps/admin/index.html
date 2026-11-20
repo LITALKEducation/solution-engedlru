@@ -571,7 +571,7 @@ function tabbed(key, list, fns) {
 }
 const camStops = []; const stopCams = () => { while (camStops.length) { try { camStops.pop()(); } catch (e) { /* ignore */ } } };
 const loadJs = (src) => new Promise((res, rej) => { if (document.querySelector('script[data-s="' + src + '"]')) return res(); const el = document.createElement('script'); el.src = src; el.dataset.s = src; el.onload = res; el.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(el); });
-const loadXlsx = async () => { if (!window.XLSX) await loadJs('/hr/vendor/xlsx.mini.min.js'); return window.XLSX; };
+const loadXlsx = async () => { if (!window.XLSX) await loadJs('/student/vendor/xlsx.mini.min.js'); return window.XLSX; };
 function modal(html) {
   const d = document.createElement('dialog'); d.innerHTML = html + ''; document.body.appendChild(d);
   d.addEventListener('close', () => d.remove()); d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.close(); });
@@ -998,11 +998,11 @@ async function svBlankPdf(codes, file, btn) {
 async function svList() {
   const box = $('svList'); if (!box) return; let d; try { d = await getJ('/camps/survey/admin/list'); } catch (e) { box.innerHTML = '<p class="mute">' + esc(e.message) + '</p>'; return; }
   box.innerHTML = '<h2>แบบสำรวจที่บันทึกแล้ว <small class="mute">' + d.forms.length + ' ฉบับ</small></h2>' + table(['ฝ่าย', 'ผู้สำรวจ', 'โรงเรียน', 'ความคืบหน้า', 'บันทึกล่าสุด', ''], d.forms.map((f) => '<tr><td>' + esc(f.departmentName) + '</td><td>' + esc(f.name) + '<br><small class="mute">' + esc(f.studentId) + '</small></td><td>' + (esc(f.schoolName) || '—') + '</td><td>' + f.done + '/' + f.total + '</td><td>' + esc(fdt(f.updatedAt)) + '</td><td><button class="btn sm" data-o="' + esc(f.studentId) + '">เปิด</button></td></tr>'), 'ยังไม่มีแบบสำรวจที่บันทึกไว้')
-    + '<h2 style="margin-top:18px">ผู้ได้รับมอบหมายให้กรอกเอง <small class="mute">' + d.assignees.length + ' คน</small></h2><p class="mute">นักศึกษาที่ได้รับมอบหมายเข้าสู่ระบบด้วยอีเมล @lru.ac.th ที่ ' + esc(location.origin) + '/hr/survey <button class="btn sm" type="button" id="svCp">คัดลอกลิงก์</button></p>'
+    + '<h2 style="margin-top:18px">ผู้ได้รับมอบหมายให้กรอกเอง <small class="mute">' + d.assignees.length + ' คน</small></h2><p class="mute">นักศึกษาที่ได้รับมอบหมายเข้าสู่ระบบด้วยอีเมล @lru.ac.th ที่ ' + esc(location.origin) + '/student/survey <button class="btn sm" type="button" id="svCp">คัดลอกลิงก์</button></p>'
     + (d.assignees.length ? table(['ผู้ได้รับมอบหมาย', 'ฝ่าย', 'แบบสำรวจ', ''], d.assignees.map((x) => '<tr><td>' + esc(x.name) + '<br><small class="mute">' + esc(x.studentId) + '</small></td><td>' + (esc(x.departmentName) || '<span class="mute">ยังไม่มีฝ่าย</span>') + '</td><td>' + (x.hasForm ? 'บันทึกแล้ว' : 'ยังไม่ได้กรอก') + '</td><td class="row"><button class="btn sm" data-o="' + esc(x.studentId) + '">เปิด</button><button class="btn sm" data-ua="' + esc(x.studentId) + '">ยกเลิกมอบหมาย</button></td></tr>')) : '<p class="empty">ยังไม่ได้มอบหมายใคร</p>');
   box.querySelectorAll('[data-o]').forEach((b) => { b.onclick = () => svOpen(b.dataset.o); });
   box.querySelectorAll('[data-ua]').forEach((b) => { b.onclick = () => svAssign(b.dataset.ua, false); });
-  $('svCp').onclick = async () => { try { await navigator.clipboard.writeText(location.origin + '/hr/survey'); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้', true); } };
+  $('svCp').onclick = async () => { try { await navigator.clipboard.writeText(location.origin + '/student/survey'); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้', true); } };
 }
 async function svAssign(id, on) { try { await send('POST', '/camps/survey/admin/assign', { studentId: id, assigned: on }); toast(on ? 'มอบหมายแล้ว' : 'ยกเลิกการมอบหมายแล้ว'); svList(); const c = $('svAs'); if (c && svCur && svCur.student.studentId === id) c.checked = on; } catch (e) { toast(e.message, true); const c = $('svAs'); if (c) c.checked = !on; } }
 async function svOpen(raw) {
@@ -1014,7 +1014,7 @@ async function svOpen(raw) {
   const s = d.student;
   pick.innerHTML = '<p><b>' + esc(s.name) + '</b><br><span class="mute">' + esc(s.studentId) + ' · ปี ' + s.year + ' · ' + (s.departmentName ? esc(s.departmentName) : 'ยังไม่มีฝ่าย') + '</span></p>'
     + (d.template ? '<p class="mute">' + (d.saved ? 'บันทึกล่าสุด ' + esc(fdt(d.form.updatedAt)) : 'ยังไม่มีแบบสำรวจของคนนี้ กรอกแล้วกดบันทึก') + '</p>' : '<p style="color:var(--bad)">' + (d.code === 'NO_DEPARTMENT' ? 'นักศึกษาคนนี้ยังไม่มีฝ่าย จึงยังไม่มีแบบสำรวจ (กำหนดฝ่ายที่หน้า “ฝ่าย · โควตา”)' : 'ฝ่ายนี้ยังไม่มีแบบสำรวจ') + '</p>')
-    + '<label class="chk"><input type="checkbox" id="svAs"' + (d.assigned ? ' checked' : '') + '><span>ให้นักศึกษาคนนี้กรอกเองที่หน้า /hr/survey</span></label>';
+    + '<label class="chk"><input type="checkbox" id="svAs"' + (d.assigned ? ' checked' : '') + '><span>ให้นักศึกษาคนนี้กรอกเองที่หน้า /student/survey</span></label>';
   $('svAs').onchange = (e) => svAssign(s.studentId, e.target.checked);
   svCur = d.template ? { student: s, tpl: d.template, form: d.form, photos: d.photos || [] } : null; svDirty = false; if (svCur) svRender();
 }
