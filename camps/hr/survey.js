@@ -55,32 +55,41 @@ async function svOpen(raw) {
   svCur = d.template ? { student: s, tpl: d.template, form: d.form } : null; svDirty = false;
   if (svCur) svRender();
 }
+const svToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 function svRender(v0) {
-  const { student: s, tpl: t, form: f } = svCur, v = v0 || f || { schoolName: '', surveyDate: '', coordinator: '', phone: '', checks: t.items.map(() => false), notes: t.items.map(() => ''), summary: '', surveyor: s.name };
-  const inp = (id, label, val, extra) => '<div class="shf"><label for="' + id + '">' + label + '</label><input id="' + id + '" value="' + esc(val) + '" ' + (extra || '') + '></div>';
-  $('svSheet').innerHTML = '<article class="sheet" id="svPaper" aria-label="แบบสำรวจโรงเรียน ' + esc(t.name) + '">'
+  const { student: s, tpl: t, form: f } = svCur, v = v0 || f || { schoolName: '', surveyDate: svToday(), coordinator: '', phone: '', checks: t.items.map(() => false), notes: t.items.map(() => ''), summary: '', surveyor: s.name };
+  const inp = (id, label, val, extra, cls) => '<div class="shf' + (cls ? ' ' + cls : '') + '"><label for="' + id + '">' + label + '</label><input id="' + id + '" value="' + esc(val) + '" ' + (extra || '') + '></div>';
+  const pr = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6M7 17H5a2 2 0 01-2-2v-5a2 2 0 012-2h14a2 2 0 012 2v5a2 2 0 01-2 2h-2M7 14h10v7H7z"/></svg>';
+  $('svSheet').innerHTML = '<div class="svbar" role="group" aria-label="ความคืบหน้าและสถานะบันทึก"><div class="svprog"><div class="svpt"><b id="svCount"></b><span id="svStatus" class="svstatus" role="status" aria-live="polite"></span></div><div class="svtrack" aria-hidden="true"><i id="svFill"></i></div></div>'
+    + '<div class="svbtns"><button class="btn sm svsavebtn" type="button" id="svSave">บันทึกตอนนี้</button><button class="btn sm svprint" type="button" id="svPrint" aria-label="พิมพ์หรือบันทึกเป็น PDF" title="พิมพ์ / บันทึกเป็น PDF">' + pr + '<span>พิมพ์ / PDF</span></button></div></div>'
+    + '<article class="sheet" id="svPaper" aria-label="แบบสำรวจโรงเรียน ' + esc(t.name) + '">'
     + '<header class="sh-head"><h2>' + esc(svTpl.title) + '</h2><p>' + esc(svTpl.subtitle) + '</p></header>'
     + '<div class="sh-dept"><b>' + esc(t.name) + ' | ' + esc(t.en) + '</b><span>' + esc(t.blurb) + '</span></div>'
-    + '<div class="sh-grid">' + inp('svSchool', 'ชื่อโรงเรียน', v.schoolName, 'maxlength="150" autocomplete="off"') + inp('svDate', 'วันที่สำรวจ', v.surveyDate, 'type="date"')
-    + inp('svCoord', 'ผู้ประสานงาน', v.coordinator, 'maxlength="120" autocomplete="off"') + inp('svPhone', 'เบอร์โทรศัพท์', v.phone, 'type="tel" maxlength="30" autocomplete="off"') + '</div>'
+    + '<div class="sh-grid">' + inp('svSchool', 'ชื่อโรงเรียน', v.schoolName, 'maxlength="150" autocomplete="off"', 'wide') + inp('svDate', 'วันที่สำรวจ', v.surveyDate, 'type="date"')
+    + inp('svPhone', 'เบอร์โทรศัพท์', v.phone, 'type="tel" inputmode="tel" maxlength="30" autocomplete="off"') + inp('svCoord', 'ผู้ประสานงาน', v.coordinator, 'maxlength="120" autocomplete="off"', 'wide') + '</div>'
     + '<p class="sh-inst">' + esc(svTpl.instruction) + '</p>'
     + '<table class="sh-table"><thead><tr><th scope="col">ลำดับ</th><th scope="col">รายการสำรวจ</th><th scope="col">หมายเหตุ</th></tr></thead><tbody>'
     + t.items.map((it, i) => '<tr><td class="sh-no"><label><input type="checkbox" id="svc' + i + '"' + (v.checks[i] ? ' checked' : '') + ' aria-label="สำรวจแล้ว ข้อ ' + (i + 1) + '"><span>' + (i + 1) + '.</span></label></td>'
-      + '<td class="sh-item" id="svi' + i + '">' + esc(it) + '</td><td class="sh-nt"><textarea id="svn' + i + '" rows="1" maxlength="300" aria-label="หมายเหตุ ข้อ ' + (i + 1) + '" aria-describedby="svi' + i + '">' + esc(v.notes[i]) + '</textarea></td></tr>').join('')
+      + '<td class="sh-item" id="svi' + i + '">' + esc(it) + '</td><td class="sh-nt' + (v.notes[i] ? ' open' : '') + '"><button class="svnbtn" type="button" data-n="' + i + '" aria-expanded="false" aria-controls="svn' + i + '">+ หมายเหตุ</button><textarea id="svn' + i + '" rows="1" maxlength="300" aria-label="หมายเหตุ ข้อ ' + (i + 1) + '" aria-describedby="svi' + i + '">' + esc(v.notes[i]) + '</textarea></td></tr>').join('')
     + '</tbody></table>'
     + '<div class="shf"><label for="svSum">สรุปผลการสำรวจ / สิ่งที่ต้องดำเนินการเพิ่มเติม</label><textarea id="svSum" rows="4" maxlength="2000">' + esc(v.summary) + '</textarea></div>'
     + inp('svBy', 'ผู้สำรวจ', v.surveyor, 'maxlength="120" autocomplete="off"') + '</article>'
-    + '<div class="sv-actions"><button class="btn primary" type="button" id="svSave">บันทึก</button><button class="btn" type="button" id="svPrint">พิมพ์ / บันทึกเป็น PDF</button>'
-    + (f && !SV_PUBLIC ? '<button class="btn danger" type="button" id="svDel">ลบแบบสำรวจ</button>' : '') + '<span id="svCount" class="muted"></span>' + (SV_PUBLIC ? '<span id="svStatus" class="svstatus" role="status" aria-live="polite"></span>' : '') + '</div>';
+    + (!SV_PUBLIC && f ? '<div class="sv-actions"><button class="btn danger" type="button" id="svDel">ลบแบบสำรวจ</button></div>' : '');
   const paper = $('svPaper'), grow = (el) => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
   paper.querySelectorAll('textarea').forEach(grow);
   paper.addEventListener('input', (e) => { if (e.target.tagName === 'TEXTAREA') grow(e.target); svEdited(); });
   paper.addEventListener('change', svEdited);
+  // a note is opened on demand (always visible on wide screens and in print)
+  paper.addEventListener('click', (e) => { const nb = e.target.closest('.svnbtn'); if (!nb) return; const td = nb.parentElement, ta = $('svn' + nb.dataset.n); td.classList.add('open'); nb.setAttribute('aria-expanded', 'true'); grow(ta); ta.focus(); });
   $('svSave').onclick = svSave; $('svPrint').onclick = () => { paper.querySelectorAll('textarea').forEach(grow); window.print(); };
   if ($('svDel')) $('svDel').onclick = svDelete;
+  if (SV_PUBLIC && !svLast.text) svStatus('ok', f ? 'บันทึกล่าสุด ' + svDate(f.updatedAt) : 'บันทึกอัตโนมัติเมื่อคุณกรอก');
   svCount(); svStatusNow();
 }
-function svCount() { const el = $('svCount'); if (!el || !svCur) return; const n = svCur.tpl.items.filter((_, i) => $('svc' + i).checked).length; el.textContent = 'สำรวจแล้ว ' + n + ' / ' + svCur.tpl.items.length + ' ข้อ' + (svDirty ? ' · ยังไม่ได้บันทึก' : ''); }
+function svCount() {
+  const el = $('svCount'); if (!el || !svCur) return; const total = svCur.tpl.items.length, n = svCur.tpl.items.filter((_, i) => $('svc' + i).checked).length;
+  el.textContent = 'สำรวจแล้ว ' + n + ' / ' + total + ' ข้อ'; const fill = $('svFill'); if (fill) fill.style.width = (total ? Math.round(n * 100 / total) : 0) + '%';
+}
 function svRead() {
   const n = svCur.tpl.items.length, g = (id) => $(id).value;
   return { studentId: svCur.student.studentId, schoolName: g('svSchool'), surveyDate: g('svDate'), coordinator: g('svCoord'), phone: g('svPhone'), summary: g('svSum'), surveyor: g('svBy'),
@@ -98,11 +107,13 @@ async function loadSurveyMe() {
   const sw = '<button class="btn sm" type="button" onclick="switchAccount()">ใช้บัญชี Google อื่น</button>';
   if (d.reason) { box.innerHTML = svCard('ใช้งานไม่ได้', esc(SV_REASON[d.reason] || 'บัญชีนี้ใช้งานไม่ได้'), sw); return; }
   const s = d.student;
-  if (!d.assigned) { box.innerHTML = svCard('ยังไม่ได้รับมอบหมาย', 'แอดมินยังไม่ได้มอบหมายแบบสำรวจนี้ให้ ' + esc(s.name) + ' (' + esc(s.studentId) + ') ถ้าคุณควรได้รับ ลองแจ้งแอดมิน', sw); return; }
-  if (!d.template) { box.innerHTML = svCard('ยังไม่มีฝ่าย', 'คุณยังไม่ได้ลงทะเบียนฝ่าย จึงยังไม่มีแบบสำรวจให้กรอก ลงทะเบียนฝ่ายก่อน หรือแจ้งแอดมิน'); return; }
+  const cp = '<button class="btn sm" type="button" onclick="svCopyId(\'' + esc(s.studentId) + '\')">คัดลอกรหัสนักศึกษา</button> ';
+  if (!d.assigned) { box.innerHTML = svCard('ยังไม่ได้รับมอบหมาย', 'แอดมินยังไม่ได้มอบหมายแบบสำรวจนี้ให้ ' + esc(s.name) + ' (' + esc(s.studentId) + ') ถ้าคุณควรได้รับ ส่งรหัสนักศึกษาของคุณให้แอดมินเพื่อขอรับมอบหมาย', cp + sw); return; }
+  if (!d.template) { box.innerHTML = svCard('ยังไม่มีฝ่าย', 'คุณยังไม่ได้ลงทะเบียนฝ่าย จึงยังไม่มีแบบสำรวจให้กรอก ลงทะเบียนฝ่ายก่อน หรือส่งรหัสนักศึกษาของคุณให้แอดมินเพื่อตรวจสอบ', cp + sw); return; }
   svLs.set('svMe', { at: Date.now(), d });   // the form text + the last saved answers, so the page still opens with no signal
   svOffline = false; await svShow(d);
 }
+window.svCopyId = async (id) => { try { await navigator.clipboard.writeText(id); toast('คัดลอกรหัสแล้ว ' + id); } catch (e) { toast('คัดลอกไม่ได้ รหัสของคุณคือ ' + id, true); } };
 // show the form for the signed-in (or, offline, the remembered) assigned student, restoring an unsent draft from this device
 async function svShow(d, offline) {
   const s = d.student; svTpl = d.texts; svCur = { student: s, tpl: d.template, form: d.form }; svDirty = false;
@@ -112,9 +123,7 @@ async function svShow(d, offline) {
     seed = same || offline ? dr.data : ((await confirmDlg('พบฉบับร่างในเครื่องนี้', 'มีข้อมูลที่แก้ไขไว้ในเครื่องนี้แต่ยังไม่ได้ส่ง และบนระบบมีฉบับที่ใหม่กว่า (อาจแก้โดยแอดมิน) ต้องการใช้ฉบับร่างในเครื่องไหม', 'ใช้ฉบับร่างในเครื่อง', 'ใช้ฉบับบนระบบ')) ? dr.data : null);
     if (!seed) svLs.del(svDraftKey(s.studentId));
   } else if (dr) svLs.del(svDraftKey(s.studentId));
-  $('svBox').innerHTML = '<div class="panel"><div class="svwho"><b>' + esc(s.name) + '</b><span>' + esc(s.studentId) + ' · ปี ' + s.year + ' · ' + esc(s.departmentName) + '</span></div>'
-    + (offline ? '<div class="warn" role="status">ออฟไลน์ · เปิดจากข้อมูลที่เก็บไว้ในเครื่อง แก้ไขได้ตามปกติ ระบบจะส่งขึ้นเองเมื่อมีสัญญาณ</div>' : '')
-    + '<p class="muted">' + (d.form ? 'บันทึกล่าสุดบนระบบ ' + esc(svDate(d.form.updatedAt)) : 'ยังไม่ได้บันทึก กรอกแล้วระบบจะบันทึกให้เอง') + ' · บันทึกอัตโนมัติ แก้ไขได้ตลอด</p></div><div id="svSheet"></div>';
+  $('svBox').innerHTML = (offline ? '<div class="warn" role="status">ออฟไลน์ · เปิดจากข้อมูลที่เก็บไว้ในเครื่อง แก้ไขได้ตามปกติ ระบบจะส่งขึ้นเองเมื่อมีสัญญาณ</div>' : '') + '<div id="svSheet"></div>';
   svRender(seed || undefined);
   if (seed) { svDirty = true; svCount(); svStatus('local', 'พบฉบับร่างในเครื่อง กำลังส่งขึ้นระบบ…'); svTimer = setTimeout(() => svSync(), 800); }
 }
@@ -130,7 +139,7 @@ function svOfflineBoot() {
 const SV_AUTO_MS = 2500;
 let svRev = 0, svTimer = null, svLocalTimer = null, svBusy = false, svOffline = false, svRetry = 0, svLast = { kind: '', text: '' };
 const svClock = () => new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-function svStatus(kind, text) { svLast = { kind, text }; const el = $('svStatus'); if (el) { el.textContent = text; el.dataset.kind = kind; } }
+function svStatus(kind, text) { svLast = { kind, text }; const el = $('svStatus'); if (el) { el.textContent = text; el.dataset.kind = kind; } const bar = document.querySelector('.svbar'); if (bar) bar.dataset.kind = kind; }
 function svStatusNow() { if (svLast.text) svStatus(svLast.kind, svLast.text); }
 function svSaveLocal() {
   if (!svCur) return false;
