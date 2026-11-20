@@ -1,15 +1,17 @@
 // แบบสำรวจโรงเรียน: an admin picks a student by student id and fills in the school-survey form of that student's ฝ่าย.
 // Admins can also assign a student, who then signs in with their @lru.ac.th account on the public page /hr/survey and fills in their own form.
 // Students and departments come from the HR tables (camp_students / camp_selections / camp_departments).
-import { json } from "../lib/cors.js";
+import { json, corsHeaders } from "../lib/cors.js";
 import { permDenied } from "./camps.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
+import { _internals as shirtInternals } from "./shirt.js";
 import { SURVEY_FORMS, SURVEY_TITLE, SURVEY_SUBTITLE, SURVEY_INSTRUCTION } from "../lib/survey-forms.js";
 
 const fail = (req, env, error, status = 400, extra = {}) => json(req, env, { error, ...extra }, status);
 const tidy = (s) => String(s ?? "").normalize("NFC").replace(/[​-‍⁠﻿]/g, "").replace(/[   　]/g, " ").replace(/[ \t]+/g, " ").trim();
 const ADMIN_ROLES = ["camp_admin", "budget_admin"];
-export const LIMITS = { school: 150, coordinator: 120, phone: 30, surveyor: 120, note: 300, summary: 2000 };
+export const MAX_PHOTOS = 10, MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+export const LIMITS = { caption: 100, school: 150, coordinator: 120, phone: 30, surveyor: 120, note: 300, summary: 2000 };
 
 async function requireAdmin(req, env, perm = "survey") {
   const a = await getAuth0UserFromRequest(req, env);
@@ -48,6 +50,70 @@ function shapeForm(r, total) {
 }
 const shapeStudent = (r) => ({ studentId: r.student_id, name: r.name, year: r.year, gender: r.gender, departmentCode: r.department_code || null, departmentName: r.department_name || null });
 
+// ---------- photos attached to a form ----------
+const rid = () => [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, "0")).join("");
+const shapePhoto = (r) => ({ id: r.id, caption: r.caption || "", size: r.size || 0, createdAt: r.created_at });
+const photosOf = async (env, id) => ((await env.DB.prepare("SELECT id,caption,size,created_at FROM camp_survey_photos WHERE student_id=? ORDER BY created_at,id").bind(id).all()).results || []).map(shapePhoto);
+export async function erasePhotos(env, id) {
+  const rows = (await env.DB.prepare("SELECT image_key FROM camp_survey_photos WHERE student_id=?").bind(id).all()).results || [];
+  await env.DB.prepare("DELETE FROM camp_survey_photos WHERE student_id=?").bind(id).run();
+  for (const r of rows) { try { await env.FILES.delete(r.image_key); } catch (e) { /* an orphan file is harmless */ } }
+}
+async function addPhoto(req, env, url, st, actor) {
+  const n = (await env.DB.prepare("SELECT COUNT(*) c FROM camp_survey_photos WHERE student_id=?").bind(st.student_id).first())?.c || 0;
+  if (n >= MAX_PHOTOS) return fail(req, env, `แนบรูปได้ไม่เกิน ${MAX_PHOTOS} รูป ลบรูปเก่าก่อนแล้วลองอีกครั้ง`, 409, { code: "PHOTO_LIMIT" });
+  const buf = new Uint8Array(await req.arrayBuffer());
+  if (!buf.length) return fail(req, env, "ไม่พบไฟล์รูป");
+  if (buf.length > MAX_PHOTO_BYTES) return fail(req, env, "ไฟล์ใหญ่เกินไป (ไม่เกิน 8 MB)", 413);
+  const kind = shirtInternals.sniff(buf); if (!kind) return fail(req, env, "ใช้ไฟล์ PNG, JPG หรือ WebP เท่านั้น");
+  const caption = tidy(url.searchParams.get("caption")).slice(0, LIMITS.caption), id = rid(), key = `camps/survey/${st.student_id}-${id}.${kind[1]}`;
+  await env.FILES.put(key, buf, { httpMetadata: { contentType: kind[0] } });
+  await env.DB.prepare("INSERT INTO camp_survey_photos (id,student_id,image_key,mime,size,caption,created_by) VALUES (?,?,?,?,?,?,?)").bind(id, st.student_id, key, kind[0], buf.length, caption, actor.email).run();
+  await audit(env, actor, "SURVEY_PHOTO_ADD", st.student_id, { id, size: buf.length });
+  return json(req, env, { ok: true, photo: { id, caption, size: buf.length }, photos: await photosOf(env, st.student_id) });
+}
+async function removePhoto(req, env, st, id, actor) {
+  const p = id ? await env.DB.prepare("SELECT id,image_key FROM camp_survey_photos WHERE id=? AND student_id=?").bind(id, st.student_id).first() : null;
+  if (!p) return fail(req, env, "ไม่พบรูปนี้", 404);
+  await env.DB.prepare("DELETE FROM camp_survey_photos WHERE id=?").bind(p.id).run();
+  try { await env.FILES.delete(p.image_key); } catch (e) { /* ignore */ }
+  await audit(env, actor, "SURVEY_PHOTO_DELETE", st.student_id, { id: p.id });
+  return json(req, env, { ok: true, photos: await photosOf(env, st.student_id) });
+}
+async function adminPhotoTarget(req, env, id) {
+  const a = await requireAdmin(req, env); if (a.response) return { response: a.response };
+  const st = id ? await env.DB.prepare(STUDENT_SQL).bind(digits(id)).first() : null;
+  if (!st) return { response: fail(req, env, "ไม่พบรหัสนักศึกษานี้ในรายชื่อ", 404, { code: "NOT_IN_ROSTER" }) };
+  return { a, st };
+}
+// the assigned, signed-in student (same checks as studentSave)
+async function studentPhotoTarget(req, env) {
+  const w = await whoStudent(req, env); if (w.response) return w;
+  if (!w.studentId || !w.verified) return { response: fail(req, env, "ต้องใช้บัญชีอีเมลมหาวิทยาลัย (@lru.ac.th) ที่ยืนยันแล้ว", 403, { code: "NOT_STUDENT" }) };
+  const st = await env.DB.prepare(STUDENT_SQL).bind(w.studentId).first();
+  if (!st) return { response: fail(req, env, `ไม่พบรหัสนักศึกษา ${w.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403, { code: "NOT_IN_ROSTER" }) };
+  if (!(await env.DB.prepare("SELECT student_id FROM camp_survey_assignees WHERE student_id=?").bind(w.studentId).first())) return { response: fail(req, env, "แอดมินยังไม่ได้มอบหมายแบบสำรวจนี้ให้คุณ", 403, { code: "NOT_ASSIGNED" }) };
+  return { a: w, st };
+}
+async function adminPhotoAdd(req, env, url) { const t = await adminPhotoTarget(req, env, url.searchParams.get("studentId")); return t.response || addPhoto(req, env, url, t.st, t.a); }
+async function studentPhotoAdd(req, env, url) { const t = await studentPhotoTarget(req, env); return t.response || addPhoto(req, env, url, t.st, t.a); }
+async function adminPhotoDelete(req, env) { const b = await req.json().catch(() => null); const t = await adminPhotoTarget(req, env, b?.studentId); return t.response || removePhoto(req, env, t.st, String(b?.id || ""), t.a); }
+async function studentPhotoDelete(req, env) { const b = await req.json().catch(() => null); const t = await studentPhotoTarget(req, env); return t.response || removePhoto(req, env, t.st, String(b?.id || ""), t.a); }
+// the picture itself: only the student it belongs to, or an admin with the survey scope (a private response, never cached by shared caches)
+async function photoFile(req, env, url) {
+  const id = url.pathname.split("/").pop();
+  const p = id ? await env.DB.prepare("SELECT student_id,image_key,mime FROM camp_survey_photos WHERE id=?").bind(id).first() : null;
+  const a = await getAuth0UserFromRequest(req, env);
+  if (!a.user) return fail(req, env, "กรุณาเข้าสู่ระบบ", a.unavailable ? 503 : 401);
+  const email = tidy(a.user.email || "").toLowerCase();
+  let allowed = !!p && a.user.email_verified === true && parseStudentEmail(email) === p.student_id;
+  if (!allowed) { const w = await requireAdmin(req, env); if (w.response) return p ? w.response : fail(req, env, "ไม่พบรูปนี้", 404); allowed = true; }
+  if (!p) return fail(req, env, "ไม่พบรูปนี้", 404);
+  const obj = await env.FILES.get(p.image_key); if (!obj) return fail(req, env, "ไม่พบไฟล์รูป", 404);
+  const h = new Headers(corsHeaders(req, env)); h.set("Content-Type", p.mime); h.set("Cache-Control", "private, max-age=300"); h.set("X-Content-Type-Options", "nosniff");
+  return new Response(obj.body ?? (await obj.arrayBuffer()), { headers: h });
+}
+
 // the printed form text (same for everyone) -> the page renders it
 async function adminTemplates(req, env) {
   const a = await requireAdmin(req, env); if (a.response) return a.response;
@@ -66,7 +132,7 @@ async function adminStudent(req, env, url) {
   const tpl = SURVEY_FORMS[st.department_code];
   if (!tpl) return json(req, env, { student, assigned, form: null, template: null, code: "NO_TEMPLATE" });
   const row = await env.DB.prepare("SELECT * FROM camp_school_survey WHERE student_id=?").bind(id).first();
-  return json(req, env, { student, assigned, template: tpl, form: row ? shapeForm(row, tpl.items.length) : null, saved: !!row });
+  return json(req, env, { student, assigned, template: tpl, form: row ? shapeForm(row, tpl.items.length) : null, saved: !!row, photos: await photosOf(env, id) });
 }
 function readForm(b, tpl) {
   const text = (v, max, label) => { const s = tidy(v); if ([...s].length > max) return { error: `${label} ยาวเกินไป (ไม่เกิน ${max} ตัวอักษร)` }; return { v: s }; };
@@ -137,7 +203,7 @@ async function studentMe(req, env) {
   const tpl = st.department_code ? SURVEY_FORMS[st.department_code] : null;
   if (!tpl) return json(req, env, { ...base, student, assigned: true, template: null, code: st.department_code ? "NO_TEMPLATE" : "NO_DEPARTMENT" });
   const row = await env.DB.prepare("SELECT * FROM camp_school_survey WHERE student_id=?").bind(w.studentId).first();
-  return json(req, env, { ...base, student, assigned: true, template: tpl, texts: texts(), form: row ? shapeForm(row, tpl.items.length) : null, saved: !!row });
+  return json(req, env, { ...base, student, assigned: true, template: tpl, texts: texts(), form: row ? shapeForm(row, tpl.items.length) : null, saved: !!row, photos: await photosOf(env, w.studentId), maxPhotos: MAX_PHOTOS });
 }
 async function studentSave(req, env) {
   const w = await whoStudent(req, env); if (w.response) return w.response;
@@ -155,6 +221,7 @@ async function adminDelete(req, env) {
   const row = id ? await env.DB.prepare("SELECT student_id FROM camp_school_survey WHERE student_id=?").bind(id).first() : null;
   if (!row) return fail(req, env, "ไม่พบแบบสำรวจของนักศึกษาคนนี้", 404);
   await env.DB.prepare("DELETE FROM camp_school_survey WHERE student_id=?").bind(id).run();
+  await erasePhotos(env, id);   // the pictures belong to the form
   await audit(env, a, "SURVEY_DELETE", id);
   return json(req, env, { ok: true });
 }
@@ -184,6 +251,11 @@ export async function survey(req, env, url) {
     if (m === "POST" && p === "/camps/survey/admin/assign") return await adminAssign(req, env);
     if (m === "GET" && p === "/camps/survey/me") return await studentMe(req, env);
     if (m === "POST" && p === "/camps/survey/save") return await studentSave(req, env);
+    if (m === "POST" && p === "/camps/survey/admin/photo") return await adminPhotoAdd(req, env, url);
+    if (m === "POST" && p === "/camps/survey/admin/photo/delete") return await adminPhotoDelete(req, env);
+    if (m === "POST" && p === "/camps/survey/photo") return await studentPhotoAdd(req, env, url);
+    if (m === "POST" && p === "/camps/survey/photo/delete") return await studentPhotoDelete(req, env);
+    if (m === "GET" && p.startsWith("/camps/survey/photo/")) return await photoFile(req, env, url);
     if (m === "GET" && p === "/camps/survey/admin/list") return await adminList(req, env, url);
     return fail(req, env, "Not Found", 404);
   } catch (e) {
