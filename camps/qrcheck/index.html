@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#18181b"><meta name="robots" content="noindex,nofollow">
 <title>ระบบเช็ค QR · Camps</title>
 <link rel="icon" href="/icons/branch-64.png"><link rel="preload" href="/assets/fonts/noto-sans-thai-thai-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="./style.css?v=60283dda">
+<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="./style.css?v=bad00478">
 <link rel="stylesheet" href="/assets/theme.css?v=934a1793">
 <script src="/assets/worker-auth.js?v=54da5084" defer></script>
 <script src="/assets/vendor/html5-qrcode-2.3.8.min.js" defer></script>
@@ -73,10 +73,10 @@
       <div class="row"><input id="sid" inputmode="numeric" autocomplete="off" placeholder="เช่น 6740102220"><button id="sidGo" class="btn">ตรวจสอบ</button></div>
      </div>
     </div>
-    <div class="card" id="resultCard">
-     <h2><span class="step">3</span> ผลการตรวจ</h2>
-     <div id="result" aria-live="polite"><div class="placeholder"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 12h8"/></svg><p>ยังไม่มีข้อมูล<br>สแกน QR หรือกรอกรหัสนักศึกษาเพื่อเริ่มตรวจ</p></div></div>
-    </div>
+    <dialog id="resDlg" class="resdlg" aria-label="ผลการตรวจ">
+     <button type="button" class="resx" id="resX" aria-label="ปิด"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+     <div id="result" aria-live="polite"></div>
+    </dialog>
    </div>
   </section>
 
@@ -124,5 +124,5 @@
  <footer>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="./app.js?v=8b29f28c" defer></script>
+<script src="./app.js?v=834f61cb" defer></script>
 </body></html>
