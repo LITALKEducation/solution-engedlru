@@ -172,7 +172,7 @@ function expandQr() {
   d.addEventListener('click', (e) => { if (e.target.closest('[data-x]')) d.remove(); });
   drawQR($('qrBig'), st.student_id, Math.min(360, Math.max(220, window.innerWidth - 80)));
 }
-const BLOODS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'], DIETS = ['ฮาลาล', 'มังสวิรัติ', 'วีแกน', 'ไม่ทานหมู', 'ไม่ทานเนื้อวัว', 'ไม่ทานอาหารทะเล'];
+const BLOODS = ['A', 'A+', 'A-', 'B', 'B+', 'B-', 'AB', 'AB+', 'AB-', 'O', 'O+', 'O-', 'unknown'], DIETS = ['ฮาลาล', 'มังสวิรัติ', 'วีแกน', 'ไม่ทานหมู', 'ไม่ทานเนื้อวัว', 'ไม่ทานอาหารทะเล'];
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 // 2005-03-09 -> "9 มีนาคม 2548"
 const fmtBirth = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? (+m[3]) + ' ' + TH_MONTHS[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; };
