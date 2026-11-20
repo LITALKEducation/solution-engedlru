@@ -141,3 +141,15 @@ main:focus{outline:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .histbox{margin-top:14px}.histbox summary{cursor:pointer;font-weight:600;padding:10px 0;min-height:44px;display:flex;align-items:center;color:var(--red)}
+
+/* the result pop-up */
+.resdlg{border:0;border-radius:18px;padding:22px 20px 18px;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;background:#fff;color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.resdlg::backdrop{background:rgba(0,0,0,.55)}
+.resdlg .banner{margin-top:26px}
+.resx{position:absolute;top:8px;right:8px;width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.resx:hover{background:rgba(127,127,127,.15)}
+@media(max-width:480px){.resdlg{width:calc(100vw - 16px);padding:18px 14px 14px}}
+/* pass / fail must be readable at a glance while scanning (the shared theme greys every banner) */
+.resdlg .banner.ok{background:var(--ok-l)!important;border-color:var(--ok)!important;color:var(--ok)}
+.resdlg .banner.bad{background:var(--bad-l)!important;border-color:var(--bad)!important;color:var(--bad)}
+.resdlg .banner.warn{background:var(--warn-l)!important;border-color:#c98a1a!important;color:#7a4b00}

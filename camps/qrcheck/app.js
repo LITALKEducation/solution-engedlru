@@ -100,8 +100,8 @@ async function lookup(value, fromCamera, quiet, readOnly) {
   const id = String(value || '').trim(); if (!id) return toast('กรอกรหัสนักศึกษาหรือสแกน QR ก่อน', true);
   if (!checkId) return toast('เลือกรายการตรวจก่อน', true);
   cameraMode = !!fromCamera; $('sid').value = id;
-  try { const d = await send('POST', readOnly ? '/camps/qrcheck/lookup' : '/camps/qrcheck/scan', { studentId: id, checkId }); cur = d; renderResult(d, quiet); }
-  catch (e) { cur = null; renderProblem(e, id); }
+  try { const d = await send('POST', readOnly ? '/camps/qrcheck/lookup' : '/camps/qrcheck/scan', { studentId: id, checkId }); cur = d; renderResult(d, quiet); openDlg(d.blocked || (d.result && d.result.result === 'fail')); }
+  catch (e) { cur = null; renderProblem(e, id); openDlg(true); }
 }
 function renderProblem(e, id) {
   const nf = e.data && e.data.code === 'NOT_FOUND';
@@ -109,7 +109,13 @@ function renderProblem(e, id) {
   bindNext();
 }
 const nextButton = () => '<div class="row end"><button id="nextBtn" class="btn primary" type="button">ตรวจคนต่อไป</button></div>';
-function bindNext() { const b = $('nextBtn'); if (b) b.onclick = () => { cur = null; $('result').innerHTML = PLACEHOLDER; $('sid').value = ''; if (cameraMode) { cameraMode = false; startCamera(); } else $('sid').focus(); }; }
+// the result opens as a pop-up the moment a scan (or a typed id) is looked up; closing it = ready for the next student
+function openDlg(bad) { const d = $('resDlg'); if (!d.open) { if (d.showModal) d.showModal(); else d.setAttribute('open', ''); try { if (navigator.vibrate) navigator.vibrate(bad ? [90, 60, 90] : 50); } catch (e) { /* optional */ } } d.scrollTop = 0; }
+function closeDlg() { const d = $('resDlg'); if (d.open) d.close(); }
+$('resDlg').addEventListener('close', () => { cur = null; $('result').innerHTML = ''; $('sid').value = ''; if (cameraMode) { cameraMode = false; startCamera(); } else $('sid').focus(); });
+$('resDlg').addEventListener('click', (e) => { if (e.target === $('resDlg')) closeDlg(); });
+$('resX').onclick = closeDlg;
+function bindNext() { const b = $('nextBtn'); if (b) b.onclick = closeDlg; }
 
 function renderResult(d, quiet) {
   const s = d.student, c = d.check, r = d.result;
@@ -139,7 +145,6 @@ function renderResult(d, quiet) {
   h += nextButton();
   $('result').innerHTML = h; bindNext(); bindActions();
   const im = document.querySelector('#result img.avatar'); if (im) im.onerror = () => { const sp = document.createElement('span'); sp.className = 'avatar ph'; sp.textContent = initial; im.replaceWith(sp); };
-  if (!quiet) $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 // optional follow-up on a recorded check: badge code (AKA), note, or change the result
 function refineForm(c, r, byAdmin) {
