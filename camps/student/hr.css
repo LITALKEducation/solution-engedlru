@@ -232,7 +232,7 @@ td{vertical-align:middle}
 .phrow{display:flex;align-items:center;gap:14px}.phbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .hidden{display:none!important}
 
-/* /hr/choose: head cards */
+/* /student/choose: head cards */
 .hav.md{width:44px;height:44px;font-size:18px}.hav.xl{width:92px;height:92px;font-size:36px}
 .dept .hd{align-items:center;gap:10px;margin-top:10px;font-size:13px;line-height:1.35}.dept .hd b{display:block;font-size:15px}.dept .hd small{display:block}
 .depts.heads{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -249,7 +249,7 @@ td{vertical-align:middle}
 @media(min-width:1100px){body[data-page=student] .depts.heads{grid-template-columns:repeat(5,minmax(0,1fr))}.headcard{padding:24px 12px 14px}}
 @media(max-width:380px){.depts.heads{grid-template-columns:minmax(0,1fr)}}
 
-/* /hr/select */
+/* /student/select */
 .selbox{gap:12px}
 .sellbl{font-weight:700;font-size:15px}
 .selbox select{width:100%;min-height:52px;font-size:16px}
@@ -352,7 +352,7 @@ body[data-page] .sum .prog{background:var(--panel);height:10px}
 @media(min-width:700px){body[data-page] .hrnav{flex-wrap:wrap;overflow:visible}}
 body[data-page] .uc{border-radius:18px}
 
-/* my card (/hr/) */
+/* my card (/student/) */
 .idcard{gap:16px}
 .pfhead{display:flex;align-items:flex-start;gap:16px}.pfwho{flex:1;min-width:0}.pfen{color:var(--mute);font-size:15px;margin-top:2px;overflow-wrap:anywhere}.pfedit{flex:none}
 .pfhead h2{font-size:20px;line-height:1.3}
@@ -377,7 +377,7 @@ body[data-page] .uc{border-radius:18px}
 @media(max-width:420px){.qrbox{flex-direction:column;text-align:center}.qrnote{align-items:center}}
 @media(max-width:340px){.pfgrid{grid-template-columns:1fr}}
 
-/* /hr/aka */
+/* /student/aka */
 .akaok{background:#dcfce7;color:#15803d}
 .nametag{border-radius:24px;overflow:hidden;text-align:center;box-shadow:0 10px 26px #d32f2f26;background:#fff;border:2px solid var(--brand)}
 .nt-top{background:var(--brand);color:#fff;font-weight:800;letter-spacing:.14em;font-size:13px;padding:8px 0;text-transform:uppercase}
@@ -411,7 +411,7 @@ body[data-page] .uc{border-radius:18px}
 .srow details.m>summary:focus-visible{outline:2px solid var(--dark,#1f1f21);outline-offset:2px}
 .srow details.m>summary b{display:block}
 
-/* เสื้อค่าย (/hr/shirt, /admin/hr/shirt) */
+/* เสื้อค่าย (/student/shirt, /admin/hr/shirt) */
 .shtime{display:grid;gap:10px}.shrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.shrow b{min-width:5.5em}.shrow span:last-child{color:var(--mute);font-size:14px}
 .shsec{margin-top:16px;gap:12px}.shsec h2{margin:0}
 .shmine{display:flex;gap:14px;align-items:flex-start}.shmine>div{min-width:0}
@@ -441,7 +441,7 @@ body[data-page] .uc{border-radius:18px}
 .shsamplepic{width:min(260px,100%);flex:none;border-radius:16px;overflow:hidden;background:var(--panel,#f3f2f4)}.shsamplepic 
 .shsamplepic{display:block;max-width:min(420px,100%);height:auto;border-radius:16px;background:var(--panel,#f3f2f4)}
 
-/* /hr/shirt: compact gallery */
+/* /student/shirt: compact gallery */
 .shgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .shcard figcaption{padding:10px 12px 12px;gap:2px}.shcard figcaption b{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
 .shcls,.shtt{font-size:12px;color:var(--mute);line-height:1.4}.shtt{font-style:italic}
@@ -499,7 +499,7 @@ body[data-page] .uc{border-radius:18px}
 body[data-tab="shirt"] #userChip,body[data-tab="shirt"] #hrNav{display:none!important}
 .shlbl{font-size:1rem;line-height:1.3}.shst2{font-size:.75rem;font-weight:600;padding:2px 10px;border-radius:999px;background:var(--soft);color:var(--mute)}.shst2.open{background:#dcfce7;color:#15803d}.shst2.closed{background:#eceef0;color:var(--mute)}
 
-/* /hr/ profile: QR first, hidden sensitive values, tappable empty cells */
+/* /student/ profile: QR first, hidden sensitive values, tappable empty cells */
 body.has-bar .back{display:none!important}
 .pf-in #userChip{display:none!important}
 .pfedit{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:#fff;cursor:pointer;transition:transform .15s,background-color .2s}
@@ -566,7 +566,7 @@ nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-li
 
 .shfmt{display:flex;align-items:center;justify-content:center;gap:8px;margin:-6px 0 0;font-size:.8125rem;color:var(--mute)!important}.shfmt .shi{width:16px;height:16px}
 
-/* /hr/shirt round 2: visible card titles, compact waiting rows, sent/rejected/blocked states */
+/* /student/shirt round 2: visible card titles, compact waiting rows, sent/rejected/blocked states */
 .shh span{font-size:1.0625rem}
 .shwait{display:flex;align-items:center;gap:12px;margin:0;padding:6px 0;color:var(--mute)!important}.shwait .shi{width:24px;height:24px;opacity:.7}
 .shwaitcard{gap:6px!important}

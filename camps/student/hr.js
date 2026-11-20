@@ -3,20 +3,20 @@
 const API = window.CAMPS_API || 'https://engedlru-api.stnetworld.workers.dev';
 // This app has its OWN Auth0 application (SPA). Paste its Client ID here (see camps/README.md → "One Auth0 application per system").
 const AUTH_DOMAIN = window.HR_AUTH0_DOMAIN || 'auth.litalkeducation.com', CLIENT_ID = window.HR_AUTH0_CLIENT_ID || 'PGqozL94LzOwstm4pD39W5kvalYRiK7w';
-const HR_URL = location.origin + '/hr/';          // the HR app's single Auth0 callback + logout URL (its own Auth0 application)
+const HR_URL = location.origin + '/student/';          // the HR app's single Auth0 callback + logout URL (its own Auth0 application)
 const CONNECTION = 'google-oauth2';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const YEARS = [1, 2, 3, 4];
 const GENDERS = ['M', 'F'];
 const GL = new Proxy({ M: 'ชาย', F: 'หญิง' }, { get: (t, k) => t[k] || 'ไม่ระบุเพศ' });   // legacy rows may have no gender yet
-const PAGE = document.body.dataset.page || 'student';   // 'student' (/hr/) or 'admin' (/hr/overview, /hr/quota, ...)
+const PAGE = document.body.dataset.page || 'student';   // 'student' (/student/) or 'admin' (/student/overview, /student/quota, ...)
 const TAB = document.body.dataset.tab || 'overview';
-const PROFILE = PAGE === 'student' && TAB === 'profile';    // /hr/: my card (photo, names, ids, QR)
-const SHIRT = PAGE === 'student' && TAB === 'shirt';        // /hr/shirt: upload a shirt design + vote (hr/shirt.js)
-const AKA = PAGE === 'student' && TAB === 'aka';            // /hr/aka: nickname + AKA
-const SELECT = PAGE === 'student' && TAB === 'select';      // /hr/select: quick pick from a dropdown
-const CHOOSE = PAGE === 'student' && TAB === 'choose';      // /hr/choose: pick a department (heads only)     // which admin page this is
+const PROFILE = PAGE === 'student' && TAB === 'profile';    // /student/: my card (photo, names, ids, QR)
+const SHIRT = PAGE === 'student' && TAB === 'shirt';        // /student/shirt: upload a shirt design + vote (hr/shirt.js)
+const AKA = PAGE === 'student' && TAB === 'aka';            // /student/aka: nickname + AKA
+const SELECT = PAGE === 'student' && TAB === 'select';      // /student/select: quick pick from a dropdown
+const CHOOSE = PAGE === 'student' && TAB === 'choose';      // /student/choose: pick a department (heads only)     // which admin page this is
 const ICON = {
   direction: '<path d="M4 22V3M4 4h14l-2 4 2 4H4"/>',
   structure: '<rect x="3" y="3" width="14" height="6" rx="1.5"/><path d="M17 6h3v5H12v3"/><rect x="10" y="14" width="4" height="7" rx="1"/>',
@@ -107,11 +107,11 @@ async function initAuth() {
       let callbackResult;
       try { callbackResult = await withTimeout(auth0Client.handleRedirectCallback(), 12000, 'เข้าสู่ระบบช้าเกินไป ลองใหม่อีกครั้ง'); }
       finally { history.replaceState({}, document.title, location.pathname); }   // never leave ?code= / ?error= in the address bar (a reload would replay it)
-      // Auth0 always lands on /hr/; go back to the HR page where sign-in started (appState first, then this tab's sessionStorage).
+      // Auth0 always lands on /student/; go back to the HR page where sign-in started (appState first, then this tab's sessionStorage).
       let back = (callbackResult && callbackResult.appState && callbackResult.appState.returnTo) || '';
       if (!back) { try { back = sessionStorage.getItem('hrReturn'); sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ } }
       try { sessionStorage.removeItem('hrReturn'); } catch (e) { /* ignore */ }
-      if (typeof back === 'string' && /^\/(hr|admin)\/[\w\-/]*$/.test(back) && back !== location.pathname) { location.replace(new URL(back, location.origin).href); return 'redirect'; }
+      if (typeof back === 'string' && /^\/(student|hr|admin)\/[\w\-/]*$/.test(back) && back !== location.pathname) { location.replace(new URL(back, location.origin).href); return 'redirect'; }
     }
     authReady = true;
     return await auth0Client.isAuthenticated();
@@ -132,11 +132,11 @@ async function switchAccount() { try { sessionStorage.setItem('chooseGoogle', '1
 // ---------- menu ----------
 function renderNav() {
   const el = $('hrNav'); if (!el) return;
-  if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /hr/survey has no menu
+  if (PAGE === 'student' && TAB === 'survey') { el.innerHTML = ''; return; }   // /student/survey has no menu
   // student pages and the admin section each have their own menu, with no links across
   if (PAGE === 'admin') { el.setAttribute('aria-label', 'เมนูแอดมิน'); el.innerHTML = !(me && me.isAdmin) ? '' : ADMIN_PAGES.map(([k, l, h]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>').join(''); }
   else {
-    const tabs = [['profile', '/hr/', 'ข้อมูลส่วนตัว'], ['departments', '/hr/departments', 'ภาพรวมฝ่าย'], ['aka', '/hr/aka', 'ตั้งชื่อ AKA'], ['shirt', '/hr/shirt', 'เสื้อค่าย'], ['choose', '/hr/choose', 'เลือกจากหัวหน้า'], ['select', '/hr/select', 'เลือกจากรายการ']];
+    const tabs = [['profile', '/student/', 'ข้อมูลส่วนตัว'], ['departments', '/student/departments', 'ภาพรวมฝ่าย'], ['aka', '/student/aka', 'ตั้งชื่อ AKA'], ['shirt', '/student/shirt', 'เสื้อค่าย'], ['choose', '/student/choose', 'เลือกจากหัวหน้า'], ['select', '/student/select', 'เลือกจากรายการ']];
     const cur = tabs.find((t) => t[0] === TAB) || tabs[0];
     const link = ([k, h, l]) => '<a href="' + h + '" class="' + (TAB === k ? 'on' : '') + '"' + (TAB === k ? ' aria-current="page"' : '') + '>' + l + '</a>';
     // wide screens: the row of links. Phones: an HTML dropdown (not the OS picker) that shows the current page and opens a panel of links
@@ -155,7 +155,7 @@ function renderState() {
   const t = $('heroText'); if (t && !t.dataset.static) t.textContent = text;
 }
 
-// ---------- my details (/hr/): Auth0 photo, names from D1, ids, QR of the student id ----------
+// ---------- my details (/student/): Auth0 photo, names from D1, ids, QR of the student id ----------
 function drawQR(canvas, text, size) {
   if (typeof qrcode !== 'function') return false;
   const q = qrcode(0, 'M'); q.addData(text); q.make();
@@ -269,11 +269,11 @@ function renderProfile() {
     + '<button class="btn pfeditbtn" type="button" onclick="editProfile()">' + penIc + '<span>แก้ไขข้อมูล</span></button>'
     + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><span class="qrlbl">QR รหัสนักศึกษา</span><b class="qrid">' + esc(st.student_id) + '</b><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
     + '<div class="pfhrow"><h3 class="pfh">ข้อมูลส่วนตัว</h3><button type="button" class="pfeye" id="pfEye" aria-pressed="false" aria-label="แสดงข้อมูลที่ซ่อนไว้" title="แสดง / ซ่อนข้อมูลสำคัญ">' + eyeIc + '</button></div><div class="pfgrid">'
-    + (st.nickname ? row('ชื่อเล่น', st.nickname) : add('ชื่อเล่น', 'เพิ่มชื่อเล่น')) + (st.aka ? row('ชื่อ AKA', st.aka) : add('ชื่อ AKA', 'ตั้งชื่อ AKA', '/hr/aka'))
+    + (st.nickname ? row('ชื่อเล่น', st.nickname) : add('ชื่อเล่น', 'เพิ่มชื่อเล่น')) + (st.aka ? row('ชื่อ AKA', st.aka) : add('ชื่อ AKA', 'ตั้งชื่อ AKA', '/student/aka'))
     + row('วันเกิด', fmtBirth(st.birth_date) || '—', 'wide') + (phone ? sec('เบอร์โทรศัพท์', phone, 4) : add('เบอร์โทรศัพท์', 'เพิ่มเบอร์')) + (gphone ? sec('เบอร์ผู้ปกครอง', gphone, 4) : add('เบอร์ผู้ปกครอง', 'เพิ่มเบอร์'))
     + (nid ? sec('รหัสบัตรประชาชน 13 หลัก', nid, 3, 'wide nid') : '') + '</div>'
     + '<div class="pfhrow"><h3 class="pfh">ข้อมูลประจำตัว</h3></div><div class="pfgrid">'
-    + (dep ? row('ฝ่าย', dep, 'wide') : add('ฝ่าย', 'เลือกฝ่าย', '/hr/choose', true))
+    + (dep ? row('ฝ่าย', dep, 'wide') : add('ฝ่าย', 'เลือกฝ่าย', '/student/choose', true))
     + (st.blood_type ? row('กรุ๊ปเลือด', st.blood_type === 'unknown' ? 'ไม่ทราบ' : st.blood_type) : add('กรุ๊ปเลือด', 'เพิ่ม')) + (st.diet ? row('วิธีการกิน', st.diet) : add('วิธีการกิน', 'เพิ่ม'))
     + (st.food_allergy ? row('แพ้อาหาร', st.food_allergy, 'wide') : add('แพ้อาหาร', 'เพิ่ม', '', true)) + (st.medical ? secText('โรคประจำตัว', st.medical, 'wide') : add('โรคประจำตัว', 'เพิ่ม', '', true)) + '</div>'
     + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
@@ -283,7 +283,7 @@ function renderProfile() {
   drawQR($('qrSmall'), st.student_id, 168);
 }
 
-// ---------- /hr/aka: nickname + camp name (moved here from /aka/) ----------
+// ---------- /student/aka: nickname + camp name (moved here from /aka/) ----------
 let akaInfo = null;
 const AKA_CHIP = { open: ['เปิดรับการตั้งชื่อ', 'open'], pending: ['ยังไม่เปิด', ''], closed: ['ปิดรับแล้ว', 'closed'] };
 async function loadAka() {
@@ -390,7 +390,7 @@ function deptCard(d) {
     + '<div class="top"><div class="icon">' + svg(ICON[d.code] || ICON.direction) + '</div><div class="grow"><h3>' + esc(d.name) + '</h3><p>' + esc(d.description) + '</p></div>' + tag + '</div>'
     + '<div class="dfoot"><span class="hd">หัวหน้าฝ่าย <b>' + (h.name ? esc(h.name) : 'ยังไม่ประกาศ') + '</b></span>' + (st ? '<span class="st ' + st.c + '">' + esc(st.note) + '</span>' : '<span class="more">ดูรายละเอียด ›</span>') + '</div></div>';
 }
-// /hr/select: one dropdown + register button (no browsing)
+// /student/select: one dropdown + register button (no browsing)
 function renderSelect() {
   const box = $('depts'); if (!box) return;
   const reg = myDept(), regDep = reg && deps.find((d) => d.code === reg), y = myYear(), g = myGender();
@@ -407,7 +407,7 @@ function renderSelect() {
   $('selDept').onchange = (e) => { setPicked(e.target.value || null); renderSelect(); };
   $('selBtn').onclick = () => register();
 }
-// /hr/choose shows only the head of each department
+// /student/choose shows only the head of each department
 function headCard(d) {
   const reg = myDept() === d.code, pk = picked === d.code, h = d.head || {};
   const tag = reg ? '<span class="tag ok">✓ ลงทะเบียนแล้ว</span>' : (pk ? '<span class="tag pick">เลือกอยู่</span>' : '');
@@ -439,7 +439,7 @@ function preview(code) {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.c) draw(t.dataset.c);
     else if (t.hasAttribute('data-x')) close();
-    else if (t.dataset.pick && !CHOOSE) { setPicked(t.dataset.pick); location.href = '/hr/choose'; }
+    else if (t.dataset.pick && !CHOOSE) { setPicked(t.dataset.pick); location.href = '/student/choose'; }
     else if (t.dataset.pick) { setPicked(t.dataset.pick); close(); renderDepts(); const d = deps.find((x) => x.code === t.dataset.pick); toast('เลือก' + (d ? d.name : 'ฝ่าย') + 'แล้ว กด "ลงทะเบียน" ด้านล่างเพื่อยืนยัน'); }
   });
   draw(code);
@@ -620,7 +620,7 @@ async function unselect() {
 }
 
 // ---------- admin pages ----------
-const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธิ์แอดมิน</h2><div class="warn">บัญชี ' + esc(m.email) + ' ยังไม่มีสิทธิ์แอดมินฝ่ายบุคคล ลองขอสิทธิ์จากแอดมิน</div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary sm" href="/hr/">กลับไปหน้าลงทะเบียน</a><button class="btn sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div></div>';
+const NO_PERM = (m) => '<div class="card acct"><h2>ไม่มีสิทธิ์แอดมิน</h2><div class="warn">บัญชี ' + esc(m.email) + ' ยังไม่มีสิทธิ์แอดมินฝ่ายบุคคล ลองขอสิทธิ์จากแอดมิน</div><div class="act" style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary sm" href="/student/">กลับไปหน้าลงทะเบียน</a><button class="btn sm" onclick="switchAccount()">ใช้บัญชี Google อื่น</button></div></div>';
 function renderAdmin(x) {
   const box = $('adminBox'); if (!box) return;
   if (x && x.error) { box.innerHTML = '<div class="card acct"><div class="warn">' + esc(x.error) + '</div><button class="btn primary sm" onclick="location.reload()">ลองใหม่</button></div>'; return; }
@@ -944,7 +944,7 @@ async function clearSel(i) {
 let xlsxP = null;
 function loadXlsx() {
   if (window.XLSX) return Promise.resolve(window.XLSX);
-  return xlsxP || (xlsxP = new Promise((res, rej) => { const el = document.createElement('script'); el.src = '/hr/vendor/xlsx.mini.min.js'; el.onload = () => res(window.XLSX); el.onerror = () => { xlsxP = null; rej(new Error('load')); }; document.head.appendChild(el); }));
+  return xlsxP || (xlsxP = new Promise((res, rej) => { const el = document.createElement('script'); el.src = '/student/vendor/xlsx.mini.min.js'; el.onload = () => res(window.XLSX); el.onerror = () => { xlsxP = null; rej(new Error('load')); }; document.head.appendChild(el); }));
 }
 async function readCsvFile(e) {
   const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -1031,7 +1031,7 @@ function exportStudentsCsv(list, cols) {
 }
 async function exportStudentsPdf(list, cols) {
   try {
-    if (!window.jspdf) { await loadJs('/hr/vendor/jspdf.umd.min.js'); await loadJs('/hr/vendor/jspdf.plugin.autotable.min.js'); }
+    if (!window.jspdf) { await loadJs('/student/vendor/jspdf.umd.min.js'); await loadJs('/student/vendor/jspdf.plugin.autotable.min.js'); }
     const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
     if (!thFonts) thFonts = { n: await b64('/assets/fonts/SarabunTH-Regular.ttf'), b: await b64('/assets/fonts/SarabunTH-Bold.ttf') };
     if (!window.thaiShape) await loadJs('/assets/thai-shape.js');
@@ -1083,7 +1083,7 @@ async function exportRegPdf() {
   const d = await regGroups(); if (!d) return;
   if (!d.total) return toast('ยังไม่มีผู้ลงทะเบียน', true);
   try {
-    if (!window.jspdf) { await loadJs('/hr/vendor/jspdf.umd.min.js'); await loadJs('/hr/vendor/jspdf.plugin.autotable.min.js'); }
+    if (!window.jspdf) { await loadJs('/student/vendor/jspdf.umd.min.js'); await loadJs('/student/vendor/jspdf.plugin.autotable.min.js'); }
     const b64 = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('font'); const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(bin); };
     if (!thFonts) thFonts = { n: await b64('/assets/fonts/SarabunTH-Regular.ttf'), b: await b64('/assets/fonts/SarabunTH-Bold.ttf') };
     const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -1104,7 +1104,7 @@ async function exportRegPdf() {
       doc.setFont('Sarabun', 'normal'); doc.setFontSize(11); doc.text('ผู้ลงทะเบียน ' + g.people.length + ' คน (ชาย ' + g.people.filter((p) => p.gender === 'M').length + ' · หญิง ' + g.people.filter((p) => p.gender === 'F').length + ')', 14, 25);
       doc.autoTable({ startY: 30, head: [['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'ชั้นปี', 'เพศ']], body: g.people.length ? g.people.map((p, i) => [i + 1, String(p.student_id), p.name, p.year, GL[p.gender]]) : [[{ content: 'ยังไม่มีผู้ลงทะเบียน', colSpan: 5, styles: { halign: 'center' } }]], styles, headStyles, columnStyles: { 0: { cellWidth: 16 }, 3: { cellWidth: 16 }, 4: { cellWidth: 20 } } });
     });
-    let logo = null; try { const lr = await fetch('/hr/logo-english-education.png'); if (lr.ok) { const bl = await lr.blob(); logo = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(bl); }); } } catch (e) { /* the PDF is still made without the logo */ }
+    let logo = null; try { const lr = await fetch('/student/logo-english-education.png'); if (lr.ok) { const bl = await lr.blob(); logo = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(bl); }); } } catch (e) { /* the PDF is still made without the logo */ }
     const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); if (logo) doc.addImage(logo, 'PNG', 136, 8, 60, 14.5); doc.setFont('Sarabun', 'normal'); doc.setFontSize(9); doc.text(i + ' / ' + n, 196, 290, { align: 'right' }); }
     doc.save('camp-registrations-' + stamp() + '.pdf');
   } catch (e) { toast('สร้างไฟล์ PDF ไม่ได้', true); }

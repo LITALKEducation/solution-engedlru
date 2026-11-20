@@ -1,4 +1,4 @@
-// /shirt/ — public gallery of the camp-shirt designs: no sign-in, shows who designed each one (name + class group). Voting happens at /hr/shirt.
+// /shirt/ — public gallery of the camp-shirt designs: no sign-in, shows who designed each one (name + class group). Voting happens at /student/shirt.
 (function () {
   'use strict';
   var API = window.CAMPS_API || 'https://engedlru-api.stnetworld.workers.dev';

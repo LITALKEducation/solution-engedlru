@@ -6,7 +6,7 @@
   if (window.__maint) return; window.__maint = 1;
   var API = window.CAMPS_API || 'https://engedlru-api.stnetworld.workers.dev';
   var path = location.pathname, admin = /^\/admin(\/|$)/.test(path), home = path === '/' || path === '/index.html';
-  var sys = /^\/lotto(\/|$)/.test(path) ? 'lotto' : /^\/qrcheck(\/|$)/.test(path) ? 'qrcheck' : 'hr';   // /hr/, /aka/, /shirt/ ... are all "hr"
+  var sys = /^\/lotto(\/|$)/.test(path) ? 'lotto' : /^\/qrcheck(\/|$)/.test(path) ? 'qrcheck' : 'hr';   // /student/, /aka/, /shirt/ ... are all "hr"
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var when = function (ms) { return new Date(ms).toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' }); };
   var css = '#maintOv{position:fixed;inset:0;z-index:2147483000;background:#fff;display:grid;place-items:center;padding:24px;font-family:"Noto Sans Thai",Inter,system-ui,sans-serif;color:#18181b;overflow:auto}'

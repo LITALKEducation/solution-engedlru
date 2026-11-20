@@ -1,4 +1,4 @@
-// Camp shirt (/hr/shirt for students, /admin/hr/shirt for admins): students upload ONE design (picture + designer's name + class group / หมู่เรียน) while
+// Camp shirt (/student/shirt for students, /admin/hr/shirt for admins): students upload ONE design (picture + designer's name + class group / หมู่เรียน) while
 // submissions are open, then vote for one design (not their own) while voting is open. The ADMINS upload the sample shirt the designs are shown on.
 // Admins also set both date windows, hide / delete designs, see live counts and announce the results.
 //   Student:  GET  /camps/shirt/me                       dates, sample shirt, my design, my vote, the gallery (from the day voting opens)

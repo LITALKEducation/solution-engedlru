@@ -1,5 +1,5 @@
 // แบบสำรวจโรงเรียน: an admin picks a student by student id and fills in the school-survey form of that student's ฝ่าย.
-// Admins can also assign a student, who then signs in with their @lru.ac.th account on the public page /hr/survey and fills in their own form.
+// Admins can also assign a student, who then signs in with their @lru.ac.th account on the public page /student/survey and fills in their own form.
 // Students and departments come from the HR tables (camp_students / camp_selections / camp_departments).
 import { json, corsHeaders } from "../lib/cors.js";
 import { permDenied } from "./camps.js";
@@ -177,7 +177,7 @@ async function adminSave(req, env) {
   const w = await writeForm(req, env, st, b, a, "SURVEY_SAVE"); if (w.response) return w.response;
   return json(req, env, { ok: true, form: w.form });
 }
-// admin: let a student fill in their own form on /hr/survey (assigned: true) or take that away again (assigned: false)
+// admin: let a student fill in their own form on /student/survey (assigned: true) or take that away again (assigned: false)
 async function adminAssign(req, env) {
   const a = await requireAdmin(req, env); if (a.response) return a.response;
   const b = await req.json().catch(() => null), id = digits(b?.studentId);
@@ -188,7 +188,7 @@ async function adminAssign(req, env) {
   await audit(env, a, b?.assigned === false ? "SURVEY_UNASSIGN" : "SURVEY_ASSIGN", id);
   return json(req, env, { ok: true, assigned: b?.assigned !== false });
 }
-// ---------- the assigned student (public page /hr/survey) ----------
+// ---------- the assigned student (public page /student/survey) ----------
 const texts = () => ({ title: SURVEY_TITLE, subtitle: SURVEY_SUBTITLE, instruction: SURVEY_INSTRUCTION });
 async function studentMe(req, env) {
   const w = await whoStudent(req, env); if (w.response) return w.response;

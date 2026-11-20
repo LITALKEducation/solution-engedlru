@@ -1,7 +1,7 @@
 // Fast repo sanity checks that need no network or secrets (run by CI and `npm run check`):
 //  1. every .js under worker/src and camps (except vendored libraries) parses;
 //  2. every local <script src>, <link href>, <a href> and <img src> in camps/**/*.html points to a file that exists
-//     (extensionless pages such as /hr/quota -> quota.html and folders -> index.html count);
+//     (extensionless pages such as /student/quota -> quota.html and folders -> index.html count);
 //  3. worker/migrations file names are unique, numbered and contain no destructive-looking edits to old files (git check lives in check-migrations.yml).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -60,7 +60,7 @@ for (const f of mig) if (!/^\d{4}_[a-z0-9_]+\.sql$/.test(f)) errors.push(`migrat
 if (new Set(mig).size !== mig.length) errors.push('duplicate migration file names');
 
 // 4. one Auth0 application per system: report (not fail) while two systems still share a Client ID
-const ids = { budget: 'camps/budget/assets/budget-v2.js', hr: 'camps/hr/hr.js', lotto: 'camps/lotto/app.js', qrcheck: 'camps/qrcheck/app.js', aka: 'camps/aka/app.js' };
+const ids = { budget: 'camps/budget/assets/budget-v2.js', hr: 'camps/student/hr.js', lotto: 'camps/lotto/app.js', qrcheck: 'camps/qrcheck/app.js', aka: 'camps/aka/app.js' };
 const found = {};
 for (const [name, f] of Object.entries(ids)) {
   const m = /AUTH0_CLIENT_ID\s*\|\|\s*'([A-Za-z0-9]{20,})'/.exec(fs.readFileSync(path.join(root, f), 'utf8'));

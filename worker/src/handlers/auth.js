@@ -9,7 +9,7 @@
 import { json } from "../lib/cors.js";
 
 const DEFAULT_CLIENT_ID = "PGqozL94LzOwstm4pD39W5kvalYRiK7w";
-const SITE_PATHS = /^\/(hr|admin|budget|lotto|qrcheck|aka)\/[\w\-/.]*$/;
+const SITE_PATHS = /^\/(student|hr|admin|budget|lotto|qrcheck|aka)\/[\w\-/.]*$/;
 const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const rand = (n) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 const domain = (env) => String(env.AUTH0_DOMAIN || "").replace(/^https?:\/\//, "").replace(/\/+$/, "");

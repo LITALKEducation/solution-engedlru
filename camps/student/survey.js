@@ -1,6 +1,6 @@
 // แบบสำรวจโรงเรียน (admin page /admin/hr/survey): pick a student by student id, fill in the school-survey form of that student's ฝ่าย,
 // save it, print it. Runs after hr.js (shares its sign-in, api(), toast(), esc()); hr.js calls loadSurvey() once the admin is known.
-const SV_PUBLIC = PAGE === 'student';   // /hr/survey: an assigned student fills in their own form; /admin/hr/survey: an admin fills in any student's
+const SV_PUBLIC = PAGE === 'student';   // /student/survey: an assigned student fills in their own form; /admin/hr/survey: an admin fills in any student's
 let svTpl = null, svCur = null, svDirty = false;
 const svDigits = (s) => String(s || '').replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50)).replace(/\D/g, '');
 const svAsk = async (path, opt) => { const r = await api(path, opt); if (!r.ok) throw Object.assign(new Error(await errMsg(r)), { status: r.status }); return r.json(); };
@@ -28,12 +28,12 @@ async function svLoadList() {
         + '<td><button class="btn sm" type="button" onclick="svOpen(\'' + esc(f.studentId) + '\')">เปิด</button></td></tr>').join('') + '</tbody></table></div>'
     : '<p class="muted">ยังไม่มีแบบสำรวจที่บันทึกไว้</p>')
     + '<h3 style="margin-top:20px">ผู้ได้รับมอบหมายให้กรอกเอง <span class="muted">' + d.assignees.length + ' คน</span></h3>'
-    + '<p class="muted">นักศึกษาที่ได้รับมอบหมายเข้าสู่ระบบด้วยอีเมล @lru.ac.th ที่ <a href="/hr/survey" id="svLink">' + esc(location.origin) + '/hr/survey</a> <button class="btn sm" type="button" id="svCopy">คัดลอกลิงก์</button></p>'
+    + '<p class="muted">นักศึกษาที่ได้รับมอบหมายเข้าสู่ระบบด้วยอีเมล @lru.ac.th ที่ <a href="/student/survey" id="svLink">' + esc(location.origin) + '/student/survey</a> <button class="btn sm" type="button" id="svCopy">คัดลอกลิงก์</button></p>'
     + (d.assignees.length ? '<div class="tbl-wrap" tabindex="0" role="region" aria-label="ตารางผู้ได้รับมอบหมาย"><table><thead><tr><th>ผู้ได้รับมอบหมาย</th><th>ฝ่าย</th><th>แบบสำรวจ</th><th><span class="sr">จัดการ</span></th></tr></thead><tbody>'
       + d.assignees.map((x) => '<tr><td>' + esc(x.name) + '<br><small>' + esc(x.studentId) + '</small></td><td>' + (x.departmentName ? esc(x.departmentName) : '<span class="muted">ยังไม่มีฝ่าย</span>') + '</td><td>' + (x.hasForm ? 'บันทึกแล้ว' : 'ยังไม่ได้กรอก') + '</td>'
         + '<td><button class="btn sm" type="button" onclick="svOpen(\'' + esc(x.studentId) + '\')">เปิด</button> <button class="btn sm" type="button" onclick="svAssign(\'' + esc(x.studentId) + '\', false)">ยกเลิกการมอบหมาย</button></td></tr>').join('') + '</tbody></table></div>'
       : '<p class="muted">ยังไม่ได้มอบหมายใคร เลือกนักศึกษาด้านบนแล้วติ๊ก “ให้นักศึกษาคนนี้กรอกเอง”</p>');
-  const cp = $('svCopy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(location.origin + '/hr/survey'); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้ ให้เลือกลิงก์แล้วคัดลอกเอง', true); } };
+  const cp = $('svCopy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(location.origin + '/student/survey'); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้ ให้เลือกลิงก์แล้วคัดลอกเอง', true); } };
 }
 async function svAssign(id, on) {
   try { await svPost('/camps/survey/admin/assign', { studentId: id, assigned: on }); toast(on ? 'มอบหมายแล้ว' : 'ยกเลิกการมอบหมายแล้ว'); svLoadList(); const c = $('svAssign'); if (c && svCur && svCur.student.studentId === id) c.checked = on; }
@@ -50,7 +50,7 @@ async function svOpen(raw) {
   pick.innerHTML = '<div class="svwho"><b>' + esc(s.name) + '</b><span>' + esc(s.studentId) + ' · ปี ' + s.year + ' · ' + (s.departmentName ? esc(s.departmentName) : '<em>ยังไม่มีฝ่าย</em>') + '</span></div>'
     + (d.template ? (d.saved ? '<p class="muted">มีแบบสำรวจที่บันทึกไว้แล้ว · บันทึกล่าสุด ' + esc(svDate(d.form.updatedAt)) + '</p>' : '<p class="muted">ยังไม่มีแบบสำรวจของนักศึกษาคนนี้ กรอกแล้วกดบันทึก</p>')
       : '<div class="warn">' + (d.code === 'NO_DEPARTMENT' ? 'นักศึกษาคนนี้ยังไม่มีฝ่าย จึงยังไม่มีแบบสำรวจ ให้เลือกฝ่ายให้ก่อนที่หน้า “นักศึกษา” หรือ “ภาพรวม”' : 'ฝ่ายนี้ยังไม่มีแบบสำรวจ') + '</div>');
-  pick.insertAdjacentHTML('beforeend', '<label class="svassign"><input type="checkbox" id="svAssign"' + (d.assigned ? ' checked' : '') + '> ให้นักศึกษาคนนี้กรอกแบบสำรวจเองที่หน้า /hr/survey</label>');
+  pick.insertAdjacentHTML('beforeend', '<label class="svassign"><input type="checkbox" id="svAssign"' + (d.assigned ? ' checked' : '') + '> ให้นักศึกษาคนนี้กรอกแบบสำรวจเองที่หน้า /student/survey</label>');
   $('svAssign').onchange = (e) => svAssign(s.studentId, e.target.checked);
   svCur = d.template ? { student: s, tpl: d.template, form: d.form, photos: d.photos || [], maxPhotos: d.maxPhotos || SV_MAX_PHOTOS } : null; svDirty = false;
   if (svCur) svRender();
@@ -173,7 +173,7 @@ async function svPhotoDelete(id) {
     svPhotosRender(); toast('ลบรูปแล้ว');
   } catch (e) { toast(e.message, true); }
 }
-// ---------- public page /hr/survey: the signed-in student the admin assigned ----------
+// ---------- public page /student/survey: the signed-in student the admin assigned ----------
 const SV_REASON = { not_university_email: 'ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th) ลองออกจากระบบแล้วเข้าใหม่ด้วยอีเมลนั้น', email_not_verified: 'อีเมลนี้ยังไม่ได้ยืนยันกับ Google', not_in_roster: 'ไม่พบรหัสของคุณในรายชื่อค่าย ลองแจ้งแอดมิน' };
 const svCard = (title, msg, extra) => '<div class="card acct"><h2>' + title + '</h2><div class="warn">' + msg + '</div>' + (extra || '') + '</div>';
 const svLs = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
@@ -259,7 +259,7 @@ if (SV_PUBLIC) {
   window.addEventListener('offline', () => { if (svCur) svStatus('offline', 'ออฟไลน์ · เก็บไว้ในเครื่องแล้ว จะส่งเมื่อมีสัญญาณ'); });
   window.addEventListener('pagehide', () => { if (svDirty) svSaveLocal(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { if (svDirty) svSaveLocal(); } else if (svDirty) svSync(); });
-  if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/hr/sw.js', { scope: '/hr/' }).catch(() => { /* works online without it */ }); });
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/student/sw.js', { scope: '/student/' }).catch(() => { /* works online without it */ }); });
 }
 
 async function svSave() {

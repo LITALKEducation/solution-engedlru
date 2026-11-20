@@ -8,7 +8,7 @@ const norm = (p) => (p.length > 1 ? p.replace(/\/$/, '') : p);
 const attr = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const set = (name, value) => ({ element(el) { el.setAttribute(name, attr(value)); } });
 
-// X-Camps-OG tells you what happened (curl -sI https://enged.sorasukt.com/hr/ | grep -i x-camps-og): applied:<page> = the admin's values were
+// X-Camps-OG tells you what happened (curl -sI https://enged.sorasukt.com/student/ | grep -i x-camps-og): applied:<page> = the admin's values were
 // written into the HTML; no-match = this path is not an OG page; api-<status> / api-error = the API did not answer, default tags were served.
 const tag = (res, v) => { const out = new Response(res.body, res); out.headers.set('X-Camps-OG', v); return out; };
 
