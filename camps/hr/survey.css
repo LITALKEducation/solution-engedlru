@@ -44,7 +44,7 @@ textarea{background:#fff;color:var(--ink);border:2px solid #8a7f80;border-radius
  .acct,#gate,.sec-title,.svstatus,.warn{display:none!important}
  @page{size:A4;margin:12mm}
  html,body{background:#fff!important}
- body::before,#brandBar,.hero,.skip,#hrNav,footer,#toast,.sv-actions,.svsearch,#svPick,#svList,.panel:not(.sheet),.sr{display:none!important}
+ body::before,#brandBar,.hero,.skip,#hrNav,footer,#toast,.sv-actions,.svbar,.svnbtn,.svsearch,#svPick,#svList,.panel:not(.sheet),.sr{display:none!important}
  main{padding:0!important;max-width:none!important;margin:0!important}
  .shell{background:#fff!important}
  .sheet{border:0!important;box-shadow:none!important;padding:0;margin:0;color:#000}
@@ -57,6 +57,48 @@ textarea{background:#fff;color:var(--ink);border:2px solid #8a7f80;border-radius
  .sh-no{width:14mm}.sh-nt{width:34%}
  .sheet input:not([type=checkbox]),.sheet textarea{border:0!important;border-bottom:1px dotted #000!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:#000;min-height:0;padding:2px 0}
  .sheet input[type=checkbox]{accent-color:#000}
- .sh-nt textarea{border-bottom:0!important}
+ .sh-nt textarea{border-bottom:0!important;display:block!important}
+ .sh-table td.sh-nt .svnbtn{display:none!important}
  *{color:#000!important}
+}
+
+/* ---- round 2 (screen only; print keeps the A4 table above) ---- */
+.hrnav:empty{display:none}
+body[data-tab="survey"] #acct,body[data-tab="survey"] .sec-title{display:none}   /* the account chip above already shows who is signed in */
+@media screen{
+ .sheet{border:1px solid var(--line)!important;border-radius:20px!important;box-shadow:var(--shadow)!important;padding:20px 20px 24px;margin:12px 0 24px}
+ .sh-dept{background:var(--soft)!important;color:var(--ink)!important;border-left:4px solid var(--accent);border-radius:12px}
+ .sh-dept b{color:var(--ink)}.sh-dept span{color:var(--mute)}
+ .sh-inst{margin:16px 0 10px;padding:12px 14px;border-radius:12px;background:var(--panel);color:var(--ink)!important;font-size:.9375rem}
+ .sh-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 12px}.sh-grid .wide{grid-column:1/-1}
+ @media(min-width:700px){.sh-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ /* progress + save state, always in view under the floating menu */
+ .svbar{position:sticky;top:80px;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;margin:8px 0;border:1px solid var(--line);border-radius:16px;background:#ffffffee;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+ .svprog{flex:1 1 220px;min-width:0}.svpt{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}.svpt b{font-size:.9375rem}
+ .svtrack{height:6px;margin-top:6px;border-radius:99px;background:var(--soft);overflow:hidden}.svtrack i{display:block;height:100%;width:0;border-radius:99px;background:#16a34a;transition:width .3s var(--ease-smooth-out)}
+ .svstatus{display:inline-block!important;font-size:.8125rem;font-weight:600;padding:2px 10px!important;border-radius:999px!important;border:0!important;background:var(--soft)!important;color:var(--mute)!important}
+ .svstatus:empty{display:none!important}
+ .svstatus[data-kind=ok]{background:#dcfce7!important;color:#15803d!important}
+ .svstatus[data-kind=busy],.svstatus[data-kind=local]{background:#fef3c7!important;color:#92400e!important}
+ .svstatus[data-kind=offline]{background:#e0f2fe!important;color:#075985!important}
+ .svstatus[data-kind=error]{background:var(--bad)!important;color:#fff!important}
+ .svbtns{display:flex;gap:8px;margin-left:auto}.svprint{display:inline-flex;align-items:center;gap:6px}
+ .svsavebtn{display:none}.svbar[data-kind=local] .svsavebtn,.svbar[data-kind=offline] .svsavebtn,.svbar[data-kind=error] .svsavebtn{display:inline-flex}
+ @media(max-width:520px){.svprint span{display:none}.svprint{width:44px;padding:0;justify-content:center}}
+ .svnbtn{border:0;background:none;color:var(--mute);font:inherit;font-size:.875rem;font-weight:600;padding:4px 0;min-height:36px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+ .svnbtn:hover{color:var(--ink)}
+ .sh-nt textarea{display:none}.sh-nt.open textarea{display:block}.sh-nt.open .svnbtn{display:none}
+ @media(min-width:700px){.sh-nt textarea{display:block}.svnbtn{display:none}}
+ /* phones: tick + text in one row, the note button underneath */
+ @media(max-width:699px){
+  .sh-table tr{display:grid!important;grid-template-columns:auto minmax(0,1fr);gap:0 8px;align-items:start;padding:8px 0}
+  .sh-table td{display:block;width:auto!important}
+  .sh-no{grid-column:1;grid-row:1}.sh-item{grid-column:2;grid-row:1;padding-top:10px!important;font-size:1rem}
+  .sh-nt{grid-column:2;grid-row:2;padding:0 4px!important}
+ }
+}
+@media screen and (max-width:699px){
+ .sh-table td{border:0!important}.sh-table tr{border-bottom:1px solid var(--line)}
+ .sh-no label{min-height:44px;align-items:center}
+ .sh-nt{padding:0 0 4px 0!important}.svnbtn{padding:0;min-height:32px}
 }
