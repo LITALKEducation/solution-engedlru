@@ -38,3 +38,5 @@ The check type **"เทียบป้ายกับ AKA"** shows the student'
 
 ## Files
 `index.html`, `app.js` (its own Client ID constant `CLIENT`, or `window.QRCHECK_AUTH0_CLIENT_ID`), `style.css`, `vendor/xlsx.mini.min.js` (Excel export, loaded on demand). Camera scanning uses `html5-qrcode` from unpkg.
+
+**Camera always on:** the camera starts by itself when the scan tab opens. A scan only pauses the picture behind the result pop-up; closing the pop-up resumes scanning (no need to press anything). It is turned off only by the "ปิดกล้อง" button, and it restarts when the page comes back to the foreground.

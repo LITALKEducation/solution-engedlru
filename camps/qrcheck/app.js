@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const GENDER = { M: 'ชาย', F: 'หญิง' };
 const AUTH_GONE = ['login_required', 'missing_refresh_token', 'invalid_grant', 'consent_required', 'interaction_required'];
-let auth = null, isAdmin = false, myEmail = '', checks = [], checkId = null, cur = null, camera = null, cameraMode = false;
+let auth = null, isAdmin = false, myEmail = '', checks = [], checkId = null, cur = null, camera = null, cameraMode = false, camWant = true;   // camWant: the camera stays on (turned off only by the "ปิดกล้อง" button)
 
 // ---------- helpers ----------
 let toastT;
@@ -49,7 +49,7 @@ async function init() {
     $('logoutBtn').onclick = signOut;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     if (!applyMode()) return;
-    await loadChecks(); openFirstTab();
+    await loadChecks(); openFirstTab(); if (camWant && !$('view-scan').classList.contains('hidden')) startCamera();   // the camera is on from the start
   } catch (e) {
     $('login').classList.remove('hidden');
     if (AUTH_GONE.includes(e.error)) { $('account').textContent = 'เข้าสู่ระบบหมดอายุ ลองเข้าใหม่'; return; }
@@ -62,11 +62,11 @@ $('loginBtn').onclick = () => { if (ADMIN_MODE) { try { sessionStorage.setItem('
 
 // ---------- tabs ----------
 document.querySelectorAll('#tabs button').forEach((b) => b.onclick = async () => {
-  await stopCamera();
+  await haltCamera();
   document.querySelectorAll('#tabs button').forEach((x) => { x.classList.toggle('on', x === b); if (x === b) x.setAttribute('aria-current', 'true'); else x.removeAttribute('aria-current'); });
   document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
   $('view-' + b.dataset.tab).classList.remove('hidden');
-  if (b.dataset.tab === 'results') loadResults(); else if (b.dataset.tab === 'settings') loadSettings();
+  if (b.dataset.tab === 'results') loadResults(); else if (b.dataset.tab === 'settings') loadSettings(); else if (camWant) startCamera();
 });
 
 // ---------- 1. choose the check, scan, look up ----------
@@ -83,25 +83,45 @@ function showCheckInfo() {
 }
 $('checkSel').onchange = () => { checkId = Number($('checkSel').value) || null; try { localStorage.setItem('qrcheck.check', String(checkId)); } catch (e) { /* ignore */ } showCheckInfo(); if (cur) lookup(cur.student.studentId, false, true, true); };
 
+// The camera stays on: a scan only PAUSES the picture (it freezes behind the pop-up), closing the pop-up resumes it. Only the "ปิดกล้อง" button turns it off.
+let camBusy = false, scanning = false;
+// tuned for speed: 25 fps; no mirrored second pass (half the decoding work per frame); a 720p picture and continuous autofocus (a sharp QR decodes sooner);
+// the phone's built-in barcode detector when the browser has one (much faster than decoding in JavaScript); the scan box stays 240 px (a bigger box made
+// the JavaScript decoder slower in tests) but is never larger than the picture, which would stop the camera on small screens
+const SCAN_CFG = { fps: 25, qrbox: (w, h) => { const m = Math.min(240, Math.floor(Math.min(w, h) * 0.9)); return { width: m, height: m }; }, disableFlip: true,
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' }] } };
 async function startCamera() {
+  if (camera || camBusy) return;
   if (!window.Html5Qrcode) return toast('โหลดตัวสแกนไม่สำเร็จ ลองรีเฟรชหน้า', true);
+  camBusy = true; camWant = true;
   try {
-    camera = new Html5Qrcode('reader');
-    await camera.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, async (text) => { await stopCamera(); lookup(text, true); }, () => {});
+    const c = new Html5Qrcode('reader'); camera = c;   // set first: a scan can arrive the moment the stream starts
+    await c.start({ facingMode: 'environment' }, SCAN_CFG, (text) => {
+      if ($('resDlg').open || scanning) return;   // one scan at a time
+      pauseCamera(); lookup(text, true);
+    }, () => {});
     $('camStart').classList.add('hidden'); $('camStop').classList.remove('hidden');
-  } catch (e) { toast('เปิดกล้องไม่ได้ ลองอนุญาตกล้อง หรือกรอกรหัสนักศึกษาแทน', true); }
+  } catch (e) { camera = null; camWant = false; $('camStart').classList.remove('hidden'); $('camStop').classList.add('hidden'); toast('เปิดกล้องไม่ได้ ลองอนุญาตกล้อง หรือกรอกรหัสนักศึกษาแทน', true); }
+  finally { camBusy = false; }
 }
-async function stopCamera() { if (camera) { try { await camera.stop(); } catch (e) { /* ignore */ } camera = null; } $('camStart').classList.remove('hidden'); $('camStop').classList.add('hidden'); }
-$('camStart').onclick = startCamera; $('camStop').onclick = stopCamera;
+const pauseCamera = () => { if (camera) { try { camera.pause(true); } catch (e) { /* not scanning */ } } };
+const resumeCamera = () => { if (camera) { try { camera.resume(); } catch (e) { /* not paused */ } } else if (camWant) startCamera(); };
+async function haltCamera() { if (camera) { const c = camera; camera = null; try { await c.stop(); } catch (e) { /* ignore */ } } $('camStart').classList.remove('hidden'); $('camStop').classList.add('hidden'); }
+async function stopCamera() { camWant = false; await haltCamera(); }   // the officer turned it off
+// a phone may stop the camera while the page is hidden: switch it on again when the page is back
+document.addEventListener('visibilitychange', async () => { if (!$('view-scan') || $('view-scan').classList.contains('hidden')) return; if (document.hidden) await haltCamera(); else if (camWant && !$('resDlg').open) startCamera(); });
+$('camStart').onclick = () => { camWant = true; startCamera(); }; $('camStop').onclick = stopCamera;
 $('sidGo').onclick = () => lookup($('sid').value, false); $('sid').addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup($('sid').value, false); });
 
 // scan = look the student up AND record "ตรวจแล้ว" for the chosen check in one step (readOnly: only look, used when the check is switched)
 async function lookup(value, fromCamera, quiet, readOnly) {
   const id = String(value || '').trim(); if (!id) return toast('กรอกรหัสนักศึกษาหรือสแกน QR ก่อน', true);
   if (!checkId) return toast('เลือกรายการตรวจก่อน', true);
-  cameraMode = !!fromCamera; $('sid').value = id;
+  cameraMode = !!fromCamera; $('sid').value = id; scanning = true;
   try { const d = await send('POST', readOnly ? '/camps/qrcheck/lookup' : '/camps/qrcheck/scan', { studentId: id, checkId }); cur = d; renderResult(d, quiet); openDlg(d.blocked || (d.result && d.result.result === 'fail')); }
   catch (e) { cur = null; renderProblem(e, id); openDlg(true); }
+  finally { scanning = false; }
 }
 function renderProblem(e, id) {
   const nf = e.data && e.data.code === 'NOT_FOUND';
@@ -110,9 +130,9 @@ function renderProblem(e, id) {
 }
 const nextButton = () => '<div class="row end"><button id="nextBtn" class="btn primary" type="button">ตรวจคนต่อไป</button></div>';
 // the result opens as a pop-up the moment a scan (or a typed id) is looked up; closing it = ready for the next student
-function openDlg(bad) { const d = $('resDlg'); if (!d.open) { if (d.showModal) d.showModal(); else d.setAttribute('open', ''); try { if (navigator.vibrate) navigator.vibrate(bad ? [90, 60, 90] : 50); } catch (e) { /* optional */ } } d.scrollTop = 0; }
+function openDlg(bad) { const d = $('resDlg'); pauseCamera(); if (!d.open) { if (d.showModal) d.showModal(); else d.setAttribute('open', ''); try { if (navigator.vibrate) navigator.vibrate(bad ? [90, 60, 90] : 50); } catch (e) { /* optional */ } } d.scrollTop = 0; }
 function closeDlg() { const d = $('resDlg'); if (d.open) d.close(); }
-$('resDlg').addEventListener('close', () => { cur = null; $('result').innerHTML = ''; $('sid').value = ''; if (cameraMode) { cameraMode = false; startCamera(); } else $('sid').focus(); });
+$('resDlg').addEventListener('close', () => { cur = null; $('result').innerHTML = ''; $('sid').value = ''; cameraMode = false; if (camera || camWant) resumeCamera(); else $('sid').focus(); });
 $('resDlg').addEventListener('click', (e) => { if (e.target === $('resDlg')) closeDlg(); });
 $('resX').onclick = closeDlg;
 function bindNext() { const b = $('nextBtn'); if (b) b.onclick = closeDlg; }
