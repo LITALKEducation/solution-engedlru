@@ -1,8 +1,10 @@
 /* ตัวอย่างลิงก์ (/admin/hr/og). Loaded after theme.css. */
 .ogp h3 a{font-weight:400;font-size:.875rem;margin-left:8px}
-.ogcard{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;max-width:520px;margin:10px 0 14px}
+.ogcard{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--b-ffffff,#fff);max-width:520px;margin:10px 0 14px}
 .ogcard img{display:block;width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover;background:var(--panel)}
 .ogtxt{display:flex;flex-direction:column;gap:2px;padding:10px 14px 12px;background:var(--panel);overflow-wrap:anywhere;line-height:1.5}
 .ogtxt small{color:var(--mute);text-transform:uppercase;font-size:.75rem}
 .ogtxt b{color:var(--ink)}.ogtxt span{color:var(--mute);font-size:.9375rem}
 .ogp textarea,.ogp input[type=file]{width:100%}
+/* ==== dark mode (generated: light colours -> --b-/--l-/--f- tokens; light values stay the fallback) ==== */
+@media (prefers-color-scheme:dark){:root{--b-ffffff:#161616}}

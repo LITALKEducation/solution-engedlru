@@ -1,7 +1,7 @@
 // The in-app browser guard (camps/assets/inapp-guard.js): which user agents are blocked.
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { detect } = require('../../camps/assets/inapp-guard.js');
+const { detect, cleanUrl, pageName } = require('../../camps/assets/inapp-guard.js');
 let bad = 0;
 const ok = (c, m) => { if (!c) { bad++; console.log('  FAIL:', m); } };
 const BLOCK = {
@@ -30,5 +30,8 @@ for (const [n, ua] of Object.entries(BLOCK)) ok(detect(ua, false), 'should block
 for (const [n, ua] of Object.entries(ALLOW)) ok(!detect(ua, false), 'should allow ' + n);
 ok(!detect(BLOCK['iOS web view without Safari token'], true), 'installed home-screen web app (standalone) is not blocked');
 ok(detect(BLOCK['LINE iOS'], false).app === 'LINE' && detect(BLOCK['Instagram'], false).app === 'Instagram', 'names the app');
-console.log(bad ? bad + ' FAILED' : `all ${Object.keys(BLOCK).length + Object.keys(ALLOW).length + 2} in-app guard checks passed`);
+ok(cleanUrl('https://enged.sorasukt.com/student/?code=abc&state=xyz&x=1#frag') === 'https://enged.sorasukt.com/student/?x=1', 'the link handed to a real browser drops the one-time sign-in answer and the fragment');
+ok(cleanUrl('https://enged.sorasukt.com/lotto/?openExternalBrowser=1') === 'https://enged.sorasukt.com/lotto/', 'the LINE flag is not carried along');
+ok(pageName('/lotto/') === 'จับสลาก' && pageName('/student/survey') === 'ข้อมูลนักศึกษา' && pageName('/qrcheck/') === 'เช็ก QR' && pageName('/unknown'), 'the page is named for the person');
+console.log(bad ? bad + ' FAILED' : `all ${Object.keys(BLOCK).length + Object.keys(ALLOW).length + 5} in-app guard checks passed`);
 process.exit(bad ? 1 : 0);
