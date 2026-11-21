@@ -493,10 +493,13 @@ async function loadDepartments() {
   if (PAGE !== 'student') return;
   let r;
   if (!auth0Client || !me) return;
+  // stale-while-revalidate: the list from the last visit (under 10 min old) is drawn at once while the fresh one is fetched
+  if (!deps.length) { try { const c = JSON.parse(localStorage.getItem('hr.deps.v1') || 'null'); if (c && Date.now() - c.at < 600000 && Array.isArray(c.departments) && c.departments.length) { deps = c.departments; state = c.registration || 'pending'; renderDepts(); } } catch (e) { /* ignore */ } }
   try { r = await api('/camps/departments'); } catch (e) { if (sessionGone(e)) { me = null; renderAcct(); renderGate(); return; } if (!deps.length) $('depts').innerHTML = failBox('เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'loadDepartments()'); return; }
   if (r.status === 401) { me = null; renderAcct(); renderGate(); return; }
   if (!r.ok) { if (!deps.length) $('depts').innerHTML = failBox(await errMsg(r), 'loadDepartments()'); return; }
   const d = await r.json(); deps = d.departments || []; state = d.registration || 'pending'; applyInfo(d);
+  try { localStorage.setItem('hr.deps.v1', JSON.stringify({ at: Date.now(), departments: deps, registration: state })); } catch (e) { /* storage blocked */ }
   renderState(); renderDepts(); if (me) renderAcct();
 }
 // ---------- schedule countdown + location rule (student pages and the admin hero) ----------
@@ -618,8 +621,11 @@ async function register() {
     }
   }
   const r = await post('/camps/select', body);
-  if (!r.ok) toast(await errMsg(r), true); else { toast('ลงทะเบียน' + d.name + 'เรียบร้อยแล้ว'); setPicked(null); }
-  await Promise.all([loadDepartments(), loadMe()]);
+  if (!r.ok) { toast(await errMsg(r), true); await Promise.all([loadDepartments(), loadMe()]); return; }
+  toast('ลงทะเบียน' + d.name + 'เรียบร้อยแล้ว'); setPicked(null);
+  // the answer carries the new selection: show it at once, then refresh only the seat counts (no extra /me round trip)
+  const j = await r.json().catch(() => null);
+  if (j && j.selection && me) { me.selection = j.selection; renderAcct(); renderDepts(); await loadDepartments(); } else await Promise.all([loadDepartments(), loadMe()]);
 }
 // after the Google redirect: pick up where the student left off
 function resumeAfterLogin() {
@@ -629,8 +635,10 @@ function resumeAfterLogin() {
 async function unselect() {
   if (!(await confirmDlg('ยกเลิกการลงทะเบียน?', 'ที่นั่งของคุณจะถูกคืนให้คนอื่น', 'ยกเลิกการลงทะเบียน'))) return;
   const r = await post('/camps/unselect');
-  if (!r.ok) toast(await errMsg(r), true); else toast('ยกเลิกการลงทะเบียนแล้ว');
-  await Promise.all([loadDepartments(), loadMe()]);
+  if (!r.ok) { toast(await errMsg(r), true); await Promise.all([loadDepartments(), loadMe()]); return; }
+  toast('ยกเลิกการลงทะเบียนแล้ว');
+  const j = await r.json().catch(() => null);
+  if (j && j.selection === null && me) { me.selection = null; renderAcct(); renderDepts(); await loadDepartments(); } else await Promise.all([loadDepartments(), loadMe()]);
 }
 
 // ---------- admin pages ----------

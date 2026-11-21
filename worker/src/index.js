@@ -24,6 +24,7 @@ import { getStats } from "./handlers/admin/stats.js";
 import { auth } from "./handlers/auth.js";
 import { shirt } from "./handlers/shirt.js";
 import { maintenance, maintenanceGate } from "./handlers/maintenance.js";
+import { timed } from "./lib/edge-cache.js";
 import { getOgImage, listOgImages, upsertOgImage } from "./handlers/og.js";
 import { listPublicAds, serveAd, listAdminAds, uploadOg, uploadAd, updateAd, deleteAd } from "./handlers/media.js";
 
@@ -60,8 +61,18 @@ async function health(request, env) {
 }
 
 export default {
-  async fetch(request, env, ctx) {
-    if (request.method === "OPTIONS") return handleOptions(request, env);
+  // every request is counted (D1 round trips and their time) and reported in the Server-Timing header: DevTools > Network > Timing shows "d1"
+  async fetch(request, env0, ctx) {
+    if (request.method === "OPTIONS") return handleOptions(request, env0);
+    const { env, stats } = timed(env0);
+    const res = await handle(request, env, ctx);
+    try { res.headers.set("Server-Timing", `d1;desc="${stats.n} queries";dur=${stats.ms}`); }
+    catch (e) { return new Response(res.body, { status: res.status, statusText: res.statusText, headers: new Headers([...res.headers, ["Server-Timing", `d1;desc="${stats.n} queries";dur=${stats.ms}`]]) }); }   // an immutable (proxied) response
+    return res;
+  }
+};
+
+async function handle(request, env, ctx) {
 
     const url = new URL(request.url);
     const { pathname } = url;
@@ -105,7 +116,7 @@ export default {
       if (pathname.startsWith("/camps/aka/")) return await aka(request, env, url);
       if (pathname.startsWith("/camps/survey/")) return await survey(request, env, url);
       if (pathname.startsWith("/camps/og/")) return await campsOg(request, env, url);
-      if (pathname.startsWith("/camps/")) return await camps(request, env, url);
+      if (pathname.startsWith("/camps/")) return await camps(request, env, url, ctx);
       if (pathname.startsWith("/budget/verify/")) return await budgetV2(request, env, url, ctx);
       if (pathname.startsWith("/budget/") && pathname !== "/budget/") return await budgetV2(request, env, url, ctx);
 
@@ -187,5 +198,4 @@ export default {
     } catch (err) {
       return json(request, env, { error: "Internal Error", details: err.message }, 500);
     }
-  }
-};
+}

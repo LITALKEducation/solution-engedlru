@@ -9,6 +9,7 @@
 import { json } from "../lib/cors.js";
 import { requireAdmin, clean, fail } from "./camps.js";
 import { getAuth0UserFromRequest } from "../lib/auth0.js";
+import { edgeCached } from "../lib/edge-cache.js";
 
 export const SYSTEMS = ["hr", "lotto", "qrcheck"];
 const KEYS = { enabled: "maint_enabled", from: "maint_from", until: "maint_until", message: "maint_message", scope: "maint_scope", mode: "maint_mode", lead: "maint_lead", notice: "maint_notice", msgs: "maint_msgs", allow: "maint_allow" };
@@ -26,10 +27,12 @@ export const invalidateMaintenance = () => { cache = { exp: 0, v: null }; };
 export const resetMaintenance = () => { cache = { exp: 0, v: null }; last = null; };
 const parseMsgs = (raw) => { try { const o = JSON.parse(raw || "{}"); const r = {}; for (const k of SYSTEMS) if (typeof o[k] === "string" && o[k].trim()) r[k] = o[k].slice(0, MSG_MAX); return r; } catch (e) { return {}; } };
 const parseAllow = (raw) => String(raw || "").split(",").map((x) => x.trim().toLowerCase()).filter((x) => EMAIL.test(x));
-async function readRaw(env) {
-  if (cache.exp > Date.now() && cache.v) return cache.v;
+async function readRaw(env, { fresh = false } = {}) {
+  if (!fresh && cache.exp > Date.now() && cache.v) return cache.v;
   let rows;
-  try { rows = (await env.DB.prepare("SELECT key,value FROM camp_settings WHERE key LIKE 'maint_%'").all()).results || []; }
+  // shared per data centre for 5 s (every visitor's home page asks); the admin screens read with fresh:true
+  const load = async () => (await env.DB.prepare("SELECT key,value FROM camp_settings WHERE key LIKE 'maint_%'").all()).results || [];
+  try { rows = fresh ? await load() : await edgeCached("maint-rows", 5, load); }
   catch (e) { if (last) return last; throw e; }
   const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   const t = (k) => { const n = num(m[k]); return Number.isFinite(n) ? n : null; };
@@ -94,7 +97,7 @@ async function audit(env, w, action, metadata) {
 }
 async function adminGet(request, env) {
   const a = await requireAdmin(request, env, "maintenance"); if (a.response) return a.response;
-  invalidateMaintenance(); const s = await readRaw(env);
+  invalidateMaintenance(); const s = await readRaw(env, { fresh: true });
   return json(request, env, { ...s, state: phase(s), noticeFrom: noticeFrom(s), now: Date.now(), systems: SYSTEMS, modes: MODES, leads: LEADS, defaultMessage: DEFAULT_MSG, allowMax: ALLOW_MAX });
 }
 async function history(request, env) {
@@ -126,7 +129,7 @@ async function adminSave(request, env) {
   await env.DB.batch([set(KEYS.enabled, enabled ? "1" : "0"), set(KEYS.from, from ?? ""), set(KEYS.until, until ?? ""), set(KEYS.message, message), set(KEYS.scope, scope.join(",")), set(KEYS.mode, mode), set(KEYS.lead, lead), set(KEYS.notice, notice), set(KEYS.msgs, JSON.stringify(messages)), set(KEYS.allow, allow.join(","))]);
   invalidateMaintenance();
   await audit(env, a, "MAINTENANCE_SET", { enabled, from, until, scope, mode, lead, allow: allow.length, messageLength: message.length, notice: notice.length > 0 });
-  const s = await readRaw(env);
+  const s = await readRaw(env, { fresh: true });
   return json(request, env, { ok: true, ...s, state: phase(s), noticeFrom: noticeFrom(s), now: Date.now() });
 }
 

@@ -1,4 +1,5 @@
 // Auth0 helpers.
+import { sha256hex } from "./edge-cache.js";
 function normalizeDomain(value, name) {
   let domain = String(value || "").trim();
   if (domain.startsWith("https://")) domain = domain.slice(8);
@@ -38,9 +39,14 @@ export async function getAuth0UserEx(env, accessToken) {
   if (hit && hit.exp > Date.now()) return hit.promise;
   const promise = (async () => {
     try {
+      // another isolate in this data centre may have verified the same token a moment ago (Cache API, key = hash of the token, 60 s)
+      const c = globalThis.caches && globalThis.caches.default, ck = c ? new Request("https://edge-cache.invalid/userinfo/" + await sha256hex(accessToken)) : null;
+      if (c) { try { const h = await c.match(ck); if (h) return { user: await h.json(), status: 200 }; } catch (e) { /* ignore */ } }
       const res = await fetch(`https://${auth0Domain(env)}/userinfo`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!res.ok) return { user: null, status: res.status };
-      return { user: await res.json(), status: 200 };
+      const user = await res.json();
+      if (c) { try { await c.put(ck, new Response(JSON.stringify(user), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=60" } })); } catch (e) { /* ignore */ } }
+      return { user, status: 200 };
     } catch (e) {
       console.error("[auth0] userinfo failed:", e?.message || e);
       return { user: null, status: 0 };

@@ -295,27 +295,27 @@ nav button.active{color:var(--brand);font-weight:700}
 @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.06)}100%{transform:scale(1)}}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes ring{0%{box-shadow:0 0 0 0 #15803d55}100%{box-shadow:0 0 0 22px #15803d00}}
-.page.enter{animation:fadeUp .3s cubic-bezier(.2,.8,.2,1)}
-.step-fwd{animation:slideInR .26s cubic-bezier(.2,.8,.2,1)}
-.step-back{animation:slideInL .26s cubic-bezier(.2,.8,.2,1)}
-.stagger .row,.stagger .acct-card,.stagger .cat-row,.stagger .notif,.stagger .kv-row{animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both}
+.page.enter{animation:fadeUp var(--duration-fast) var(--ease-smooth-out)}
+.step-fwd{animation:slideInR var(--duration-fast) var(--ease-smooth-out)}
+.step-back{animation:slideInL var(--duration-fast) var(--ease-smooth-out)}
+.stagger .row,.stagger .acct-card,.stagger .cat-row,.stagger .notif,.stagger .kv-row{animation:fadeUp .4s var(--ease-smooth-out) both}
 .stagger .row:nth-child(2),.stagger .acct-card:nth-child(2){animation-delay:.04s}
 .stagger .row:nth-child(3),.stagger .acct-card:nth-child(3){animation-delay:.08s}
 .stagger .row:nth-child(4),.stagger .acct-card:nth-child(4){animation-delay:.12s}
 .stagger .row:nth-child(5),.stagger .acct-card:nth-child(5){animation-delay:.16s}
 .stagger .row:nth-child(6){animation-delay:.2s}.stagger .row:nth-child(7){animation-delay:.24s}.stagger .row:nth-child(n+8){animation-delay:.28s}
 .stagger .cat-row:nth-child(2){animation-delay:.04s}.stagger .cat-row:nth-child(3){animation-delay:.08s}.stagger .cat-row:nth-child(n+4){animation-delay:.12s}
-.modal{animation:fadeIn .2s ease}
-.modal.closing{animation:fadeOut .19s ease forwards}
-.modal.closing .modal-card{animation:sheetDown .19s ease forwards}
-.modal-card .check{animation:pop .5s .12s cubic-bezier(.2,.8,.2,1) both,ring .9s .45s ease-out}
-.fab{animation:pop .45s .15s cubic-bezier(.2,.8,.2,1) both}
+.modal{animation:fadeIn var(--duration-fast) var(--ease-smooth-out)}
+.modal.closing{animation:fadeOut var(--duration-quick) var(--ease-smooth-out) forwards}
+.modal.closing .modal-card{animation:sheetDown var(--duration-quick) var(--ease-smooth-out) forwards}
+.modal-card .check{animation:pop var(--duration-very-slow) .12s var(--ease-smooth-out) both,ring .9s .45s ease-out}
+.fab{animation:pop .45s .15s var(--ease-smooth-out) both}
 .disp.bump .num{display:inline-block;animation:bump .16s ease}
-#toast{animation:toastIn .25s cubic-bezier(.2,.8,.2,1)}
-.hero-panel .acts .act{animation:fadeUp .45s cubic-bezier(.2,.8,.2,1) both}
-.hero-panel .acts .act:nth-child(2){animation-delay:.05s}.hero-panel .acts .act:nth-child(3){animation-delay:.1s}.hero-panel .acts .act:nth-child(4){animation-delay:.15s}
-.pn{animation:fadeUp .4s ease both}.pn:nth-child(2){animation-delay:.06s}.pn:nth-child(3){animation-delay:.12s}
-nav button svg{transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+#toast{animation:toastIn var(--duration-fast) var(--ease-smooth-out)}
+.hero-panel .acts .act{animation:fadeUp .45s var(--ease-smooth-out) both}
+.hero-panel .acts .act:nth-child(2){animation-delay:var(--duration-stagger)}.hero-panel .acts .act:nth-child(3){animation-delay:var(--duration-micro)}.hero-panel .acts .act:nth-child(4){animation-delay:calc(var(--duration-stagger)*3)}
+.pn{animation:fadeUp .4s ease both}.pn:nth-child(2){animation-delay:var(--duration-stagger)}.pn:nth-child(3){animation-delay:var(--duration-micro)}
+nav button svg{transition:transform .22s var(--ease-smooth-out)}
 nav button.active svg{transform:translateY(-2px) scale(1.12)}
 nav button span{transition:color .2s}
 .chip,.seg button,.cta,.primary,.secondary,.k,.round,.act .ab,.acct-card,.row{transition:background-color .18s,color .18s,border-color .18s,transform .12s,box-shadow .18s}
@@ -331,7 +331,7 @@ input,select,textarea{transition:border-color .18s,box-shadow .18s}
    Tokens first, then each transition. All guarded for reduced motion.
    ==================================================================== */
 :root{
-  --duration-quick:150ms;--duration-fast:250ms;--duration-medium:350ms;
+  --duration-stagger:40ms;--duration-micro:80ms;--duration-quick:150ms;--duration-fast:250ms;--duration-medium:350ms;--duration-very-slow:500ms;
   --ease-smooth-out:cubic-bezier(.22,1,.36,1);
   --modal-open-dur:250ms;--modal-close-dur:150ms;--modal-scale:.96;--modal-scale-close:.96;--modal-ease:cubic-bezier(.22,1,.36,1);
   --page-slide-dur:250ms;--page-blur:3px;--page-ease:cubic-bezier(.22,1,.36,1);
@@ -425,7 +425,7 @@ input,select,textarea{transition:border-color .18s,box-shadow .18s}
 .adm-row .cm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .adm-row .cm b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .adm-row .cm small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
-.stagger .adm-row{animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both}
+.stagger .adm-row{animation:fadeUp .4s var(--ease-smooth-out) both}
 .stagger .adm-row:nth-child(2){animation-delay:.04s}.stagger .adm-row:nth-child(3){animation-delay:.08s}.stagger .adm-row:nth-child(n+4){animation-delay:.12s}
 .empty.sm{padding:10px 0 16px;font-size:13px}
 .t-acc .cat-row{padding:10px 0}
@@ -528,7 +528,7 @@ input,select,textarea{transition:border-color .18s,box-shadow .18s}
  .tbl .ttl{max-width:360px}
  .tbl .ttl b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .tbl .ttl small{font-size:12px}
- .stagger .tbl tbody tr{animation:fadeUp .35s cubic-bezier(.2,.8,.2,1) both}
+ .stagger .tbl tbody tr{animation:fadeUp .35s var(--ease-smooth-out) both}
 }
 @media(min-width:1500px){
  .topbar,main{max-width:1280px}

@@ -5,6 +5,7 @@ import { putFile } from "../lib/files.js";
 import { akaState, readNames, upsertAka, tidy as tidyAka } from "./aka.js";
 import { getAuth0UserFromRequest, getAuth0Roles } from "../lib/auth0.js";
 import { erasePhotos } from "./survey.js";
+import { edgeCached, readDb } from "../lib/edge-cache.js";
 
 export const fail = (request, env, message, status = 400, extra = {}) => json(request, env, { error: message, ...extra }, status);
 // Thai-safe text: NFC, no zero-width marks, NBSP -> space, collapsed spaces; Thai digits (๐-๙) -> 0-9 for ids / years
@@ -104,7 +105,19 @@ const upsertSelectionStmt = (env, id, code, year, gender) => env.DB.prepare(
 //   schedule_enabled (1/0), schedule_mode (datetime|countdown), open_at, close_at   (epoch milliseconds, "" = none)
 //   geo_enabled (1/0), geo_name, geo_lat, geo_lng, geo_radius (metres)
 const num = (v) => { const n = Number(v); return v !== "" && v != null && Number.isFinite(n) ? n : null; };
-async function loadSettings(env) {
+// camp_settings is read on almost every request, so it is kept in the isolate for 3 s (concurrent readers share one query). Any admin write under
+// /camps/admin/ clears it (see camps()), so the isolate that took the change sees it at once, the others within 3 s.
+let settingsCache = { exp: 0, v: null, p: null };
+export const invalidateSettings = () => { settingsCache = { exp: 0, v: null, p: null }; };
+function loadSettings(env) {
+  const c = settingsCache;
+  if (c.v && c.exp > Date.now()) return Promise.resolve(c.v);
+  if (c.p) return c.p;
+  const p = readSettings(env).then((v) => { settingsCache = { exp: Date.now() + 3000, v, p: null }; return v; }, (e) => { settingsCache.p = null; throw e; });
+  settingsCache = { exp: 0, v: null, p };
+  return p;
+}
+async function readSettings(env) {
   const rows = (await env.DB.prepare("SELECT key,value FROM camp_settings").all()).results || [];
   const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   const manual = STATES.includes(m.registration_state) ? m.registration_state : "pending";
@@ -132,11 +145,16 @@ export function distanceMeters(lat1, lng1, lat2, lng2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
-const setSetting = (env, key, value) => env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? ""));
+const setSetting = (env, key, value) => (invalidateSettings(), env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? "")));
 
-async function audit(env, w, action, entityId, metadata = {}) {
-  await env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
-    .bind(crypto.randomUUID(), w.user.sub, w.email || "unknown", action, "camp", entityId || null, JSON.stringify(metadata)).run();
+const auditStmt = (env, w, action, entityId, metadata) => env.DB.prepare("INSERT INTO budget_audit_logs (uuid,actor_auth0_id,actor_email,action,entity_type,entity_uuid,metadata) VALUES (?,?,?,?,?,?,?)")
+  .bind(crypto.randomUUID(), w.user.sub, w.email || "unknown", action, "camp", entityId || null, JSON.stringify(metadata));
+async function audit(env, w, action, entityId, metadata = {}) { await auditStmt(env, w, action, entityId, metadata).run(); }
+// the student-facing hot paths (select / unselect) write their audit row after the answer has gone out
+function auditLater(ctx, env, w, action, entityId, metadata = {}) {
+  const p = audit(env, w, action, entityId, metadata).catch((e) => console.error("[camps] audit failed:", e?.message || e));
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
+  return p;
 }
 
 // Resolve the signed-in Google user.
@@ -228,8 +246,10 @@ async function seatTotals(env) {
   return seatsCache.v;
 }
 async function status(request, env) {
-  const [i, seats] = await Promise.all([registrationInfo(env), seatTotals(env)]);
-  return json(request, env, { registration: i.registration, schedule: i.schedule, now: i.now, seats });
+  // settings + seat totals are the same for everybody: shared per data centre for 5 s. The clock is applied at read time, so a scheduled open / close is exact.
+  const d = await edgeCached("camps-status", 5, async () => { const [st, seats] = await Promise.all([loadSettings(env), seatTotals(env)]); return { st, seats }; });
+  const now = Date.now();
+  return json(request, env, { registration: effectiveState(d.st, now), schedule: d.st.schedule, now, seats: d.seats });
 }
 
 const grid = () => ({ M: { 1: 0, 2: 0, 3: 0, 4: 0 }, F: { 1: 0, 2: 0, 3: 0, 4: 0 } });
@@ -270,20 +290,28 @@ async function adminDeletePhoto(request, env) {
   await audit(env, a, "CAMP_HEAD_PHOTO_DELETE", code, {});
   return json(request, env, { ok: true });
 }
-async function departmentsWithSlots(env) {
-  const [deps, quotas, filled] = await Promise.all([
-    env.DB.prepare("SELECT code,name,description,sort_order,head_name,head_contact,head_photo FROM camp_departments ORDER BY sort_order").all(),
-    env.DB.prepare("SELECT department_code,gender,year,quota FROM camp_quotas").all(),
-    env.DB.prepare("SELECT department_code,gender,year,COUNT(*) c FROM camp_selections GROUP BY department_code,gender,year").all()
+// One D1 round trip (a batch of 3 reads, read-replica friendly) and a 2 s cache: every student polls this while registration is open.
+// The seat itself is still decided by the atomic INSERT in select(), so a slightly old count can never oversell a department.
+let depsCache = { exp: 0, v: null };
+export const invalidateDepartments = () => { depsCache = { exp: 0, v: null }; };
+async function departmentsWithSlots(env, { fresh = false } = {}) {
+  if (!fresh && depsCache.v && depsCache.exp > Date.now()) return depsCache.v;
+  const db = fresh ? env.DB : readDb(env);
+  const [deps, quotas, filled] = await db.batch([
+    db.prepare("SELECT code,name,description,sort_order,head_name,head_contact,head_photo FROM camp_departments ORDER BY sort_order"),
+    db.prepare("SELECT department_code,gender,year,quota FROM camp_quotas"),
+    db.prepare("SELECT department_code,gender,year,COUNT(*) c FROM camp_selections GROUP BY department_code,gender,year")
   ]);
   const q = {}, f = {};
   for (const r of quotas.results || []) if (GENDERS.includes(r.gender)) (q[r.department_code] ||= grid())[r.gender][r.year] = r.quota;
   for (const r of filled.results || []) if (GENDERS.includes(r.gender)) (f[r.department_code] ||= grid())[r.gender][r.year] = r.c;
-  return (deps.results || []).map((d) => {
+  const out = (deps.results || []).map((d) => {
     const quota = q[d.code] || grid(), fill = f[d.code] || grid(), remaining = grid();
     for (const g of GENDERS) for (const y of YEARS) remaining[g][y] = Math.max(0, quota[g][y] - fill[g][y]);
     return { code: d.code, name: d.name, description: d.description, head: { name: d.head_name || "", contact: d.head_contact || "", photo: photoVersion(d.head_photo) }, quota, filled: fill, remaining };
   });
+  if (!fresh) depsCache = { exp: Date.now() + 2000, v: out };
+  return out;
 }
 async function departments(request, env) {
   const w = await who(request, env); if (w.response) return w.response;   // sign-in required to see anything
@@ -302,10 +330,15 @@ async function me(request, env, url) {
   if (!w.parsed) reason = "not_university_email";
   else if (!w.verified) reason = "email_not_verified";
   else {
-    student = await env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,s.name_en,s.birth_date,s.phone,s.guardian_phone,s.food_allergy,s.diet,s.blood_type,s.medical,s.health_consent_at,s.terms_ver,s.terms_accepted_at,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId).first();
+    // student + current selection in ONE round trip (the selection is looked up by the same id)
+    const [sr, selr] = await env.DB.batch([
+      env.DB.prepare("SELECT s.student_id,s.name,s.year,s.gender,s.national_id,s.name_en,s.birth_date,s.phone,s.guardian_phone,s.food_allergy,s.diet,s.blood_type,s.medical,s.health_consent_at,s.terms_ver,s.terms_accepted_at,a.nickname,a.aka FROM camp_students s LEFT JOIN camp_aka a ON a.student_id=s.student_id WHERE s.student_id=?").bind(w.parsed.studentId),
+      env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(w.parsed.studentId)
+    ]);
+    student = (sr.results || [])[0] || null;
     if (!student) reason = "not_in_roster";
     else if (!student.gender) reason = "no_gender";
-    if (student) selection = await env.DB.prepare("SELECT sel.department_code,sel.selected_at,d.name department_name FROM camp_selections sel LEFT JOIN camp_departments d ON d.code=sel.department_code WHERE sel.student_id=?").bind(student.student_id).first();
+    if (student) selection = (selr.results || [])[0] || null;
   }
   return json(request, env, {
     email: w.email, googleName: w.user.name || "", legalVersion: LEGAL_VERSION, isAdmin: admin, adminPerms: admin ? await (async () => { const p = await adminPerms(env, w.email); return { legacy: p.legacy, perms: [...p.perms] }; })() : null, adminDeferred: defer, registration: reg, akaState: student ? await akaState(env) : null,
@@ -363,28 +396,35 @@ async function updateProfile(request, env) {
   return json(request, env, { ok: true });
 }
 
-async function eligibleStudent(request, env) {
+// who + roster check for select / unselect. The student row and any extra reads (`extra(w)` returns statements) come back in ONE D1 round trip.
+async function eligibleStudent(request, env, extra = () => []) {
   const w = await who(request, env); if (w.response) return { response: w.response };
   if (!w.parsed) return { response: fail(request, env, "ต้องใช้อีเมลมหาวิทยาลัย (@lru.ac.th)", 403, { reason: "not_university_email" }) };
   if (!w.verified) return { response: fail(request, env, "อีเมลนี้ยังไม่ได้รับการยืนยัน", 403, { reason: "email_not_verified" }) };
-  const student = await env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId).first();
+  const [sr, ...more] = await env.DB.batch([env.DB.prepare("SELECT student_id,name,year,gender FROM camp_students WHERE student_id=?").bind(w.parsed.studentId), ...extra(w)]);
+  const student = (sr.results || [])[0] || null;
   if (!student) return { response: fail(request, env, `ไม่พบรหัสนักศึกษา ${w.parsed.studentId} ในรายชื่อ กรุณาติดต่อแอดมิน`, 403, { reason: "not_in_roster" }) };
   if (!student.gender) return { response: fail(request, env, "แอดมินยังไม่ได้ระบุเพศของคุณในรายชื่อ กรุณาติดต่อแอดมิน", 403, { reason: "no_gender" }) };
-  return { w, student };
+  return { w, student, rows: more.map((x) => (x.results || [])[0] || null) };
 }
 
 const GL = { M: "ชาย", F: "หญิง" };
-async function select(request, env) {
-  const r = await eligibleStudent(request, env); if (r.response) return r.response;
-  const { w, student } = r;
-  const state = await registrationState(env);
-  if (state !== "open") return fail(request, env, state === "pending" ? "ยังไม่เปิดให้ลงทะเบียน" : "ปิดลงทะเบียนแล้ว", 403, { registration: state });
+// Registration rush: 2 D1 round trips (the reads in one batch, then the atomic write). The settings come from the 3 s cache and the audit row is written
+// after the answer has gone out.
+async function select(request, env, ctx) {
   const b = await request.json().catch(() => null);
   const code = clean(b?.departmentCode, 40);
-  const dep = await env.DB.prepare("SELECT code,name FROM camp_departments WHERE code=?").bind(code).first();
+  const r = await eligibleStudent(request, env, (w) => [
+    env.DB.prepare("SELECT code,name FROM camp_departments WHERE code=?").bind(code),
+    env.DB.prepare("SELECT department_code FROM camp_selections WHERE student_id=?").bind(w.parsed.studentId)
+  ]);
+  if (r.response) return r.response;
+  const { w, student, rows: [dep, cur] } = r;
+  const st = await loadSettings(env), state = effectiveState(st);
+  if (state !== "open") return fail(request, env, state === "pending" ? "ยังไม่เปิดให้ลงทะเบียน" : "ปิดลงทะเบียนแล้ว", 403, { registration: state });
   if (!dep) return fail(request, env, "ไม่พบฝ่ายนี้", 404);
   // location rule: the browser's position must be inside the circle (radius in metres) around the configured place
-  const { geo } = await loadSettings(env);
+  const { geo } = st;
   let where = null;
   if (geo.enabled && geo.lat != null && geo.lng != null) {
     const lat = num(b?.lat), lng = num(b?.lng), acc = Math.max(0, num(b?.accuracy) ?? 0);
@@ -393,7 +433,6 @@ async function select(request, env) {
     where = { distance: Math.round(dist), accuracy: Math.round(acc) };
     if (dist > geo.radius + slack) return fail(request, env, `คุณอยู่นอกพื้นที่ลงทะเบียน${geo.name ? ` (${geo.name})` : ""} — ห่าง ${Math.round(dist)} เมตร ต้องอยู่ในรัศมี ${geo.radius} เมตร`, 403, { code: "OUT_OF_RANGE", distance: Math.round(dist), radius: geo.radius });
   }
-  const cur = await env.DB.prepare("SELECT department_code FROM camp_selections WHERE student_id=?").bind(student.student_id).first();
   if (cur?.department_code === code) return json(request, env, { ok: true, unchanged: true });
   // One atomic statement: insert/switch only while the department still has a free slot for this year and gender.
   const res = await env.DB.prepare(
@@ -404,24 +443,26 @@ async function select(request, env) {
      ON CONFLICT(student_id) DO UPDATE SET department_code=excluded.department_code,year=excluded.year,gender=excluded.gender,selected_at=excluded.selected_at`
   ).bind(student.student_id, code, student.year, student.gender, code, student.year, student.gender, code, student.year, student.gender).run();
   if (!res?.meta?.changes) return fail(request, env, `${dep.name} เต็มแล้วสำหรับ${GL[student.gender]}ชั้นปี ${student.year}`, 409, { code: "FULL" });
-  await audit(env, w, "CAMP_SELECT", student.student_id, { department: code, year: student.year, gender: student.gender, from: cur?.department_code || null, ...(where ? { distance: where.distance, accuracy: where.accuracy } : {}) });
-  return json(request, env, { ok: true });
+  invalidateDepartments();
+  auditLater(ctx, env, w, "CAMP_SELECT", student.student_id, { department: code, year: student.year, gender: student.gender, from: cur?.department_code || null, ...(where ? { distance: where.distance, accuracy: where.accuracy } : {}) });
+  return json(request, env, { ok: true, selection: { department_code: code, department_name: dep.name } });   // the page shows it at once, no second round trip to /me
 }
 
-async function unselect(request, env) {
+async function unselect(request, env, ctx) {
   const r = await eligibleStudent(request, env); if (r.response) return r.response;
-  const state = await registrationState(env);
+  const state = effectiveState(await loadSettings(env));
   if (state !== "open") return fail(request, env, "ตอนนี้ยกเลิกการลงทะเบียนไม่ได้ (ไม่ได้เปิดลงทะเบียนอยู่)", 403, { registration: state });
   await env.DB.prepare("DELETE FROM camp_selections WHERE student_id=?").bind(r.student.student_id).run();
-  await audit(env, r.w, "CAMP_UNSELECT", r.student.student_id);
-  return json(request, env, { ok: true });
+  invalidateDepartments();
+  auditLater(ctx, env, r.w, "CAMP_UNSELECT", r.student.student_id);
+  return json(request, env, { ok: true, selection: null });
 }
 
 // ---------- admin ----------
 async function adminOverview(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   const [deps, st, byYear, selected] = await Promise.all([
-    departmentsWithSlots(env), loadSettings(env),
+    departmentsWithSlots(env, { fresh: true }), loadSettings(env),
     env.DB.prepare("SELECT gender,year,COUNT(*) c FROM camp_students GROUP BY gender,year").all(),
     env.DB.prepare("SELECT COUNT(*) c FROM camp_selections").first()
   ]);
@@ -437,7 +478,7 @@ async function adminLive(request, env) {
   const a = await requireAdmin(request, env); if (a.response) return a.response;
   if (liveCache.exp <= Date.now()) {
     const [deps, st, recent] = await Promise.all([
-      departmentsWithSlots(env), loadSettings(env),
+      departmentsWithSlots(env, { fresh: true }), loadSettings(env),
       env.DB.prepare(`SELECT sel.student_id,s.name,sel.department_code,d.name department_name,sel.year,sel.gender,sel.selected_at
         FROM camp_selections sel JOIN camp_students s ON s.student_id=sel.student_id JOIN camp_departments d ON d.code=sel.department_code
         ORDER BY sel.selected_at DESC,sel.rowid DESC LIMIT 10`).all()
@@ -834,7 +875,13 @@ async function adminClearSelection(request, env) {
   return json(request, env, { ok: true });
 }
 
-export async function camps(request, env, url) {
+export async function camps(request, env, url, ctx) {
+  const res = await campsRoute(request, env, url, ctx);
+  // a write may have changed what the caches hold: department counts always, the settings when it was an admin change
+  if (request.method !== "GET") { invalidateDepartments(); if (url.pathname.startsWith("/camps/admin/")) invalidateSettings(); }
+  return res;
+}
+async function campsRoute(request, env, url, ctx) {
   try {
     const p = url.pathname, m = request.method;
     if (m === "GET" && p === "/camps/status") return await status(request, env);
@@ -843,8 +890,8 @@ export async function camps(request, env, url) {
     if (m === "GET" && p === "/camps/me") return await me(request, env, url);
     if (m === "POST" && p === "/camps/me/profile") return await updateProfile(request, env);
     if (m === "POST" && p === "/camps/me/accept-terms") return await acceptTerms(request, env);
-    if (m === "POST" && p === "/camps/select") return await select(request, env);
-    if (m === "POST" && p === "/camps/unselect") return await unselect(request, env);
+    if (m === "POST" && p === "/camps/select") return await select(request, env, ctx);
+    if (m === "POST" && p === "/camps/unselect") return await unselect(request, env, ctx);
     if (m === "GET" && p === "/camps/admin/overview") return await adminOverview(request, env);
     if (m === "GET" && p === "/camps/admin/live") return await adminLive(request, env);
     if (m === "POST" && p === "/camps/admin/schedule") return await adminSetSchedule(request, env);

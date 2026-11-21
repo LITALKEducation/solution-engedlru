@@ -68,8 +68,8 @@ a.card:hover .cta svg{transform:translateX(4px)}
 .notice{background:var(--b-faf5ff,#faf5ff);border:1px solid var(--l-e9d5ff,#e9d5ff);color:var(--f-5b21b6,#5b21b6);border-radius:20px;padding:14px 18px;font-size:14px;margin-top:18px}
 
 footer{padding:8px 20px calc(env(safe-area-inset-bottom,0px) + 22px);text-align:center;color:var(--mute);font-size:13px}
-.fade{animation:up .5s cubic-bezier(.2,.8,.2,1) both}
-.fade:nth-child(2){animation-delay:.07s}.fade:nth-child(3){animation-delay:.14s}.fade:nth-child(4){animation-delay:.2s}.fade:nth-child(5){animation-delay:.26s}
+.fade{animation:up var(--duration-very-slow,500ms) var(--ease-smooth-out,cubic-bezier(.22,1,.36,1)) both}
+.fade:nth-child(2){animation-delay:var(--duration-stagger,40ms)}.fade:nth-child(3){animation-delay:calc(var(--duration-stagger,40ms)*2)}.fade:nth-child(4){animation-delay:calc(var(--duration-stagger,40ms)*3)}.fade:nth-child(5){animation-delay:calc(var(--duration-stagger,40ms)*4)}
 @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .badge.open{background:var(--b-dcfce7,#dcfce7);color:var(--f-15803d,#15803d)}.badge.closed{background:var(--b-fee2e2,#fee2e2);color:var(--f-b91c1c,#b91c1c)}

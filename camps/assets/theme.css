@@ -40,7 +40,7 @@ body[data-page] main{max-width:1040px!important}
  background:var(--b-ffffff,#fff)!important;color:var(--ink)!important;border:1px solid var(--line)!important;border-radius:var(--r)!important;box-shadow:none!important}
 .notice,.banner{background:var(--info-l)!important;border-color:var(--l-dcdce0,#dcdce0)!important;box-shadow:none!important}
 .hint{background:none!important;color:var(--mute)!important;border:0!important;box-shadow:none!important}
-a.card,.dept{transition:box-shadow .2s,transform .2s,border-color .2s}
+a.card,.dept{transition:box-shadow var(--duration-quick,150ms),transform var(--duration-quick,150ms),border-color var(--duration-quick,150ms)}
 a.card:hover,.dept:hover{background:var(--b-ffffff,#fff)!important;border-color:var(--l-bdbdc4,#bdbdc4)!important;box-shadow:var(--shadow-hover)!important;transform:translateY(-2px)!important}
 .card h1,.card h2,.card h3,.panel h2,.sec-title,.section-head h2{color:var(--ink);font-weight:600}
 .card p,.dept p,.muted,.muted-t,small{color:var(--mute)!important}

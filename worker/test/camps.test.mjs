@@ -72,7 +72,7 @@ r=await call('admin','POST','/camps/admin/retention/purge',{studentIds:['6740109
 r=await call('s1','GET','/camps/me');ok(r.d.student.name_en==='Student Uno','failed saves changed nothing');
 r=await call('admin','GET','/camps/admin/students?q=uno');const sx=(r.d.students||[]).find(x=>x.student_id==='6740102220');ok(sx&&sx.name_en==='Student Uno'&&sx.nickname==='Uno'&&sx.aka==='Ace'&&sx.birth_date==='2005-03-09'&&sx.phone==='0812345678'&&sx.guardian_phone==='0891234567'&&sx.national_id==='1234567890124','admin student list has every field, searchable by nickname');
 r=await call('s1','GET','/camps/admin/students');ok(r.s===403,'students list stays admin-only');
-db.exec("UPDATE camp_settings SET value='closed' WHERE key='aka_state'");
+db.exec("UPDATE camp_settings SET value='closed' WHERE key='aka_state'");(await import('../src/handlers/aka.js')).invalidateAkaSettings();   // (a direct DB edit is hidden behind the 3 s settings cache)
 r=await call('s1','POST','/camps/me/profile',P({nickname:'',aka:'',nameEn:'Student Uno Two'}));ok(r.s===200,'naming closed: nickname/AKA not required');
 r=await call('s1','GET','/camps/me');ok(r.d.student.nickname==='Uno'&&r.d.student.aka==='Ace'&&r.d.student.name_en==='Student Uno Two'&&r.d.akaState==='closed','naming closed: names kept, other fields saved');
 r=await call('s1','POST','/camps/me/profile',P({nickname:'X',aka:'Y'}));r=await call('s1','GET','/camps/me');ok(r.d.student.nickname==='Uno','naming closed: nickname/AKA cannot be changed');

@@ -34,7 +34,18 @@ async function requireAdmin(req, env, perm = "aka") {
 // ---------- naming state: manual open / closed, plus an optional automatic schedule ----------
 // camp_settings keys: aka_state (open|closed, manual), aka_schedule_enabled (1/0), aka_schedule_mode (datetime|countdown), aka_open_at, aka_close_at (epoch ms or "")
 const num = (v) => { const n = Number(v); return v !== "" && v != null && Number.isFinite(n) ? n : null; };
-async function loadSettings(env) {
+// kept in the isolate for 3 s (me() of every student asks for it); any non-GET under /camps/aka/ clears it (see aka())
+let cache = { exp: 0, v: null, p: null };
+const invalidate = () => { cache = { exp: 0, v: null, p: null }; };
+export const invalidateAkaSettings = invalidate;
+function loadSettings(env) {
+  if (cache.v && cache.exp > Date.now()) return Promise.resolve(cache.v);
+  if (cache.p) return cache.p;
+  const p = readSettings(env).then((v) => { cache = { exp: Date.now() + 3000, v, p: null }; return v; }, (e) => { cache.p = null; throw e; });
+  cache = { exp: 0, v: null, p };
+  return p;
+}
+async function readSettings(env) {
   const m = Object.fromEntries(((await env.DB.prepare("SELECT key,value FROM camp_settings WHERE key LIKE 'aka_%'").all()).results || []).map((r) => [r.key, r.value]));
   return {
     manual: m.aka_state === "closed" ? "closed" : "open",
@@ -51,7 +62,8 @@ export function effectiveState(st, now = Date.now()) {
 }
 export async function akaState(env) { return effectiveState(await loadSettings(env)); }
 async function info(env) { const st = await loadSettings(env), now = Date.now(); return { state: effectiveState(st, now), manual: st.manual, schedule: st.schedule, now }; }
-const setSetting = (env, key, value) => env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? ""));
+// building the statement clears the cache, so the answer to the same request (built after the write) already sees the new value
+const setSetting = (env, key, value) => (invalidate(), env.DB.prepare("INSERT INTO camp_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, String(value ?? "")));
 const STUDENT_SQL = `SELECT s.student_id,s.name,s.year,s.gender,sel.department_code,d.name department_name,
     a.nickname,a.aka,a.updated_at,a.updated_by
   FROM camp_students s LEFT JOIN camp_selections sel ON sel.student_id=s.student_id LEFT JOIN camp_departments d ON d.code=sel.department_code
@@ -177,6 +189,11 @@ async function adminSet(req, env) {
 }
 
 export async function aka(req, env, url) {
+  const res = await akaRoute(req, env, url);
+  if (req.method !== "GET") invalidate();
+  return res;
+}
+async function akaRoute(req, env, url) {
   try {
     const p = url.pathname, m = req.method;
     if (m === "GET" && p === "/camps/aka/status") return await status(req, env);
