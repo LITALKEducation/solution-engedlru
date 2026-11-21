@@ -54,7 +54,7 @@ main{padding:0 16px calc(var(--nav-h) + var(--sab) + 100px)}
 .act{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:13px;font-weight:500}
 .act .ab{width:100%;height:52px;border-radius:26px;border:0;background:var(--b-ffffff,#fff);display:grid;place-items:center;color:var(--ink)}
 .act .ab svg{width:22px;height:22px}
-.act .ab.primary{background:var(--brand);color:var(--on-solid,#fff);box-shadow:0 6px 16px #d32f2f55}
+.act .ab.primary{background:var(--brand);color:var(--on-solid,#fff);box-shadow:0 6px 16px rgba(27,14,134,.33)}
 .act .ab:active{transform:scale(.96)}
 
 /* sections / accounts */
@@ -559,27 +559,27 @@ main:focus{outline:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---- minimalist pass: ink + hairlines, red kept only for expenses / alerts ---- */
-:root{--brand:#171717;--brand-d:#000;--brand-l:#f5f5f5;--panel:#fafafa;--ink:#171717;--mute:#6b6b6b;--line:#e8e8e8;--page:#fff;--r:8px}
+:root{--brand:#1b0e86;--brand-d:#12075f;--brand-l:#ebe9fb;--panel:#fafafa;--ink:#171717;--mute:#6b6b6b;--line:#e8e8e8;--page:#fff;--r:16px}
 body{-webkit-font-smoothing:antialiased}
 @media(min-width:560px){#app{box-shadow:0 0 0 1px var(--line)}}
 .round,.auth-card,.hero-panel{background:var(--panel)}
-.round{border-radius:8px;border:1px solid var(--line)}
+.round{border-radius:var(--r);border:1px solid var(--line)}
 .hero-panel{border-radius:0;border-bottom:1px solid var(--line)}
 .bal{font-weight:600;letter-spacing:-.02em}
 .chip-sel,.pn{background:var(--b-ffffff,#fff);border:1px solid var(--line);font-weight:500}
-.act .ab{background:var(--b-ffffff,#fff);border:1px solid var(--line);border-radius:8px}
-.act .ab.primary{background:var(--ink);border-color:var(--ink);box-shadow:none}
-.cardico{background:var(--ink)}
-.fab{box-shadow:none!important;border-radius:8px!important;background:var(--ink)!important}
-.card{border-radius:8px}
-.install{border-radius:8px;border:1px solid var(--line)}
+.act .ab{background:var(--b-ffffff,#fff);border:1px solid var(--line);border-radius:var(--r)}
+.act .ab.primary{background:var(--brand);border-color:var(--brand);box-shadow:none}
+.cardico{background:var(--brand)}
+.fab{box-shadow:none!important;border-radius:var(--r)!important;background:var(--brand)!important}
+.card{border-radius:var(--r)}
+.install{border-radius:var(--r);border:1px solid var(--line)}
 .pn.out::before{background:#b42318}
-.badge{background:var(--ink)}
+.badge{background:var(--brand)}
 
 .gatelegal{margin:12px 0 0;font-size:13px;line-height:1.7;text-align:center;color:var(--f-6b6163,#6b6163)}.gatelegal a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 /* ==== dark mode (generated: light colours -> --b-/--l-/--f- tokens; light values stay the fallback) ==== */
 @media (prefers-color-scheme:dark){:root{--b-d9cfce:#352d2d;--b-dcfce7:#0f341c;--b-e0e7ff:#0b1434;--b-ede9fe:#120c2e;--b-eeeeee:#202020;--b-f1dcdb:#301c1b;--b-f1f3f4:#1b1e20;--b-f3eceb:#251c1a;--b-f8f9fa:#17191c;--b-faf6f5:#201715;--b-fef3c7:#40360f;--b-ff8a80:#651c15;--b-fffafa:#260808;--b-ffffff:#161616;--b-ffffff1f:#1616161f;--b-ffffff2e:#1616162e;--b-ffffffb3:#161616b3;--b-ffffffd9:#161616d9;--l-dadce0:#313235;--l-e3d4d3:#3a2f2e;--l-eadfde:#342a2a;--l-f8c9c6:#45211e;--l-ffffff:#1f1f1f;--f-3730a3:#6c66c7;--f-3c4043:#babdc0;--f-5b21b6:#8756d3;--f-6b6163:#9e9597;--f-92400e:#e7a075}}
 /* dark mode tokens (the budget app is monochrome: the "brand" colour turns light, with dark text on it) */
-@media (prefers-color-scheme:dark){:root{color-scheme:dark;--on-solid:#0b0b0c;--brand:#ececef;--brand-d:#ffffff;--brand-l:#232326;--panel:#1b1b1e;--ink:#ececef;--mute:#a1a1aa;--line:#2d2d31;--page:#0d0d0d;--in:#34d399;--don:#a78bfa}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--on-solid:#0b0b0c;--brand:#b9b3ff;--brand-d:#ffffff;--brand-l:#1d1b3d;--panel:#1b1b1e;--ink:#ececef;--mute:#a1a1aa;--line:#2d2d31;--page:#0d0d0d;--in:#34d399;--don:#a78bfa}
  html,body{background:#0d0d0d}
  #toast{background:#2a2a2e;color:#f4f4f5;border:1px solid #45454a}#toast.err{background:#7f1d1d;color:#fff;border-color:#a33}}

@@ -12,31 +12,37 @@
 <link rel="preload" as="image" href="/assets/hero-hills.jpg">
 <link rel="preload" href="/assets/fonts/noto-sans-thai-thai-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="/assets/site.css?v=da750e3e">
-<link rel="stylesheet" href="/assets/theme.css?v=da3994a3">
+<link rel="stylesheet" href="/assets/theme.css?v=13072a6b">
 <style>footer{max-width:1040px;margin:0 auto;width:100%;text-align:left;padding:32px 24px calc(env(safe-area-inset-bottom,0px) + 32px);color:var(--mute)}footer a{color:var(--mute);text-decoration:underline}
 .cxhero{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:min(82vh,680px);color:#fff;background:#222 url(/assets/hero-hills.jpg) center 40%/cover no-repeat;overflow:hidden;isolation:isolate}
 .cxhero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,.08) 38%,rgba(0,0,0,.55) 100%)}
 .cxhero-in{margin:auto;text-align:center;padding:104px 24px 32px;max-width:760px}
 .cxhero h1{margin:0;line-height:0}.cxhero h1 img{display:block;margin:0 auto;width:min(78vw,520px);height:auto;filter:drop-shadow(0 4px 28px rgba(0,0,0,.35))}
 .cxhero p{margin:12px auto 0;max-width:30em;color:#ffffffe6!important;font-size:clamp(1rem,2.6vw,1.2rem)!important;text-shadow:0 1px 12px rgba(0,0,0,.4)}
-.cxbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:rgba(20,20,22,.42);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);border-top:1px solid rgba(255,255,255,.18)}
-.cxbar a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;color:#fff;text-decoration:none;border-right:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14);min-height:64px;justify-content:center;transition:background-color .25s var(--ease-smooth-out)}
-.cxbar a:hover{background:rgba(255,255,255,.14)}
-.cxbar small{color:#ffffffb3!important;font-size:.6875rem;font-weight:500}.cxbar b{font-weight:600;font-size:.9375rem}
-.cxbar .go{background:var(--b-ffffff,#fff);color:var(--f-18181b,#18181b);grid-column:1/-1;align-items:center;flex-direction:row;justify-content:center;gap:10px;font-weight:700;border:0;min-height:56px}
-.cxbar .go:hover{background:var(--b-ececee,#ececee)}
-@media(min-width:760px){.cxbar{grid-template-columns:repeat(3,1fr) 190px}.cxbar a{border-bottom:0;padding:14px 20px}.cxbar .go{grid-column:auto}}
-.cxintro{max-width:1040px;margin:0 auto;padding:56px 24px 8px;text-align:center}
-.cxpill{display:inline-flex;align-items:center;gap:8px;background:var(--b-ffffff,#fff);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.8125rem;font-weight:600;box-shadow:var(--shadow)}.cxpill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
-.cxintro h2{margin:18px auto 0;max-width:15em;font-size:clamp(2rem,6vw,3.5rem);font-weight:700;letter-spacing:-.02em;line-height:1.3}
-.cxintro p{margin:14px auto 0;max-width:34em;color:var(--mute)}
+.cxacts{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;margin-top:24px}
+.cxcta{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 28px;border-radius:999px;background:#fff;color:#1b0e86;font-weight:700;font-size:1.0625rem;text-decoration:none;box-shadow:0 8px 24px -8px rgba(0,0,0,.5);transition:transform .15s}
+.cxcta:hover{transform:translateY(-2px)}.cxcta:active{transform:scale(.97)}
+.cxreg{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;color:#fff;background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.35);font-weight:600;font-size:.9375rem;text-decoration:none}
+.cxreg[hidden]{display:none}
+.cxhero{min-height:min(76vh,640px)}
 main{padding-top:8px!important}
 .cxsect h2{display:flex;align-items:center;gap:8px;font-size:.8125rem}.cxsect h2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
-@media(min-width:900px){.cxsect:first-child .cxtiles{grid-template-columns:repeat(3,minmax(0,1fr))}.cxsect:first-child .cxtile{flex-direction:column;align-items:flex-start;min-height:150px;padding:20px}.cxsect:first-child .cxtile::after{margin-top:auto;align-self:flex-end}.cxsect:first-child .cxnm{font-size:1.25rem}}
+.cxsect:first-child .cxtile{flex-direction:column;align-items:flex-start;gap:14px;min-height:132px;padding:18px}.cxsect:first-child .cxtile::after{position:absolute;right:16px;bottom:14px}.cxsect:first-child .cxtile{position:relative}
+.cxsect:first-child .cxnm{font-size:1.125rem}
+@media(min-width:760px){.cxsect:first-child .cxtiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cxsect:first-child .cxtiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(min-width:760px){.cxsect:first-child .cxtiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cxsect h2 em{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mute);margin-left:8px;font-size:.8125rem}
+.cxmini{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+@media(min-width:760px){.cxmini{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.cxmini a{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border:1px solid var(--line);border-radius:var(--r);color:var(--ink);text-decoration:none;font-weight:500;background:transparent;transition:border-color .2s,background-color .2s}
+.cxmini a:hover{border-color:var(--accent);background:var(--b-ffffff,#fff)}
+.cxmini .cxico{width:32px;height:32px;border-radius:10px}.cxmini .cxico svg{width:18px;height:18px}
+.cxintro{display:none}
 /* ==== dark mode (generated: light colours -> --b-/--l-/--f- tokens; light values stay the fallback) ==== */
 @media (prefers-color-scheme:dark){:root{--b-ececee:#202022;--b-ffffff:#161616;--f-18181b:#dedee1}}
 </style>
-<script src="/assets/brand-bar.js?v=96429b2b" defer></script>
+<script src="/assets/brand-bar.js?v=2c39d8e4" defer></script>
 <script src="/assets/footer.js" defer></script>
 <!-- og:start -->
 <meta name="description" content="ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9">
@@ -59,35 +65,32 @@ main{padding-top:8px!important}
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>
 <div class="shell">
-<header class="cxhero"><div class="cxhero-in"><h1><img src="/assets/english-camp-logo.png" width="1000" height="399" alt="English Camp On Tour"></h1><p>ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9</p></div>
-<nav class="cxbar" aria-label="ทางลัด"><a href="/student/"><small>01 · นักศึกษา</small><b>ข้อมูลส่วนตัว</b></a><a href="/student/aka"><small>02 · นักศึกษา</small><b>ตั้งชื่อ AKA</b></a><a href="/shirt/"><small>06 · นักศึกษา</small><b>แบบเสื้อค่าย</b></a><a class="go" href="#main">ดูทั้งหมด <span aria-hidden="true">↓</span></a></nav></header>
-<section class="cxintro" aria-labelledby="intro"><span class="cxpill">English Education · LRU</span><h2 id="intro">ทุกอย่างของค่าย รวมไว้ที่เดียว</h2><p>เลือกเมนูที่ต้องใช้ได้เลย ทั้งสำหรับนักศึกษา เจ้าหน้าที่ และงานการเงิน</p></section>
+<header class="cxhero"><div class="cxhero-in"><h1><img src="/assets/english-camp-logo.png" width="1000" height="399" alt="English Camp On Tour"></h1><p>ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9</p>
+<div class="cxacts"><a class="cxcta" href="/student/">เริ่มใช้งาน<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="cxreg" id="regLine" href="/student/choose" hidden>เปิดลงทะเบียนเลือกฝ่ายแล้ว</a></div></div></header>
 <main id="main" tabindex="-1">
 <section class="cxsect" aria-labelledby="g1"><h2 id="g1">นักศึกษา</h2>
 <ul class="cxtiles">
-<li><a class="cxtile" href="/student/"><span class="cxno" aria-hidden="true">01</span><span class="cxnm">ข้อมูลส่วนตัว <span class="badge" id="hrBadge">เร็วๆ นี้</span></span></a></li>
-<li><a class="cxtile" href="/student/aka"><span class="cxno" aria-hidden="true">02</span><span class="cxnm">ตั้งชื่อ AKA</span></a></li>
-<li><a class="cxtile" href="/shirt/"><span class="cxno" aria-hidden="true">06</span><span class="cxnm">แบบเสื้อค่าย</span></a></li>
+<li><a class="cxtile" href="/student/"><span class="cxico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg></span><span class="cxnm">ข้อมูลส่วนตัว</span></a></li>
+<li><a class="cxtile" href="/student/departments"><span class="cxico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></span><span class="cxnm">เลือกฝ่าย <span class="badge" id="hrBadge" hidden></span></span></a></li>
+<li><a class="cxtile" href="/student/aka"><span class="cxico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/></svg></span><span class="cxnm">ตั้งชื่อ AKA</span></a></li>
+<li><a class="cxtile" href="/shirt/"><span class="cxico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-5 3 2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 01-8 0z"/></svg></span><span class="cxnm">แบบเสื้อค่าย</span></a></li>
 </ul></section>
-<section class="cxsect" aria-labelledby="g2"><h2 id="g2">เจ้าหน้าที่</h2>
-<ul class="cxtiles">
-<li><a class="cxtile" href="/lotto/"><span class="cxno" aria-hidden="true">03</span><span class="cxnm">จับสลาก</span></a></li>
-<li><a class="cxtile" href="/qrcheck/"><span class="cxno" aria-hidden="true">04</span><span class="cxnm">เช็ก QR</span></a></li>
-</ul></section>
-<section class="cxsect" aria-labelledby="g3"><h2 id="g3">การเงิน</h2>
-<ul class="cxtiles">
-<li><a class="cxtile" href="/budget/"><span class="cxno" aria-hidden="true">05</span><span class="cxnm">งบประมาณ</span></a></li>
+<section class="cxsect cxstaff" aria-labelledby="g2"><h2 id="g2">เจ้าหน้าที่และการเงิน <em>ต้องมีสิทธิ์</em></h2>
+<ul class="cxmini">
+<li><a href="/lotto/"><span class="cxico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 002-2h14a2 2 0 002 2v1a2 2 0 000 4v1a2 2 0 00-2 2H5a2 2 0 00-2-2v-1a2 2 0 000-4z"/><path d="M13 7v10" stroke-dasharray="2 2"/></svg></span><span>จับสลาก</span></a></li>
+<li><a href="/qrcheck/"><span class="cxico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2M8 12h8"/></svg></span><span>เช็ก QR</span></a></li>
+<li><a href="/budget/"><span class="cxico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h13v4M3 7v10a2 2 0 002 2h14a1 1 0 001-1V9a1 1 0 00-1-1H5a2 2 0 01-2-2z"/><circle cx="16.5" cy="13.5" r="1"/></svg></span><span>งบประมาณ</span></a></li>
 </ul></section>
 </main>
 <footer>&copy; 2026&ndash;2027 sorasukt.com.<br>Powered by STNET World Solutions.<br>The logo and name of English Education are owned by the English Education Program, Faculty of Education, Loei Rajabhat University.</footer>
 </div>
 <script>
-// Registration status badge for "เลือกฝ่าย". Failure keeps the static text.
+// Registration status for "เลือกฝ่าย". Nothing is shown until the answer arrives (a failed request shows nothing rather than a stale "coming soon").
 (function(){var API=window.CAMPS_API||"https://engedlru-api.stnetworld.workers.dev";
 fetch(API+"/camps/status").then(function(r){return r.ok?r.json():null}).then(function(d){if(!d)return;
-var b=document.getElementById("hrBadge");
-if(d.registration==="open"){b.textContent="เปิดลงทะเบียน";b.className="badge open"}
-else if(d.registration==="closed"){b.textContent="ปิดแล้ว";b.className="badge closed"}
+var b=document.getElementById("hrBadge"),r=document.getElementById("regLine"),t={open:["เปิดลงทะเบียน","badge open"],closed:["ปิดแล้ว","badge closed"],pending:["เร็วๆ นี้","badge"]}[d.registration];
+if(t){b.textContent=t[0];b.className=t[1];b.hidden=false}
+if(d.registration==="open")r.hidden=false;
 }).catch(function(){})})();
 </script>
 </body></html>

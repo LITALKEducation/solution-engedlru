@@ -276,13 +276,13 @@ function renderProfile() {
   const phone = fmtPhone(st.phone), gphone = fmtPhone(st.guardian_phone), nid = fmtNid(st.national_id);
   const penIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
   const eyeIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-  box.innerHTML = '<div class="card idcard">'
+  box.innerHTML = '<div class="card idcard"><div class="pfcols"><div class="pfl">'
     + '<div class="pfhead">' + (authPicture ? '<img class="pfimg" src="' + esc(authPicture) + '" alt="รูปโปรไฟล์ของ ' + esc(st.name) + '" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pfimg ph\',textContent:\'' + init + '\'}))">' : '<span class="pfimg ph" aria-hidden="true">' + init + '</span>')
     + '<div class="pfwho"><h2>' + esc(st.name) + (me.isAdmin ? ' <span class="pill admin">แอดมิน</span>' : '') + '</h2>' + (st.name_en ? '<div class="pfen">' + esc(st.name_en) + '</div>' : '')
     + '<div class="chips"><span class="chip">ชั้นปี ' + st.year + '</span><span class="chip">' + GL[st.gender] + '</span>' + (dep ? '<span class="chip dep">' + esc(dep) + '</span>' : '') + '</div></div></div>'
     + '<button class="btn pfeditbtn" type="button" onclick="editProfile()">' + penIc + '<span>แก้ไขข้อมูล</span></button>'
     + '<div class="qrbox"><button type="button" class="qrbtn" onclick="expandQr()" aria-label="ขยาย QR Code รหัสนักศึกษา"><canvas id="qrSmall"></canvas></button><div class="qrnote"><span class="qrlbl">QR รหัสนักศึกษา</span><b class="qrid">' + esc(st.student_id) + '</b><button class="btn sm" type="button" onclick="expandQr()">ขยาย QR</button></div></div>'
-    + '<div class="pfhrow"><h3 class="pfh">ข้อมูลส่วนตัว</h3><button type="button" class="pfeye" id="pfEye" aria-pressed="false" aria-label="แสดงข้อมูลที่ซ่อนไว้" title="แสดง / ซ่อนข้อมูลสำคัญ">' + eyeIc + '</button></div><div class="pfgrid">'
+    + '</div><div class="pfr"><div class="pfhrow"><h3 class="pfh">ข้อมูลส่วนตัว</h3><button type="button" class="pfeye" id="pfEye" aria-pressed="false" aria-label="แสดงข้อมูลที่ซ่อนไว้" title="แสดง / ซ่อนข้อมูลสำคัญ">' + eyeIc + '</button></div><div class="pfgrid">'
     + (st.nickname ? row('ชื่อเล่น', st.nickname) : add('ชื่อเล่น', 'เพิ่มชื่อเล่น')) + (st.aka ? row('ชื่อ AKA', st.aka) : add('ชื่อ AKA', 'ตั้งชื่อ AKA', '/student/aka'))
     + row('วันเกิด', fmtBirth(st.birth_date) || '—', 'wide') + (phone ? sec('เบอร์โทรศัพท์', phone, 4) : add('เบอร์โทรศัพท์', 'เพิ่มเบอร์')) + (gphone ? sec('เบอร์ผู้ปกครอง', gphone, 4) : add('เบอร์ผู้ปกครอง', 'เพิ่มเบอร์'))
     + (nid ? sec('รหัสบัตรประชาชน 13 หลัก', nid, 3, 'wide nid') : '') + '</div>'
@@ -290,7 +290,7 @@ function renderProfile() {
     + (dep ? row('ฝ่าย', dep, 'wide') : add('ฝ่าย', 'เลือกฝ่าย', '/student/choose', true))
     + (st.blood_type ? row('กรุ๊ปเลือด', st.blood_type === 'unknown' ? 'ไม่ทราบ' : st.blood_type) : add('กรุ๊ปเลือด', 'เพิ่ม')) + (st.diet ? row('วิธีการกิน', st.diet) : add('วิธีการกิน', 'เพิ่ม'))
     + (st.food_allergy ? row('แพ้อาหาร', st.food_allergy, 'wide') : add('แพ้อาหาร', 'เพิ่ม', '', true)) + (st.medical ? secText('โรคประจำตัว', st.medical, 'wide') : add('โรคประจำตัว', 'เพิ่ม', '', true)) + '</div>'
-    + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div>';
+    + '</div><div class="pfact"><button class="btn sm" onclick="logout()">ออกจากระบบ</button></div></div></div>';
   let eyeT = 0; const eye = $('pfEye');
   const setEye = (on) => { clearTimeout(eyeT); eye.setAttribute('aria-pressed', on ? 'true' : 'false'); eye.classList.toggle('on', on); box.querySelectorAll('[data-full]').forEach((el) => { el.textContent = on ? el.dataset.full : el.dataset.mask; }); if (on) eyeT = setTimeout(() => setEye(false), 20000); };
   eye.onclick = () => setEye(eye.getAttribute('aria-pressed') !== 'true');

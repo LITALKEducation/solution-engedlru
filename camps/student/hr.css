@@ -594,3 +594,16 @@ nav.hrnav .hrdd-list a:hover{background:var(--soft)!important}nav.hrnav .hrdd-li
 .pfbirth:focus{outline:none}.pfbirth.bad .sel-btn{border-color:var(--bad,#b42318)}
 /* ==== dark mode (generated: light colours -> --b-/--l-/--f- tokens; light values stay the fallback) ==== */
 @media (prefers-color-scheme:dark){:root{--b-b9bbcc:#353641;--b-dcfce7:#0f341c;--b-e0e7ff:#0b1434;--b-e7f6ec:#16291d;--b-eceef0:#1e2023;--b-ede9fe:#120c2e;--b-eeeeee:#202020;--b-f1f3f4:#1b1e20;--b-f3eceb:#251c1a;--b-f3f2f4:#1d1c1f;--b-f8f9fa:#17191c;--b-faf6f5:#201715;--b-fbeaea:#2a1010;--b-fee2e2:#320c0c;--b-fef3c7:#40360f;--b-fef3c733:#40360f33;--b-ffffff:#161616;--b-ffffff1f:#1616161f;--b-ffffff26:#16161626;--b-ffffffe6:#161616e6;--l-cdd1ea:#292c3e;--l-cfcfd4:#38383b;--l-cfcfd6:#37373c;--l-dadce0:#313235;--l-e4e2e6:#2f2d31;--l-eadfde:#342a2a;--l-f0b4ae:#502b27;--l-ffffff:#1f1f1f;--l-ffffff40:#1f1f1f40;--f-14532d:#abe5c2;--f-15803d:#84e1a7;--f-161616:#e3e3e3;--f-166534:#9ce2b6;--f-3730a3:#6c66c7;--f-3c4043:#babdc0;--f-555555:#a9a9a9;--f-5f5f68:#9898a0;--f-666666:#9a9a9a;--f-92400e:#e7a075;--f-a12020:#d56868;--f-b91c1c:#d85353}}
+
+/* ---- design pass: tighter page header, two columns for the profile on wide screens ---- */
+body[data-page="student"] .hero{padding-bottom:4px!important}
+body[data-page="student"] .hero-body{margin-top:8px!important}
+body[data-page="student"] .hero h1{font-size:clamp(1.5rem,4vw,1.875rem)!important}
+.pfcols{display:block}
+@media(min-width:900px){
+ .pfcols{display:grid;grid-template-columns:300px minmax(0,1fr);gap:0 40px;align-items:start}
+ .pfl{position:sticky;top:96px;display:grid;gap:14px}
+ .pfl .pfeditbtn{width:100%;margin:0}
+ .pfl .qrbox{flex-direction:column;align-items:center;text-align:center;gap:10px}
+ .pfr>.pfhrow:first-child{margin-top:0}
+}

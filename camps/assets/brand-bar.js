@@ -12,7 +12,7 @@
   var LINKS = isAdmin ? ADMIN : STUDENT;
   var css = '#brandBar{position:fixed;top:0;left:0;right:0;z-index:40;height:0;font-family:"Noto Sans Thai",Inter,system-ui,sans-serif}'
     + '#brandBar .bb{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);width:min(1120px,calc(100% - 24px));min-height:60px;box-sizing:border-box;padding:6px 8px 6px 20px;display:flex;align-items:center;gap:16px;'
-    + 'background:rgba(24,24,27,.9);-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);border:1px solid rgba(255,255,255,.22);border-radius:999px;box-shadow:0 10px 30px -12px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12);color:#fff}'
+    + 'background:rgba(24,24,27,.94);-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);border:1px solid rgba(255,255,255,.22);border-radius:999px;box-shadow:0 10px 30px -12px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12);color:#fff}'
     + '#brandBar .bl{display:flex;align-items:center;color:#fff;text-decoration:none;flex:none;min-height:44px}'
     + '#brandBar .bl img{height:30px;width:auto;display:block;filter:brightness(0) invert(1)}'
     + '#brandBar .bsep{width:1px;height:26px;background:rgba(255,255,255,.28);flex:none}'
@@ -29,7 +29,7 @@
     + '#brandBar .bn{display:none;position:absolute;left:0;right:0;top:calc(100% + 8px);flex:none;flex-direction:column;align-items:stretch;padding:10px;background:rgba(24,24,27,.95);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.2);border-radius:24px;box-shadow:0 18px 36px -14px rgba(0,0,0,.5)}'
     + '#brandBar .bn.open{display:flex}#brandBar .bn a{padding:0 16px;font-size:16px;min-height:48px}}'
     + '@media(max-width:420px){#brandBar .bb{padding-left:14px;gap:10px}#brandBar .bl img{height:26px}#brandBar .bcta{padding:0 16px}}'
-    + 'body:has(.cxhero) #brandBar .bb{background:rgba(24,24,27,.5)}'
+    + 'body:has(.cxhero) #brandBar .bb{background:rgba(24,24,27,.72)}'
     + 'body.has-bar{padding-top:84px}body.has-bar:has(.cxhero){padding-top:0}'
     + 'body.has-bar .back{display:none}body.has-bar .hero .herotop{justify-content:flex-end}'
     + 'body.has-bar .home .logo{display:none}';
