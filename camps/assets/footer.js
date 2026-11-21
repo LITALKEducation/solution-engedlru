@@ -19,7 +19,7 @@
     + '@media(min-width:860px){#siteFoot .sf-in{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);align-items:start}#siteFoot nav{grid-template-columns:repeat(3,minmax(0,1fr))}}'
     + '#siteFoot .sf-links{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;margin-bottom:12px!important}#siteFoot .sf-links a{display:inline-flex;align-items:center;min-height:40px;color:var(--ink,#18181b);text-decoration:underline;text-underline-offset:3px;font-weight:500}'
     + '@media(max-width:600px){#siteFoot .sf-photo{height:180px}}'
-    + '@media(prefers-color-scheme:dark){#siteFoot .sf-legal{color:var(--mute,#a1a1aa)}#siteFoot .sf-brand img{filter:invert(1)}#siteFoot .sf-photo{filter:brightness(.7)}}'
+    + '@media(prefers-color-scheme:dark){#siteFoot .sf-legal{color:var(--mute,#a1a1aa)}#siteFoot .sf-brand img{filter:invert(1)}#siteFoot .sf-photo{background:linear-gradient(rgba(8,8,10,.55),rgba(8,8,10,.55)),#1d2124 url(/assets/hero-hills.jpg) center 62%/cover no-repeat}#siteFoot .sf-photo::before{background:linear-gradient(180deg,var(--soft,#161616) 0%,color-mix(in srgb,var(--soft,#161616) 70%,transparent) 35%,transparent 75%)}#siteFoot li a:hover{color:var(--ink,#ececef)}}'
     + '@media print{#siteFoot{display:none!important}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var COLS = [
