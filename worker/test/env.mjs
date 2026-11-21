@@ -5,8 +5,8 @@ const MIGRATIONS = new URL('../migrations/', import.meta.url);
 export const MIG=fs.readdirSync(MIGRATIONS).filter((f)=>f.endsWith('.sql')&&!/^0001/.test(f)).sort().map((f)=>f.replace(/\.sql$/,''));
 export function makeEnv(){
  const db=new DatabaseSync(':memory:');for(const f of MIG)db.exec(fs.readFileSync(new URL(f+'.sql',MIGRATIONS),'utf8'));
- const stmt=(sql,params=[])=>({bind:(...p)=>stmt(sql,p),all:async()=>({results:db.prepare(sql).all(...params)}),first:async()=>db.prepare(sql).get(...params)??null,run:async()=>{const r=db.prepare(sql).run(...params);return {success:true,meta:{changes:Number(r.changes)}}},_run:()=>db.prepare(sql).run(...params)});
- const DB={prepare:sql=>stmt(sql),batch:async ss=>{db.exec('BEGIN');try{for(const s of ss)s._run();db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}}};
+ const stmt=(sql,params=[])=>({bind:(...p)=>stmt(sql,p),all:async()=>({results:db.prepare(sql).all(...params)}),first:async()=>db.prepare(sql).get(...params)??null,run:async()=>{const r=db.prepare(sql).run(...params);return {success:true,meta:{changes:Number(r.changes)}}},_run:()=>db.prepare(sql).run(...params),_exec:()=>{if(/^\s*(SELECT|WITH|PRAGMA)/i.test(sql)||/\bRETURNING\b/i.test(sql)){const rows=db.prepare(sql).all(...params);return {results:rows,meta:{changes:rows.length}}}const r=db.prepare(sql).run(...params);return {results:[],meta:{changes:Number(r.changes)}}}});
+ const DB={prepare:sql=>stmt(sql),batch:async ss=>{db.exec('BEGIN');try{const out=ss.map(s=>s._exec());db.exec('COMMIT');return out}catch(e){db.exec('ROLLBACK');throw e}}};
  return {db,env:{DB,FILES:(()=>{const m=new Map();return{put:async(k,v)=>m.set(k,v),get:async k=>m.has(k)?{body:m.get(k),arrayBuffer:async()=>{const v=m.get(k);return v.buffer?v.buffer.slice(v.byteOffset,v.byteOffset+v.byteLength):v}}:null,delete:async k=>m.delete(k),_m:m}})(),ALLOWED_ORIGINS:'https://enged.sorasukt.com',AUTH0_DOMAIN:'a.example',AUTH0_MANAGEMENT_API_DOMAIN:'t.example',AUTH0_MANAGEMENT_API_AUDIENCE:'aud',AUTH0_M2M_CLIENT_ID:'i',AUTH0_M2M_CLIENT_SECRET:'s'}};
 }
 export const PEOPLE={

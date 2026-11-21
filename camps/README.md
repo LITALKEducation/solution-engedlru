@@ -100,3 +100,11 @@ Every page except `/admin/` follows the device setting (`prefers-color-scheme: d
 - **Profile (`/student/`):** two columns from 900px (identity + QR on the left, details on the right).
 - Budget uses the same corner radius (`--r: 16px`) as the other pages; it keeps its phone-width column on purpose.
 
+### Speed: D1 round trips, caches, Server-Timing
+- Every response carries `Server-Timing: d1;desc="N queries";dur=ms` (DevTools > Network > Timing). `worker/test/perf.test.mjs` holds the budget per endpoint (status 0 when cached, `/me` 1, departments 0 or 1, select 2 + audit, unselect 1 + roster read + audit) so a change that makes a hot endpoint chattier fails `npm test`.
+- `camp_settings` is cached 3 s per isolate (registration and AKA), cleared by any admin write; department counts 2 s (cleared by select / unselect). The seat itself is still decided by the atomic INSERT, so cached counts can never oversell.
+- Student reads in one `db.batch` (student + selection, departments + quotas + counts); the audit row of select / unselect is written after the answer (`ctx.waitUntil`); `select` / `unselect` answer with the new selection so the page does not call `/me` again.
+- `src/lib/edge-cache.js`: Cloudflare Cache API shares `/camps/status`, the maintenance settings (5 s) and the verified Auth0 profile (60 s, key = SHA-256 of the token) across isolates in a data centre; `readDb()` reads department counts from a read replica when read replication is on. Nothing breaks where the Cache API does not exist.
+- `wrangler.toml` has `[placement] mode = "smart"` (Worker runs near D1). If `wrangler d1 info engedlru-db` shows a primary far from Thailand, recreate the database with an APAC location hint (import the data during a maintenance window); turn on read replication in the Cloudflare dashboard to benefit from `readDb()`.
+- The student page draws the department list from the last visit (under 10 min old) while the fresh one loads (`hr.deps.v1` in localStorage).
+- Not done on purpose: ETag / `Cache-Control` for the admin student list (it holds personal data, so it stays `no-store`).

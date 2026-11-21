@@ -1,0 +1,44 @@
+// D1 round-trip budget per endpoint (read from the Server-Timing header every response carries) + the edge-cache helpers.
+// If a change makes a hot endpoint chattier again, this fails. Run with `npm test`.
+import {makeEnv,installFetch} from './env.mjs';
+installFetch();const {db,env}=makeEnv();
+const worker=(await import('../src/index.js')).default;
+const {edgeCached}=await import('../src/lib/edge-cache.js');
+let pass=0,failn=0;const ok=(c,msg)=>{if(c){pass++}else{failn++;console.log('  FAIL:',msg)}};
+const tasks=[];
+async function call(who,m,p,b){const h={Origin:'https://enged.sorasukt.com'};if(who)h.Authorization='Bearer '+who;if(b)h['Content-Type']='application/json';
+ const r=await worker.fetch(new Request('https://api.x'+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined}),env,{waitUntil(p){tasks.push(p)}});
+ const t=/(\d+) queries/.exec(r.headers.get('server-timing')||'');return {s:r.status,n:t?+t[1]:-1,d:await r.clone().json().catch(()=>null)}}
+db.exec("INSERT OR REPLACE INTO camp_departments (code,name,description,sort_order) VALUES ('teaching','ฝ่ายสอน','',1),('games','ฝ่ายเกม','',2)");
+for(const d of ['teaching','games'])for(const g of ['M','F'])for(const y of [1,2,3,4])db.exec(`INSERT OR REPLACE INTO camp_quotas (department_code,gender,year,quota) VALUES ('${d}','${g}',${y},50)`);
+db.exec("INSERT OR REPLACE INTO camp_settings (key,value) VALUES ('registration_state','open'),('schedule_enabled','0')");
+db.exec("INSERT OR REPLACE INTO camp_students (student_id,name,year,gender) VALUES ('6740102220','A',2,'M')");
+console.log('1. Server-Timing is on every response');
+let r=await call(null,'GET','/health');ok(r.n>=0,'Server-Timing header present');
+console.log('2. round-trip budgets (D1 calls per request, warm caches)');
+await call(null,'GET','/camps/status');r=await call(null,'GET','/camps/status');ok(r.s===200&&r.n===0,'GET /camps/status: 0 D1 calls when cached (got '+r.n+')');
+await call(null,'GET','/camps/maintenance');r=await call(null,'GET','/camps/maintenance');ok(r.s===200&&r.n===0,'GET /camps/maintenance: 0 D1 calls when cached (got '+r.n+')');
+await call('s1','GET','/camps/me');r=await call('s1','GET','/camps/me');ok(r.s===200&&r.n<=1,'GET /camps/me: 1 round trip (got '+r.n+')');
+await call('s1','GET','/camps/departments');r=await call('s1','GET','/camps/departments');ok(r.s===200&&r.n===0,'GET /camps/departments: cached (got '+r.n+')');
+await new Promise(x=>setTimeout(x,2100));r=await call('s1','GET','/camps/departments');ok(r.s===200&&r.n===1,'GET /camps/departments: 1 round trip when the cache is cold (got '+r.n+')');
+await call('s1','POST','/camps/select',{departmentCode:'games'});
+r=await call('s1','POST','/camps/select',{departmentCode:'teaching'});await Promise.all(tasks);ok(r.s===200&&r.n<=3,'POST /camps/select (switch): 2 round trips + the audit row (got '+r.n+')');
+r=await call('s1','POST','/camps/select',{departmentCode:'teaching'});ok(r.s===200&&r.d.unchanged&&r.n<=1,'POST /camps/select (same department): 1 round trip (got '+r.n+')');
+r=await call('s1','POST','/camps/unselect',{});await Promise.all(tasks);ok(r.s===200&&r.n<=3,'POST /camps/unselect: 1 delete + the audit row, plus the roster read (got '+r.n+')');
+console.log('3. the audit row is still written (in the background)');
+const aud=db.prepare("SELECT action FROM budget_audit_logs WHERE action IN ('CAMP_SELECT','CAMP_UNSELECT')").all().map(x=>x.action);ok(aud.includes('CAMP_SELECT')&&aud.includes('CAMP_UNSELECT'),'select / unselect audit rows exist');
+console.log('4. a seat can never be oversold, cached counts or not');
+db.exec("UPDATE camp_quotas SET quota=1 WHERE department_code='games' AND gender='M' AND year=2");
+await call('s1','GET','/camps/departments');
+db.exec("INSERT OR REPLACE INTO camp_students (student_id,name,year,gender) VALUES ('6740102221','B',2,'M')");
+r=await call('s1','POST','/camps/select',{departmentCode:'games'});ok(r.s===200,'first student takes the last seat');
+r=await call('s2','POST','/camps/select',{departmentCode:'games'});ok(r.s===409&&r.d.code==='FULL','second student is refused even though the department list may still show a free seat');
+console.log('5. edgeCached');
+const store=new Map();globalThis.caches={default:{match:async k=>store.get(k.url)?.clone(),put:async(k,v)=>{store.set(k.url,v)}}};
+let runs=0;const load=async()=>{runs++;return {a:1,t:runs}};
+const v1=await edgeCached('k1',5,load),v2=await edgeCached('k1',5,load),v3=await edgeCached('k2',5,load);
+ok(runs===2&&v1.t===1&&v2.t===1&&v3.t===2,'the loader runs once per key, then the shared copy is served');
+globalThis.caches={default:{match:async()=>{throw new Error('x')},put:async()=>{throw new Error('x')}}};
+ok((await edgeCached('k3',5,async()=>({ok:1}))).ok===1,'a broken cache never breaks the request');
+delete globalThis.caches;
+console.log(failn?`perf: ${pass} passed, ${failn} FAILED`:`perf: ${pass} passed, 0 failed`);process.exit(failn?1:0);
