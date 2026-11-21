@@ -30,7 +30,8 @@
     + '@keyframes mz{0%{opacity:0;transform:translate(0,8px) scale(.7)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-18px) scale(1.15)}}'
     + '@keyframes mpulse{50%{opacity:.35}}'
     + '@media(prefers-reduced-motion:reduce){#maintOv .mbed,#maintOv .msh,#maintOv .mart,#maintOv .mc>*,#maintOv .z,#maintOv .mu span::before{animation:none}#maintOv .z{opacity:1}}'
-    + '#maintBn{position:relative;z-index:2147482000;background:#fff7d6;color:#6b4e00;border-bottom:2px solid #f0c000;padding:10px 16px;font:15px/1.6 "Noto Sans Thai",system-ui,sans-serif;text-align:center;white-space:pre-line}#maintBn b{color:#161616}';
+    + '#maintBn{position:relative;z-index:2147482000;background:#fff7d6;color:#6b4e00;border-bottom:2px solid #f0c000;padding:10px 16px;font:15px/1.6 "Noto Sans Thai",system-ui,sans-serif;text-align:center;white-space:pre-line}#maintBn b{color:#161616}'
+    + (/^\/admin(\/|$)/.test(location.pathname) ? '' : '@media(prefers-color-scheme:dark){#maintOv{background:#0e0e10;color:#ececef}#maintOv .mm,#maintOv .ml{color:#a1a1aa}#maintOv .mu{background:#232326;color:#a1a1aa}#maintOv .mu b{color:#ececef}#maintOv .mb{background:#e4e4e7;color:#18181b}#maintOv .mb:hover{background:#fff}#maintOv .mart{filter:invert(.9) hue-rotate(180deg)}#maintOv .mc>.mlogo{animation:none;filter:invert(1)}#maintBn{background:#3a2f10;color:#fcd34d;border-bottom-color:#7a5b00}#maintBn b{color:#fff}}');
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var ART = '<svg class="mart" viewBox="0 0 320 220" role="img" aria-label="กำลังปิดปรับปรุงระบบ" xmlns="http://www.w3.org/2000/svg">'
     + '<ellipse class="msh" cx="160" cy="196" rx="112" ry="12" fill="#18181b" opacity=".07"/><g class="mbed">'

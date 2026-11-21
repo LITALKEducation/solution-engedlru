@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="color-scheme" content="light dark">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script src="/assets/inapp-guard.js?v=a7e798bf"></script>
+<script src="/assets/inapp-guard.js?v=12b532a8"></script>
 <meta name="theme-color" content="#18181b">
 <meta name="robots" content="noindex,nofollow">
 <title>English Camp On Tour · กิจกรรมค่าย</title>
@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="/icons/branch-180.png">
 <link rel="preload" as="image" href="/assets/hero-hills.jpg">
 <link rel="preload" href="/assets/fonts/noto-sans-thai-thai-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="/assets/site.css?v=ea3a40f2">
-<link rel="stylesheet" href="/assets/theme.css?v=934a1793">
+<link rel="stylesheet" href="/assets/fonts/fonts.css"><link rel="stylesheet" href="/assets/site.css?v=da750e3e">
+<link rel="stylesheet" href="/assets/theme.css?v=da3994a3">
 <style>footer{max-width:1040px;margin:0 auto;width:100%;text-align:left;padding:32px 24px calc(env(safe-area-inset-bottom,0px) + 32px);color:var(--mute)}footer a{color:var(--mute);text-decoration:underline}
 .cxhero{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:min(82vh,680px);color:#fff;background:#222 url(/assets/hero-hills.jpg) center 40%/cover no-repeat;overflow:hidden;isolation:isolate}
 .cxhero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,.08) 38%,rgba(0,0,0,.55) 100%)}
@@ -23,16 +23,18 @@
 .cxbar a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;color:#fff;text-decoration:none;border-right:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14);min-height:64px;justify-content:center;transition:background-color .25s var(--ease-smooth-out)}
 .cxbar a:hover{background:rgba(255,255,255,.14)}
 .cxbar small{color:#ffffffb3!important;font-size:.6875rem;font-weight:500}.cxbar b{font-weight:600;font-size:.9375rem}
-.cxbar .go{background:#fff;color:#18181b;grid-column:1/-1;align-items:center;flex-direction:row;justify-content:center;gap:10px;font-weight:700;border:0;min-height:56px}
-.cxbar .go:hover{background:#ececee}
+.cxbar .go{background:var(--b-ffffff,#fff);color:var(--f-18181b,#18181b);grid-column:1/-1;align-items:center;flex-direction:row;justify-content:center;gap:10px;font-weight:700;border:0;min-height:56px}
+.cxbar .go:hover{background:var(--b-ececee,#ececee)}
 @media(min-width:760px){.cxbar{grid-template-columns:repeat(3,1fr) 190px}.cxbar a{border-bottom:0;padding:14px 20px}.cxbar .go{grid-column:auto}}
 .cxintro{max-width:1040px;margin:0 auto;padding:56px 24px 8px;text-align:center}
-.cxpill{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.8125rem;font-weight:600;box-shadow:var(--shadow)}.cxpill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.cxpill{display:inline-flex;align-items:center;gap:8px;background:var(--b-ffffff,#fff);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.8125rem;font-weight:600;box-shadow:var(--shadow)}.cxpill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
 .cxintro h2{margin:18px auto 0;max-width:15em;font-size:clamp(2rem,6vw,3.5rem);font-weight:700;letter-spacing:-.02em;line-height:1.3}
 .cxintro p{margin:14px auto 0;max-width:34em;color:var(--mute)}
 main{padding-top:8px!important}
 .cxsect h2{display:flex;align-items:center;gap:8px;font-size:.8125rem}.cxsect h2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
 @media(min-width:900px){.cxsect:first-child .cxtiles{grid-template-columns:repeat(3,minmax(0,1fr))}.cxsect:first-child .cxtile{flex-direction:column;align-items:flex-start;min-height:150px;padding:20px}.cxsect:first-child .cxtile::after{margin-top:auto;align-self:flex-end}.cxsect:first-child .cxnm{font-size:1.25rem}}
+/* ==== dark mode (generated: light colours -> --b-/--l-/--f- tokens; light values stay the fallback) ==== */
+@media (prefers-color-scheme:dark){:root{--b-ececee:#202022;--b-ffffff:#161616;--f-18181b:#dedee1}}
 </style>
 <script src="/assets/brand-bar.js?v=96429b2b" defer></script>
 <script src="/assets/footer.js" defer></script>
@@ -52,7 +54,7 @@ main{padding-top:8px!important}
 <meta name="twitter:description" content="ระบบสารสนเทศของค่ายภาษาอังกฤษ คณะครุศาสตร์ ครั้งที่ 9">
 <meta name="twitter:image" content="https://enged.sorasukt.com/assets/og/home.png">
 <!-- og:end -->
-<script src="/assets/maintenance.js?v=74d34566" defer></script>
+<script src="/assets/maintenance.js?v=e5ea4fbd" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหาหลัก</a>

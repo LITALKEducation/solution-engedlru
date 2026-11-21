@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><meta name="color-scheme" content="light dark">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script src="/assets/inapp-guard.js"></script>
 <meta name="theme-color" content="#18181b">
@@ -21,10 +21,12 @@
 .nf h1{margin:4px 0 0;color:#fff!important;font-size:clamp(1.4rem,5vw,2rem)!important}
 .nf p{margin:10px 0 0;color:#ffffffd9!important}
 .nf .acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:28px}
-.nf .acts a{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:999px;font-weight:600;text-decoration:none;border:1px solid #ffffff59;color:#fff;background:#ffffff1f;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.nf .acts a:hover{background:#ffffff38}
-.nf .acts a.pri{background:#fff;color:#18181b;border-color:#fff}
-.nf .acts a.pri:hover{background:#ececee}
+.nf .acts a{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:999px;font-weight:600;text-decoration:none;border:1px solid var(--l-ffffff59,#ffffff59);color:#fff;background:var(--b-ffffff1f,#ffffff1f);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.nf .acts a:hover{background:var(--b-ffffff38,#ffffff38)}
+.nf .acts a.pri{background:var(--b-ffffff,#fff);color:var(--f-18181b,#18181b);border-color:var(--l-ffffff,#fff)}
+.nf .acts a.pri:hover{background:var(--b-ececee,#ececee)}
+/* ==== dark mode (generated: light colours -> --b-/--l-/--f- tokens; light values stay the fallback) ==== */
+@media (prefers-color-scheme:dark){:root{--b-ececee:#202022;--b-ffffff:#161616;--b-ffffff1f:#1616161f;--b-ffffff38:#16161638;--l-ffffff:#1f1f1f;--l-ffffff59:#1f1f1f59;--f-18181b:#dedee1}}
 </style>
 <script src="/assets/brand-bar.js" defer></script>
 </head>

@@ -2,23 +2,24 @@
 // Replaces any <footer> already in the page, then appends the new one to the page shell (or the body).
 (function () {
   if (document.getElementById('siteFoot')) return;
-  var css = '#siteFoot{margin:56px 0 0;max-width:none;width:100%;padding:0;text-align:left;background:#f1f1f3;color:#18181b;font-family:"Noto Sans Thai",Inter,system-ui,sans-serif;position:relative;overflow:hidden}'
+  var css = '#siteFoot{margin:56px 0 0;max-width:none;width:100%;padding:0;text-align:left;background:var(--soft,#f1f1f3);color:var(--ink,#18181b);font-family:"Noto Sans Thai",Inter,system-ui,sans-serif;position:relative;overflow:hidden}'
     + '#siteFoot a{color:inherit;text-decoration:none}#siteFoot,#siteFoot a{text-decoration-line:none}'
     + '#siteFoot .sf-in{max-width:1120px;margin:0 auto;padding:48px 24px 0;display:grid;gap:36px;grid-template-columns:minmax(0,1fr)}'
     + '#siteFoot .sf-brand img{height:44px;width:auto;display:block}'
-    + '#siteFoot .sf-brand p{margin:14px 0 0;max-width:22em;color:#5f5f68;font-size:.9375rem;line-height:1.6}'
+    + '#siteFoot .sf-brand p{margin:14px 0 0;max-width:22em;color:var(--mute,#5f5f68);font-size:.9375rem;line-height:1.6}'
     + '#siteFoot nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 20px}'
-    + '#siteFoot h2{margin:0 0 12px;font-size:.9375rem;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none;color:#18181b}'
+    + '#siteFoot h2{margin:0 0 12px;font-size:.9375rem;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none;color:var(--ink,#18181b)}'
     + '#siteFoot ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}'
-    + '#siteFoot li a{display:inline-flex;align-items:center;min-height:36px;color:#5f5f68;font-size:.9375rem;transition:color .2s}'
-    + '#siteFoot li a:hover{color:#18181b;text-decoration:underline;text-underline-offset:3px}'
+    + '#siteFoot li a{display:inline-flex;align-items:center;min-height:36px;color:var(--mute,#5f5f68);font-size:.9375rem;transition:color .2s}'
+    + '#siteFoot li a:hover{color:var(--ink,#18181b);text-decoration:underline;text-underline-offset:3px}'
     + '#siteFoot .sf-legal{max-width:1120px;margin:0 auto;padding:36px 24px 28px;font-size:.8125rem;line-height:1.7;color:#4a4a52;text-align:center}'
     + '#siteFoot .sf-legal p{margin:0}'
     + '#siteFoot .sf-photo{position:relative;height:clamp(200px,34vw,340px);background:#cfd8dc url(/assets/hero-hills.jpg) center 62%/cover no-repeat}'
-    + '#siteFoot .sf-photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#f1f1f3 0%,rgba(241,241,243,.55) 28%,rgba(241,241,243,0) 60%)}'
+    + '#siteFoot .sf-photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--soft,#f1f1f3) 0%,color-mix(in srgb,var(--soft,#f1f1f3) 55%,transparent) 28%,transparent 60%)}'
     + '@media(min-width:860px){#siteFoot .sf-in{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);align-items:start}#siteFoot nav{grid-template-columns:repeat(3,minmax(0,1fr))}}'
-    + '#siteFoot .sf-links{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;margin-bottom:12px!important}#siteFoot .sf-links a{display:inline-flex;align-items:center;min-height:40px;color:#18181b;text-decoration:underline;text-underline-offset:3px;font-weight:500}'
+    + '#siteFoot .sf-links{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;margin-bottom:12px!important}#siteFoot .sf-links a{display:inline-flex;align-items:center;min-height:40px;color:var(--ink,#18181b);text-decoration:underline;text-underline-offset:3px;font-weight:500}'
     + '@media(max-width:600px){#siteFoot .sf-photo{height:180px}}'
+    + '@media(prefers-color-scheme:dark){#siteFoot .sf-legal{color:var(--mute,#a1a1aa)}#siteFoot .sf-brand img{filter:invert(1)}#siteFoot .sf-photo{filter:brightness(.7)}}'
     + '@media print{#siteFoot{display:none!important}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var COLS = [
