@@ -45,7 +45,7 @@ export async function getAuth0UserEx(env, accessToken) {
       const res = await fetch(`https://${auth0Domain(env)}/userinfo`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!res.ok) return { user: null, status: res.status };
       const user = await res.json();
-      if (c) { try { await c.put(ck, new Response(JSON.stringify(user), { headers: { "Content-Type": "application/json", "Cache-Control": "private, max-age=60" } })); } catch (e) { /* ignore */ } }
+      if (c) { try { await c.put(ck, new Response(JSON.stringify(user), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=60" } })); } catch (e) { /* ignore */ } }
       return { user, status: 200 };
     } catch (e) {
       console.error("[auth0] userinfo failed:", e?.message || e);

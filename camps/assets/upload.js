@@ -8,7 +8,7 @@
   'use strict';
   if (window.__upl || !window.fetch || !window.XMLHttpRequest) return; window.__upl = 1;
   var orig = window.fetch.bind(window), MIN = 20000, jobs = [], card = null, hideT = 0, admin = /^\/admin(\/|$)/.test(location.pathname);
-  var css = '#uplCard{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:2147483100;width:min(92vw,380px);transform:translate(-50%,24px);opacity:0;pointer-events:none;'
+  var css = '#uplCard{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);z-index:2147483100;width:min(92vw,380px);transform:translate(-50%,24px);opacity:0;pointer-events:none;'
     + 'background:#fff;color:#171717;border:1px solid #e4e4e7;border-radius:16px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.16);font:14px/1.5 "Noto Sans Thai",Inter,system-ui,sans-serif;'
     + 'display:grid;grid-template-columns:36px 1fr;gap:2px 12px;align-items:center;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .2s}'
     + '#uplCard.uon{transform:translate(-50%,0);opacity:1}'
