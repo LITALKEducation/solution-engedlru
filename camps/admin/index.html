@@ -69,7 +69,11 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(24,24,27,.45);out
 .msec .mb{padding:0 0 14px}
 .mpills{display:flex;gap:8px;flex-wrap:wrap}.mpill input,.seg2 input{position:absolute;opacity:0;pointer-events:none}.mpill span,.seg2 span{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-weight:600}.mpill input:checked+span{background:var(--dark);border-color:var(--dark);color:#fff}.mpill input:focus-visible+span,.seg2 input:focus-visible+span{outline:2px solid var(--dark);outline-offset:2px}
 .seg2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.seg2 label{position:relative}.seg2 span{display:flex;border-radius:12px}.seg2 input:checked+span{background:var(--dark);border-color:var(--dark);color:#fff}
-#mForm .dtq{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px}#mForm .dtq button{flex:none}#mForm .dtshow{font-size:13px}
+#mForm .cols{grid-template-columns:minmax(0,1fr);gap:14px}#mForm .f,#mForm .dt{min-width:0;max-width:100%}
+#mForm .dt{border:0;padding:0;background:none}#mForm .dt.empty .dtshow{display:none}#mForm .dtshow{font-size:13.5px;color:var(--dark);margin:0 0 6px;min-height:0}
+#mForm .dtrow{display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:8px}#mForm .dtrow .tm{width:auto}#mForm .dtd{padding-right:8px}
+#mForm .dtq{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin-top:8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}#mForm .dtq button{flex:none}
+@media(max-width:420px){#mForm .dtrow{grid-template-columns:minmax(0,1fr)}}
 .mfold>summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;justify-content:space-between}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary h2{margin:0}.mfold>summary::after{content:"›";font-size:22px;color:var(--mute);transition:transform .2s}.mfold[open]>summary::after{transform:rotate(90deg)}.mfold[open]>summary{margin-bottom:12px}
 .mstep{display:flex;gap:10px;align-items:center;margin:22px 0 6px}.mstep:first-of-type{margin-top:6px}.mstep b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--dark);color:#fff;display:grid;place-items:center;font-size:13px}.mstep h3{margin:0;font-size:16px}
 .mhint{margin:2px 0 10px 36px;font-size:13.5px;color:var(--mute)}.mind{margin-left:36px}
