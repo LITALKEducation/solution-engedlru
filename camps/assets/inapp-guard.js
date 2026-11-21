@@ -46,10 +46,10 @@
   var url = cleanUrl(location.href), U = new URL(url);
   var ua = navigator.userAgent, isAndroid = /Android/.test(ua), isIos = /iPhone|iPad|iPod/.test(ua), isLine = hit.app === 'LINE';
   var openUrl = '', openLabel = '';
-  if (isLine) { openUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1'; openLabel = 'เปิดด้วยเบราว์เซอร์'; }   // LINE opens the page in the default browser
-  else if (isAndroid) { openUrl = 'intent://' + U.host + U.pathname + U.search + '#Intent;scheme=' + U.protocol.replace(':', '') + ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end'; openLabel = 'เปิดด้วยเบราว์เซอร์'; }   // no fixed package: any installed browser (Chrome, Samsung Internet, …) works
+  if (isLine) { openUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1'; openLabel = 'เปิดด้วยเบราว์เซอร์ภายนอก'; }   // LINE opens the page in the default browser
+  else if (isAndroid) { openUrl = 'intent://' + U.host + U.pathname + U.search + '#Intent;scheme=' + U.protocol.replace(':', '') + ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end'; openLabel = 'เปิดด้วยเบราว์เซอร์ภายนอก'; }   // no fixed package: any installed browser (Chrome, Samsung Internet, …) works
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-  var s1 = isAndroid || isLine ? 'แตะเมนู <b>⋮</b> หรือไอคอน <b>แชร์</b> ของแอป' : 'แตะเมนู <b>⋯</b> หรือไอคอน <b>แชร์</b> ของแอป';
+  var s1 = isAndroid || isLine ? 'เลือกเมนู <b>⋮</b> หรือไอคอน <b>แชร์</b> ของแอปพลิเคชัน' : 'เลือกเมนู <b>⋯</b> หรือไอคอน <b>แชร์</b> ของแอปพลิเคชัน';
   var s2 = isLine ? 'เลือก <b>“เปิดในเบราว์เซอร์เริ่มต้น”</b>' : isAndroid ? 'เลือก <b>“เปิดใน Chrome”</b> หรือ <b>“เปิดในเบราว์เซอร์”</b>' : 'เลือก <b>“เปิดใน Safari”</b> หรือ <b>“เปิดในเบราว์เซอร์”</b>';
   var name = pageName(location.pathname), app = esc(hit.app);
   var copyCls = openUrl ? 'g' : 'p';
@@ -66,18 +66,18 @@
     + '@media(prefers-color-scheme:dark){body{background:#0e0e10;color:#ececef}.hd img{filter:invert(1)}p,.how h2,.en,.sk,.u{color:#a1a1aa}b,li{color:#ececef}button,a.b{border-color:#3a3a3e}.p{background:#e4e4e7;color:#18181b;border-color:#e4e4e7}.g{background:#161616;color:#ececef}.u{background:#161616;border-color:#2d2d31}.how{border-color:#2d2d31}li::before{background:#26262a;color:#ececef}}'
     + '</style></head><body><div class="w">'
     + '<div class="hd"><img src="/assets/logo-english-education.png" alt="English Education"></div>'
-    + '<div role="alert"><h1>กรุณาเปิดด้วยเบราว์เซอร์</h1><p>หน้า <b>' + esc(name) + '</b> ต้องเข้าสู่ระบบด้วย Google ซึ่งทำในแอป <b>' + app + '</b> ไม่ได้</p></div>'
+    + '<div role="alert"><h1>กรุณาเปิดด้วยเบราว์เซอร์</h1><p>หน้า <b>' + esc(name) + '</b> ต้องเข้าสู่ระบบด้วยบัญชี Google ซึ่งไม่สามารถดำเนินการภายในแอปพลิเคชัน <b>' + app + '</b> ได้</p></div>'
     + '<div class="act">'
     + (openUrl ? '<a class="b p" id="go" href="' + esc(openUrl) + '">' + openLabel + '</a>' : '')
     + '<button class="' + copyCls + '" id="cp" type="button">คัดลอกลิงก์</button>'
     + '<div class="u" id="u">' + esc(url) + '</div></div>'
-    + '<div class="how"><h2>' + 'หรือเปิดเองจากเมนูของแอป' + '</h2><ol><li><span>' + s1 + '</span></li><li><span>' + s2 + '</span></li></ol></div>'
-    + '<p class="en">Open this page in Safari or Chrome. Google sign-in does not work inside ' + app + '.</p>'
-    + '<button class="sk" id="skip" type="button">ใช้งานต่อในแอปนี้ (อาจเข้าสู่ระบบไม่ได้)</button></div></body></html>';
+    + '<div class="how"><h2>' + 'หรือดำเนินการด้วยตนเองตามขั้นตอนต่อไปนี้' + '</h2><ol><li><span>' + s1 + '</span></li><li><span>' + s2 + '</span></li></ol></div>'
+    + '<p class="en">Please open this page in Safari or Chrome. Google sign-in is not supported inside ' + app + '.</p>'
+    + '<button class="sk" id="skip" type="button">ดำเนินการต่อในแอปพลิเคชันนี้ (อาจไม่สามารถเข้าสู่ระบบได้)</button></div></body></html>';
   // Swap in a brand-new <html> tree. The parser keeps appending the real page to the old (now detached) tree, and scripts that
   // are not connected to a document never run, so nothing else on the page executes (no sign-in attempt inside the web view).
   var copy = function (btn) {
-    var t = url, done = function () { btn.textContent = 'คัดลอกแล้ว ✓ วางใน Safari / Chrome'; };
+    var t = url, done = function () { btn.textContent = 'คัดลอกลิงก์แล้ว ✓ โปรดนำไปวางใน Safari หรือ Chrome'; };
     var fallback = function () { var a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ } a.remove(); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, fallback); else fallback();
   };
