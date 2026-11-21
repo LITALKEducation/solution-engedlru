@@ -96,7 +96,7 @@ Every page except `/admin/` follows the device setting (`prefers-color-scheme: d
 - **One brand colour:** the navy of the "On Tour" block in the camp logo (`#1b0e86`). Student pages, lotto, QR check, the budget app and the admin page (`--dark`) all derive primary buttons, links, selected tabs and focus rings from it (light periwinkle `#b9b3ff` in dark mode). Change it in `assets/theme.css` (`--accent` / `--brand` / `--red`), `budget/assets/budget-v2.css` (`--brand`) and `admin/index.html` (`--dark`).
 - **Flat cards, lifting links:** informational cards have a border only; only things you can press (home tiles, `a.card`) have a shadow and lift on hover.
 - **Home:** hero with one call to action ("เริ่มใช้งาน"), four student tiles with icons (no running numbers), and a small flat row for staff tools and the budget app. The registration badge belongs to "เลือกฝ่าย" and stays hidden until the status arrives.
-- **Footer:** a slim bar (logo + tagline, three legal links, copyright); no photo and no repeated link columns.
+- **Footer:** the original footer (logo + tagline, link columns for students / staff / finance, legal links, copyright, the landscape photo) without the big camp logo over the photo.
 - **Profile (`/student/`):** two columns from 900px (identity + QR on the left, details on the right).
 - Budget uses the same corner radius (`--r: 16px`) as the other pages; it keeps its phone-width column on purpose.
 
